@@ -30,9 +30,9 @@ import (
 // correctly.
 //
 // Some modifiers cannot be used together, else it panics, e.g.
-//   H & R - a required flag must be showed in help to tell user to set it
-//   D & R - a required flag must not be deprecated, it does not make sense
-//           and make user confusing
+//   H & R - a required flag must appear in help to tell user to set it
+//   D & R - a required flag must not be deprecated, it does not make sense,
+//           but makes user confused
 //
 type Modifier byte
 

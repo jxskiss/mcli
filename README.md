@@ -23,25 +23,24 @@ which is licensed under the Apache License 2.0.
 
 ## Features
 
-1. Extremely easy to use, dead simple buf powerful API to define commands, flags and arguments.
-2. Add arbitrary level sub-command with single line code.
-3. Define your command flags and arguments inside the command processor using a simple struct tag.
-4. Set default value for flags and arguments.
-5. Read environment variables for flags and arguments.
-6. Set default value for flags and arguments.
-7. Work with slice, map out of box (of course the bool, (u)int, (u)int16, (u)int32,
-   (u)int64, float, duration, string types are also supported).
-8. Automatic help for commands, flags and arguments.
-9. Mark commands, flags as hidden, hidden commands and flags won't be showed in help,
+1. Extremely easy to use, simple but powerful API to define commands, flags and arguments.
+2. Add arbitrary level sub-command with single line code. 
+3. Define command flags and arguments inside the command processor using struct tag.
+4. Read environment variables for flags and arguments.
+5. Set default value for flags and arguments.
+6. Work with slice, map out of box, of course the bool, string, integer, unsigned integer,
+   float, duration types are also supported.
+7. Automatic help for commands, flags and arguments.
+8. Mark commands, flags as hidden, hidden commands and flags won't be showed in help,
    except that when a special flag "--mcli-show-hidden" is provided.
-10. Mark flags, arguments as required, it reports error when not given.
-11. Mark flags as deprecated.
-12. Automatic suggestions like git.
-13. Compatible with the standard library's flag.FlagSet.
+9. Mark flags, arguments as required, it reports error when not given.
+10. Mark flags as deprecated.
+11. Automatic suggestions like git.
+12. Compatible with the standard library's flag.FlagSet.
 
-# Usage
+## Usage
 
-Work in main function:
+Use in main function:
 
 ```go
 func main() {
@@ -60,7 +59,7 @@ func main() {
 $ go run say.go
 argument is required but not given: text
 USAGE:
-  tt [flags] <text>
+  say [flags] <text>
 
 FLAGS:
   -n, --name string    Who do you want to say to (default "tom")
@@ -74,7 +73,7 @@ $ go run say.go hello
 Say to tom: hello
 ```
 
-Use with sub-commands:
+Use sub-commands:
 
 ```go
 func main() {
@@ -106,7 +105,7 @@ func runCmd1() {
 
         Location  string `cli:"location, A browser location can be specified using arguments in the following format:\n- by number for issue or pull request, e.g. \"123\"; or\n- by path for opening folders and files, e.g. \"cmd/gh/main.go\""`
     }
-	mcli.Parse(&args)
+    mcli.Parse(&args)
 
     // Do something
 }
@@ -133,29 +132,50 @@ func runCmd2Sub1() {
 
 See [example_test](./example_test.go) for a more sophisticated example which mimics Github's cli command `gh`.
 
+## Custom parsing options
+
+There are a few options to customize the behavior of `Parse`.
+
+- `WithArgs(args []string)` tells `Parse` to parse from the given args,
+  instead of parsing from the program's command line arguments.
+- `WithErrorHandling(h flag.ErrorHandling)` tells `Parse` to use the given ErrorHandling.
+  By default, it exits the program when an error happens.
+- `WithName(name string)` specifies the name to use when printing usage doc.
+
 ## Tag syntax
 
-Struct tag is a powerful feature in Go, `mcli` uses struct tag to define flags and argumens.
+Struct tag is a powerful feature in Go, `mcli` uses struct tag to define flags and arguments.
 
 * tag `cli` defines the name and description for flags and arguments
-* tag `default` optionally provides a default value to a flag or argument
-* tag `env` tells Parse to lookup environment variables when user doesn't provide a value
+* tag `env` optionally tells Parse to lookup environment variables when user doesn't
+  provide a value on the command line
+* tag `default` optionally provides a default value to a flag or argument,
+  which will be used when the value is not available from both command line and env
 
 The syntax is
 
 ```text
 /* cli tag, only Name is required.
  * Short name and long name are both optional, but at least one must be given.
- * See below for details about Modifiers.
+ * See below for details about modifiers.
  * e.g.
  * - `cli:"-c, Open the last commit"`
  * - `cli:"#R, -b, --branch, Select another branch by passing in the branch name"`
  * - `cli:"--an-obvious-flag-dont-need-description"`
  */
-CliTag           <-  ( Modifiers ',' Space? )? Name ( ( ',' | Space ) Description )?
-Modifiers        <-  '#' [DHR]+
-Name             <-  ( ShortName LongName? ) | LongName
-Description      <-  ( ![\r\n] . )*
+CliTag       <-  ( Modifiers ',' Space? )? Name ( ( ',' | Space ) Description )?
+Modifiers    <-  '#' [DHR]+
+Name         <-  ( ShortName LongName? ) | LongName
+Description  <-  ( ![\r\n] . )*
+
+/* env tag, optional.
+ * Multiple environment names can be specified, the first non-empty value
+ * will be used.
+ * e.g.
+ * - `env:"SOME_ENV"`
+ * - `env:"ANOTHER_ENV_1, ANOTHER_ENV_2"`
+ */
+EnvTag  <-  ( EnvName ',' Space? )* EnvName
 
 /* default value tag, optional.
  * e.g.
@@ -163,14 +183,6 @@ Description      <-  ( ![\r\n] . )*
  * - `default:"true"` // bool
  */
 DefaultValueTag  <-  ( ![\r\n] . )*
-
-/* env tag, optional.
- * Multiple environment names can be specified.
- * e.g.
- * - `env:"SOME_ENV"`
- * - `env:"ANOTHER_ENV_1, ANOTHER_ENV_2"`
- */
-EnvTag           <-  ( EnvName ',' Space? )* EnvName
 ```
 
 ## Modifiers
@@ -194,9 +206,9 @@ correctly.
 
 Some modifiers cannot be used together, else it panics, e.g.
 
-* H & R - a required flag must be showed in help to tell user to set it
-* D & R - a required flag must not be deprecated, it does not make sense
-  and make user confusing
+* H & R - a required flag must appear in help to tell user to set it
+* D & R - a required flag must not be deprecated, it does not make sense,
+  but makes user confused
 
 ## Compatibility with package `flag`
 
@@ -213,12 +225,3 @@ map arguments, it just works.
 
 When command line arguments are given before flags, calling FlagSet.Arg(i)
 won't get the expected arguments.
-
-## Performance
-
-Well, definitely command line parsing won't be your hot path, performance
-is not a main consideration for this library, we always want simpler API
-and better usage instruction for end-users.
-(This does not mean the library has poor performance.)
-
-

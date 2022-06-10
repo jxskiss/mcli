@@ -11,7 +11,7 @@ type parseOptions struct {
 // ParseOpt specifies options to customize the behavior of Parse.
 type ParseOpt func(*parseOptions)
 
-// WithArgs indicates Parse to parse from the given args, instead of
+// WithArgs tells Parse to parse from the given args, instead of
 // parsing from the program's command line arguments.
 func WithArgs(args []string) ParseOpt {
 	return func(options *parseOptions) {
@@ -19,7 +19,7 @@ func WithArgs(args []string) ParseOpt {
 	}
 }
 
-// WithErrorHandling indicates Parse to use the given ErrorHandling.
+// WithErrorHandling tells Parse to use the given ErrorHandling.
 // By default, Parse exits the program when an error happens.
 func WithErrorHandling(h flag.ErrorHandling) ParseOpt {
 	return func(options *parseOptions) {
