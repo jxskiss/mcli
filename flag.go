@@ -362,6 +362,9 @@ func parseTags(fs *flag.FlagSet, rv reflect.Value) (flags, nonflags []*_flag, er
 		fv := rv.Field(i)
 		ft := rt.Field(i)
 		cliTag := strings.TrimSpace(ft.Tag.Get("cli"))
+		if cliTag == "" {
+			cliTag = strings.TrimSpace(ft.Tag.Get("mcli"))
+		}
 		defaultValue := strings.TrimSpace(ft.Tag.Get("default"))
 		envTag := strings.TrimSpace(ft.Tag.Get("env"))
 		if isIgnoreTag(cliTag) {

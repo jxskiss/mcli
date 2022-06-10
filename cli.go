@@ -309,7 +309,7 @@ func (ctx *parsingContext) parseNonflags() (err error) {
 	return
 }
 
-func (ctx *parsingContext) readEnvForNonSliceValues() (err error) {
+func (ctx *parsingContext) readEnvValues() (err error) {
 	fs := ctx.getFlagSet()
 	flags := ctx.flags
 	nonflags := ctx.nonflags
@@ -725,9 +725,8 @@ func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 		fs.BoolVar(&ctx.showHidden, showHiddenFlag, true, "show hidden commands and flags")
 	}
 
-	// Read env for non-slice values before parsing command line
-	// flags and arguments.
-	if err = ctx.readEnvForNonSliceValues(); err != nil {
+	// Read env values before parsing command line flags and arguments.
+	if err = ctx.readEnvValues(); err != nil {
 		return fs, err
 	}
 
