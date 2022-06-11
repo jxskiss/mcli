@@ -291,7 +291,20 @@ func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 	return nil
 }
 
-func (ctx *parsingContext) parseNonflags() (err error) {
+func (ctx *parsingContext) reorderFlags(args []string) []string {
+	ambiguousIdx := 0
+	flagIdx := len(args)
+	for i, x := range args {
+		if strings.HasPrefix(x, "-") {
+			flagIdx = i
+			break
+		}
+	}
+	ctx.ambiguousArgs = clip(args[ambiguousIdx:flagIdx])
+	return clip(args[flagIdx:])
+}
+
+func (ctx *parsingContext) parseNonflags() (allArgs []string, err error) {
 	ambiguousArgs := ctx.ambiguousArgs
 	afterFlagArgs := ctx.getFlagSet().Args()
 	nonflags := ctx.nonflags
@@ -308,8 +321,9 @@ func (ctx *parsingContext) parseNonflags() (err error) {
 		ctx.failError(err)
 		return
 	}
+
+	allArgs = append(ambiguousArgs, afterFlagArgs...)
 	i, j = 0, 0
-	allArgs := append(ambiguousArgs, afterFlagArgs...)
 	for i < len(nonflags) && j < len(allArgs) {
 		f := nonflags[i]
 		arg := allArgs[j]
@@ -323,7 +337,7 @@ func (ctx *parsingContext) parseNonflags() (err error) {
 		}
 		j++
 	}
-	return
+	return allArgs, nil
 }
 
 func (ctx *parsingContext) readEnvValues() (err error) {
@@ -369,7 +383,7 @@ func readEnv(fs *flag.FlagSet, f *_flag) (found bool, err error) {
 	return
 }
 
-func (ctx *parsingContext) tidyFlagSet() {
+func (ctx *parsingContext) tidyFlagSet(nonflagArgs []string) {
 	fs := ctx.getFlagSet()
 	flags := ctx.flags
 	m := make(map[string]*_flag)
@@ -401,6 +415,10 @@ func (ctx *parsingContext) tidyFlagSet() {
 			actual[f.short] = formal[f.short]
 		}
 	})
+
+	if len(nonflagArgs) > 0 {
+		_flagSet_setArgs(fs, nonflagArgs)
+	}
 }
 
 func (ctx *parsingContext) checkRequired() (err error) {
@@ -770,12 +788,17 @@ func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 		ctx.name = *options.cmdName
 	}
 
-	osArgs := os.Args[1:]
-	if ctx.args != nil {
-		osArgs = *ctx.args
-	}
+	var osArgs []string
 	if options.args != nil {
 		osArgs = *options.args
+	} else if ctx.args != nil {
+		osArgs = *ctx.args
+	} else {
+		osArgs = os.Args[1:]
+	}
+	flagsReordered := ctx.args != nil
+	if !flagsReordered {
+		osArgs = ctx.reorderFlags(osArgs)
 	}
 
 	if hasBoolFlag(showHiddenFlag, osArgs) {
@@ -791,13 +814,14 @@ func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	if err = fs.Parse(osArgs); err != nil {
 		return fs, err
 	}
-	if err = ctx.parseNonflags(); err != nil {
+	nonflagArgs, err := ctx.parseNonflags()
+	if err != nil {
 		return fs, err
 	}
 	if err = ctx.checkRequired(); err != nil {
 		return fs, err
 	}
-	ctx.tidyFlagSet()
+	ctx.tidyFlagSet(nonflagArgs)
 	return fs, err
 }
 

@@ -7,9 +7,13 @@
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg)][license]
 
 [godoc]: https://pkg.go.dev/github.com/jxskiss/mcli
+
 [goreport]: https://goreportcard.com/report/github.com/jxskiss/mcli
+
 [issues]: https://github.com/jxskiss/mcli/issues
+
 [release]: https://github.com/jxskiss/mcli/releases
+
 [license]: https://github.com/jxskiss/mcli/blob/master/LICENSE
 
 
@@ -24,7 +28,7 @@ which is licensed under the Apache License 2.0.
 ## Features
 
 1. Extremely easy to use, simple but powerful API to define commands, flags and arguments.
-2. Add arbitrary level sub-command with single line code. 
+2. Add arbitrary level sub-command with single line code.
 3. Define command flags and arguments inside the command processor using struct tag.
 4. Define global flags apply to all commands.
 5. Read environment variables for flags and arguments.
@@ -45,14 +49,14 @@ Use in main function:
 
 ```go
 func main() {
-    var args struct {
-        Name string `cli:"-n, --name, Who do you want to say to" default:"tom"`
+var args struct {
+Name string `cli:"-n, --name, Who do you want to say to" default:"tom"`
 
-        // This argument is required.
-        Text string `cli:"#R, text, The 'message' you want to send"`
-    }
-    mcli.Parse(&args)
-    fmt.Printf("Say to %s: %s\n", args.Name, args.Text)
+// This argument is required.
+Text string `cli:"#R, text, The 'message' you want to send"`
+}
+mcli.Parse(&args)
+fmt.Printf("Say to %s: %s\n", args.Name, args.Text)
 }
 ```
 
@@ -78,56 +82,56 @@ Use sub-commands:
 
 ```go
 func main() {
-    mcli.Add("cmd1", runCmd1, "An awesome command cmd1")
+mcli.Add("cmd1", runCmd1, "An awesome command cmd1")
 
-    mcli.AddGroup("cmd2", "This is a command group called cmd2")
-    mcli.Add("cmd2 sub1", runCmd2Sub1, "Do something with cmd2 sub1")
-    mcli.Add("cmd2 sub2", runCmd2Sub2, "Brief description about cmd2 sub2")
+mcli.AddGroup("cmd2", "This is a command group called cmd2")
+mcli.Add("cmd2 sub1", runCmd2Sub1, "Do something with cmd2 sub1")
+mcli.Add("cmd2 sub2", runCmd2Sub2, "Brief description about cmd2 sub2")
 
-    // A sub-command can also be registered without registering the group.
-    mcli.Add("group3 sub1 subsub1", runGroup3Sub1Subsub1, "Blah blah Blah")
+// A sub-command can also be registered without registering the group.
+mcli.Add("group3 sub1 subsub1", runGroup3Sub1Subsub1, "Blah blah Blah")
 
-    // This is a hidden command, it won't be showed in help,
-    // except that when flag "--mcli-show-hidden" is given.
-    mcli.AddHiden("secret-cmd", secretCmd, "An secret command won't be showed in help")
+// This is a hidden command, it won't be showed in help,
+// except that when flag "--mcli-show-hidden" is given.
+mcli.AddHiden("secret-cmd", secretCmd, "An secret command won't be showed in help")
 
-    mcli.Run()
+mcli.Run()
 }
 
 func runCmd1() {
-    var args struct {
-        Branch    string `cli:"-b, --branch, Select another branch by passing in the branch name"`
-        Commit    bool   `cli:"-c, --commit, Open the last commit"`
-        NoBrowser bool   `cli:"-n, --no-browser, Print destination URL instead of opening the browser"`
-        Projects  bool   `cli:"-p, --projects, Open repository projects"`
-        Repo      string `cli:"-R, --repo, Select another repository using the '[HOST/]OWNER/REPO' format"`
-        Settings  bool   `cli:"-s, --settings, Open repository settings"`
-        Wiki      bool   `cli:"-w, --wiki, Open repository wiki"`
+var args struct {
+Branch    string `cli:"-b, --branch, Select another branch by passing in the branch name"`
+Commit    bool   `cli:"-c, --commit, Open the last commit"`
+NoBrowser bool   `cli:"-n, --no-browser, Print destination URL instead of opening the browser"`
+Projects  bool   `cli:"-p, --projects, Open repository projects"`
+Repo      string `cli:"-R, --repo, Select another repository using the '[HOST/]OWNER/REPO' format"`
+Settings  bool   `cli:"-s, --settings, Open repository settings"`
+Wiki      bool   `cli:"-w, --wiki, Open repository wiki"`
 
-        Location  string `cli:"location, A browser location can be specified using arguments in the following format:\n- by number for issue or pull request, e.g. \"123\"; or\n- by path for opening folders and files, e.g. \"cmd/gh/main.go\""`
-    }
-    mcli.Parse(&args)
+Location  string `cli:"location, A browser location can be specified using arguments in the following format:\n- by number for issue or pull request, e.g. \"123\"; or\n- by path for opening folders and files, e.g. \"cmd/gh/main.go\""`
+}
+mcli.Parse(&args)
 
-    // Do something
+// Do something
 }
 
 type Cmd2CommonArgs struct {
-    Repo string `cli:"-R, --repo, Select another repository using the '[HOST/]OWNER/REPO' format"`
+Repo string `cli:"-R, --repo, Select another repository using the '[HOST/]OWNER/REPO' format"`
 }
 
 func runCmd2Sub1() {
-    // Note that the flag/argument description can be seperated either
-    // by a comma or spaces, and can be mixed.
-    var args struct {
-        Body     string `cli:"-b, --body        Supply a body. Will prompt for one otherwise."`
-        BodyFile string `cli:"-F, --body-file   Read body text from 'file' (use \"-\" to read from standard input)"`
-        Editor   bool   `cli:"-e, --editor,     Add body using editor"`
-        Web      bool   `cli:"-w, --web,        Add body in browser"`
-        CommonIssueArgs
-    }
-    mcli.Parse(&args)
+// Note that the flag/argument description can be seperated either
+// by a comma or spaces, and can be mixed.
+var args struct {
+Body     string `cli:"-b, --body        Supply a body. Will prompt for one otherwise."`
+BodyFile string `cli:"-F, --body-file   Read body text from 'file' (use \"-\" to read from standard input)"`
+Editor   bool   `cli:"-e, --editor,     Add body using editor"`
+Web      bool   `cli:"-w, --web,        Add body in browser"`
+CommonIssueArgs
+}
+mcli.Parse(&args)
 
-    // Do something
+// Do something
 }
 ```
 
@@ -231,16 +235,13 @@ Some modifiers cannot be used together, else it panics, e.g.
 `Parse` returns a `*flag.FlagSet` if success, all defined flags are available
 with the flag set, including both short and long names.
 
-Note that there is a little difference with flag package, while the flag
-package requires command line flags must present before arguments, and
-arguments can be accessed using flag.Arg(i), this library doesn't require
-that, the order that user pass flags and arguments doesn't matter.
-Arguments should be defined in the struct given to Parse, command line
-arguments will be set to the struct. As a bonus, you can use slice and
-map arguments, it just works.
+Note that the package `flag` requires command line flags must present before
+arguments, this package does not have this requirement.
+Positional arguments can present either before flags or after flags,
+even both before and after flags, in which case, the args will be reordered
+and all arguments can be accessed by calling flagSet.Args() and flagSet.Arg(i).
 
-When command line arguments are given before flags, calling FlagSet.Arg(i)
-won't get the expected arguments.
+If there is slice or map arguments, it will match all following arguments.
 
 ## Changelog
 

@@ -596,6 +596,7 @@ func hasBoolFlag(name string, args []string) bool {
 var (
 	_flagSet_actual_offset uintptr
 	_flagSet_formal_offset uintptr
+	_flagSet_args_offset   uintptr
 	_flagSetMapType        = reflect.TypeOf(map[string]*flag.Flag{})
 )
 
@@ -606,11 +607,16 @@ func init() {
 	if !ok1 || !ok2 {
 		panic("cannot find flag.FlagSet fields actual/formal")
 	}
+	argsField, ok3 := typ.FieldByName("args")
+	if !ok3 {
+		panic("cannot find flag.FlagSet field args")
+	}
 	if actualField.Type != _flagSetMapType || formalField.Type != _flagSetMapType {
 		panic("type of flag.FlagSet fields actual/formal is not map[string]*flag.Flag")
 	}
 	_flagSet_actual_offset = actualField.Offset
 	_flagSet_formal_offset = formalField.Offset
+	_flagSet_args_offset = argsField.Offset
 }
 
 func _flagSet_getActual(fs *flag.FlagSet) map[string]*flag.Flag {
@@ -619,4 +625,8 @@ func _flagSet_getActual(fs *flag.FlagSet) map[string]*flag.Flag {
 
 func _flagSet_getFormal(fs *flag.FlagSet) map[string]*flag.Flag {
 	return *(*map[string]*flag.Flag)(unsafe.Pointer(uintptr(unsafe.Pointer(fs)) + _flagSet_formal_offset))
+}
+
+func _flagSet_setArgs(fs *flag.FlagSet, args []string) {
+	*(*[]string)(unsafe.Pointer(uintptr(unsafe.Pointer(fs)) + _flagSet_args_offset)) = args
 }

@@ -14,6 +14,8 @@ import (
 func resetState() {
 	state.cmds = nil
 	state.parsingContext = nil
+	state.globalFlags = nil
+	state.keepCmdOrder = false
 	for _, env := range os.Environ() {
 		key := strings.SplitN(env, "=", 2)[0]
 		os.Unsetenv(key)
@@ -630,4 +632,32 @@ func TestShowHidden(t *testing.T) {
 	fs.Usage()
 	got = buf.String()
 	assert.Contains(t, got, "-a1 string (HIDDEN)")
+}
+
+func TestReorderFlags(t *testing.T) {
+
+	type args struct {
+		Name string `cli:"-n, --name, Who do you want to say to" default:"tom"`
+		Text string `cli:"#R, text, The 'message' you want to send"`
+	}
+
+	resetState()
+	args1 := &args{}
+	fs, err := Parse(args1,
+		WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"hello", "-n", "Daniel"}))
+	assert.Nil(t, err)
+	assert.Equal(t, "Daniel", args1.Name)
+	assert.Equal(t, "hello", args1.Text)
+	assert.Equal(t, []string{"hello"}, fs.Args())
+
+	resetState()
+	args2 := &args{}
+	fs, err = Parse(args2,
+		WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"-n", "Daniel", "hello"}))
+	assert.Nil(t, err)
+	assert.Equal(t, "Daniel", args1.Name)
+	assert.Equal(t, "hello", args1.Text)
+	assert.Equal(t, []string{"hello"}, fs.Args())
 }
