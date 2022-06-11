@@ -21,6 +21,7 @@ type Command struct {
 
 	f func()
 
+	idx   int
 	level int
 }
 
@@ -222,6 +223,15 @@ var state struct {
 	*parsingContext
 
 	globalFlags interface{}
+
+	cmdIdx       int
+	keepCmdOrder bool
+}
+
+func addCommand(cmd *Command) {
+	state.cmdIdx += 1
+	cmd.idx = state.cmdIdx
+	state.cmds.add(cmd)
 }
 
 func getGlobalFlags() interface{} {
@@ -460,6 +470,8 @@ func (ctx *parsingContext) printUsage() {
 	}
 
 	cmds := state.cmds
+	keepCmdOrder := state.keepCmdOrder
+
 	fs := ctx.getFlagSet()
 	cmd := ctx.cmd
 	cmdName := ctx.name
@@ -513,7 +525,7 @@ func (ctx *parsingContext) printUsage() {
 	fmt.Fprint(out, usage, "\n\n")
 
 	if hasSubCmds {
-		printAvailableCommands(out, cmdName, cmds, showHidden)
+		printAvailableCommands(out, cmdName, cmds, showHidden, keepCmdOrder)
 		fmt.Fprint(out, "\n")
 	}
 
@@ -554,13 +566,20 @@ func (ctx *parsingContext) printUsage() {
 	}
 }
 
-func printAvailableCommands(out io.Writer, name string, cmds commands, showHidden bool) {
+func printAvailableCommands(out io.Writer, name string, cmds commands, showHidden bool, keepCmdOrder bool) {
 	if sub := cmds.listSubCommandsToPrint(name, showHidden); len(sub) > 0 {
 		cmds = sub
 	}
 	if len(cmds) == 0 {
 		return
 	}
+
+	if keepCmdOrder {
+		sort.Slice(cmds, func(i, j int) bool {
+			return cmds[i].idx < cmds[j].idx
+		})
+	}
+
 	var cmdLines [][2]string
 	prefix := []string{""}
 	preName := ""
@@ -616,21 +635,21 @@ func printWithAlignment(out io.Writer, lines [][2]string) {
 	}
 }
 
-// Add adds a command to global state.
+// Add adds a command.
 func Add(name string, f func(), description string) {
-	state.cmds.add(&Command{
+	addCommand(&Command{
 		Name:        name,
 		Description: description,
 		f:           f,
 	})
 }
 
-// AddHidden adds a hidden command to global state.
+// AddHidden adds a hidden command.
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
 func AddHidden(name string, f func(), description string) {
-	state.cmds.add(&Command{
+	addCommand(&Command{
 		Name:        name,
 		Description: description,
 		Hidden:      true,
@@ -638,10 +657,13 @@ func AddHidden(name string, f func(), description string) {
 	})
 }
 
-// AddGroup adds a group to global state.
+// AddGroup adds a group explicitly.
 // A group is a common prefix for some commands.
+// It's not required to add group before adding sub commands, but user
+// can use this function to add a description to a group, which will be
+// showed in help.
 func AddGroup(name string, description string) {
-	state.cmds.add(&Command{
+	addCommand(&Command{
 		Name:        name,
 		Description: description,
 		f:           groupCmd,
@@ -650,7 +672,7 @@ func AddGroup(name string, description string) {
 
 // AddHelp enables the "help" command to print help about any command.
 func AddHelp() {
-	state.cmds.add(&Command{
+	addCommand(&Command{
 		Name:        "help",
 		Description: "Help about any command",
 		f:           helpCmd,
@@ -837,4 +859,10 @@ func SetGlobalFlags(v interface{}) {
 type withGlobalFlagArgs struct {
 	GlobalFlags interface{}
 	CmdArgs     interface{}
+}
+
+// KeepCommandOrder makes Parse to print commands in the order of adding
+// the commands. By default, it prints commands in ascii-order.
+func KeepCommandOrder() {
+	state.keepCmdOrder = true
 }

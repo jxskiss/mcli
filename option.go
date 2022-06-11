@@ -14,7 +14,7 @@ type parseOptions struct {
 type ParseOpt func(*parseOptions)
 
 // WithArgs tells Parse to parse from the given args, instead of
-// parsing from the program's command line arguments.
+// parsing from the command line arguments.
 func WithArgs(args []string) ParseOpt {
 	return func(options *parseOptions) {
 		options.args = &args
@@ -29,14 +29,14 @@ func WithErrorHandling(h flag.ErrorHandling) ParseOpt {
 	}
 }
 
-// WithName specifies the name to use when printing usage doc.
+// WithName specifies the command name to use when printing usage doc.
 func WithName(name string) ParseOpt {
 	return func(options *parseOptions) {
 		options.cmdName = &name
 	}
 }
 
-// DisableGlobalFlags tells Parse to don't print global flags in help.
+// DisableGlobalFlags tells Parse to don't parse and print global flags in help.
 func DisableGlobalFlags() ParseOpt {
 	return func(options *parseOptions) {
 		options.disableGlobalFlags = true

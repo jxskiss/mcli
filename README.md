@@ -26,17 +26,18 @@ which is licensed under the Apache License 2.0.
 1. Extremely easy to use, simple but powerful API to define commands, flags and arguments.
 2. Add arbitrary level sub-command with single line code. 
 3. Define command flags and arguments inside the command processor using struct tag.
-4. Read environment variables for flags and arguments.
-5. Set default value for flags and arguments.
-6. Work with slice, map out of box, of course the bool, string, integer, unsigned integer,
+4. Define global flags apply to all commands.
+5. Read environment variables for flags and arguments.
+6. Set default value for flags and arguments.
+7. Work with slice, map out of box, of course the bool, string, integer, unsigned integer,
    float, duration types are also supported.
-7. Automatic help for commands, flags and arguments.
-8. Mark commands, flags as hidden, hidden commands and flags won't be showed in help,
+8. Automatic help for commands, flags and arguments.
+9. Mark commands, flags as hidden, hidden commands and flags won't be showed in help,
    except that when a special flag "--mcli-show-hidden" is provided.
-9. Mark flags, arguments as required, it reports error when not given.
-10. Mark flags as deprecated.
-11. Automatic suggestions like git.
-12. Compatible with the standard library's flag.FlagSet.
+10. Mark flags, arguments as required, it reports error when not given.
+11. Mark flags as deprecated.
+12. Automatic suggestions like git.
+13. Compatible with the standard library's flag.FlagSet.
 
 ## Usage
 
@@ -133,17 +134,29 @@ func runCmd2Sub1() {
 Also, there are some sophisticated examples:
 
 * [github-cli](./examples/github-cli/main.go) mimics Github's cli command `gh`
-* [lego](./examples/lego/main.go) mimics Lego's command
+* [lego](./examples/lego/main.go) mimics Lego's command `lego`
 
-## Custom parsing options
+## API
 
-There are a few options to customize the behavior of `Parse`.
+- `Add` adds a command.
+- `AddHidden` adds a hidden command.
+- `AddGroup` adds a group explicitly. A group is a common prefix for some commands.
+  It's not required to add group before adding sub commands, but user can use this function
+  to add a description to a group, which will be showed in help.
+- `AddHelp` enables the "help" command.
+- `Parse` parses the command line for flags and arguments.
+- `Run` runs the program, it will parse the command line, search for a registered command and run it.
+- `PrintHelp` prints usage doc of the current command to stderr.
+- `SetGlobalFlags` sets global flags, global flags are available to all commands.
+- `KeepCommandOrder` makes `Parse` to print commands in the order of adding the commands.
 
-- `WithArgs(args []string)` tells `Parse` to parse from the given args,
-  instead of parsing from the program's command line arguments.
-- `WithErrorHandling(h flag.ErrorHandling)` tells `Parse` to use the given ErrorHandling.
+### Custom parsing options
+
+- `WithArgs` tells `Parse` to parse from the given args, instead of parsing from the command line arguments.
+- `WithErrorHandling` tells `Parse` to use the given ErrorHandling.
   By default, it exits the program when an error happens.
-- `WithName(name string)` specifies the name to use when printing usage doc.
+- `WithName` specifies the command name to use when printing usage doc.
+- `DisableGlobalFlags` tells `Parse` to don't parse and print global flags in help.
 
 ## Tag syntax
 
@@ -228,3 +241,7 @@ map arguments, it just works.
 
 When command line arguments are given before flags, calling FlagSet.Arg(i)
 won't get the expected arguments.
+
+## Changelog
+
+TODO
