@@ -244,4 +244,15 @@ won't get the expected arguments.
 
 ## Changelog
 
-TODO
+### v0.2.0 @ 2022-06-11
+
+New features:
+
+- support alternative 'mcli' tag
+- support global flags
+- support keep command order in help
+- improve examples and docs
+
+### v0.1.1 @ 2022-03-17
+
+Initial public release.
