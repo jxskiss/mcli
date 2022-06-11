@@ -130,7 +130,10 @@ func runCmd2Sub1() {
 }
 ```
 
-See [example_test](./example_test.go) for a more sophisticated example which mimics Github's cli command `gh`.
+Also, there are some sophisticated examples:
+
+* [github-cli](./examples/github-cli/main.go) mimics Github's cli command `gh`
+* [lego](./examples/lego/main.go) mimics Lego's command
 
 ## Custom parsing options
 
