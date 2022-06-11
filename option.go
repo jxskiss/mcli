@@ -6,6 +6,8 @@ type parseOptions struct {
 	cmdName       *string
 	args          *[]string
 	errorHandling flag.ErrorHandling
+
+	disableGlobalFlags bool
 }
 
 // ParseOpt specifies options to customize the behavior of Parse.
@@ -31,5 +33,12 @@ func WithErrorHandling(h flag.ErrorHandling) ParseOpt {
 func WithName(name string) ParseOpt {
 	return func(options *parseOptions) {
 		options.cmdName = &name
+	}
+}
+
+// DisableGlobalFlags tells Parse to don't print global flags in help.
+func DisableGlobalFlags() ParseOpt {
+	return func(options *parseOptions) {
+		options.disableGlobalFlags = true
 	}
 }

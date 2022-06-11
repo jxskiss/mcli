@@ -220,6 +220,19 @@ func ld(s, t string, ignoreCase bool) int {
 var state struct {
 	cmds commands
 	*parsingContext
+
+	globalFlags interface{}
+}
+
+func getGlobalFlags() interface{} {
+	return state.globalFlags
+}
+
+func getParsingContext() *parsingContext {
+	if state.parsingContext != nil {
+		return state.parsingContext
+	}
+	return &parsingContext{}
 }
 
 type parsingContext struct {
@@ -233,13 +246,7 @@ type parsingContext struct {
 	fs       *flag.FlagSet
 	flags    []*_flag
 	nonflags []*_flag
-}
-
-func getParsingContext() *parsingContext {
-	if state.parsingContext != nil {
-		return state.parsingContext
-	}
-	return &parsingContext{}
+	parsed   bool
 }
 
 func (ctx *parsingContext) getFlagSet() *flag.FlagSet {
@@ -261,7 +268,7 @@ func (ctx *parsingContext) getInvalidCmdName() string {
 
 func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 	fs := ctx.getFlagSet()
-	flags, nonflags, err := parseTags(fs, rv)
+	flags, nonflags, err := parseTags(false, fs, rv)
 	if err != nil {
 		if _, ok := err.(*programingError); ok {
 			panic(err)
@@ -443,6 +450,15 @@ func (ctx *parsingContext) printSuggestions(invalidCmdName string) {
 }
 
 func (ctx *parsingContext) printUsage() {
+	globalFlags := getGlobalFlags()
+	if !ctx.parsed && globalFlags != nil {
+		wrapArgs := &withGlobalFlagArgs{
+			GlobalFlags: globalFlags,
+		}
+		ctx.parsed = true
+		_ = ctx.parseTags(reflect.ValueOf(wrapArgs).Elem())
+	}
+
 	cmds := state.cmds
 	fs := ctx.getFlagSet()
 	cmd := ctx.cmd
@@ -496,20 +512,31 @@ func (ctx *parsingContext) printUsage() {
 	}
 	fmt.Fprint(out, usage, "\n\n")
 
+	if hasSubCmds {
+		printAvailableCommands(out, cmdName, cmds, showHidden)
+		fmt.Fprint(out, "\n")
+	}
+
+	var globalFlagHelp [][2]string
+	var cmdFlagHelp [][2]string
 	if flagCount > 0 {
-		var flagLines [][2]string
 		for _, f := range flags {
 			if f.hidden && !showHidden {
 				continue
 			}
 			name, usage := f.getUsage(hasShortFlag)
-			flagLines = append(flagLines, [2]string{name, usage})
+			if f.isGlobal {
+				globalFlagHelp = append(globalFlagHelp, [2]string{name, usage})
+			} else {
+				cmdFlagHelp = append(cmdFlagHelp, [2]string{name, usage})
+			}
 		}
+	}
+	if len(cmdFlagHelp) > 0 {
 		fmt.Fprint(out, "FLAGS:\n")
-		printWithAlignment(out, flagLines)
+		printWithAlignment(out, cmdFlagHelp)
 		fmt.Fprint(out, "\n")
 	}
-
 	if len(nonflags) > 0 {
 		var nonflagLines [][2]string
 		for _, f := range nonflags {
@@ -520,9 +547,9 @@ func (ctx *parsingContext) printUsage() {
 		printWithAlignment(out, nonflagLines)
 		fmt.Fprint(out, "\n")
 	}
-
-	if hasSubCmds {
-		printAvailableCommands(out, cmdName, cmds, showHidden)
+	if len(globalFlagHelp) > 0 {
+		fmt.Fprint(out, "GLOBAL FLAGS:\n")
+		printWithAlignment(out, globalFlagHelp)
 		fmt.Fprint(out, "\n")
 	}
 }
@@ -577,7 +604,7 @@ func printWithAlignment(out io.Writer, lines [][2]string) {
 		x, y := line[0], line[1]
 		fmt.Fprint(out, x)
 		if y != "" {
-			if len(x) < _N {
+			if len(x) <= _N {
 				fmt.Fprint(out, strings.Repeat(" ", maxPrefixLen+4-len(x)))
 				fmt.Fprint(out, strings.ReplaceAll(y, "\n", "\n    \t"))
 			} else {
@@ -702,10 +729,19 @@ func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 		o(options)
 	}
 
+	wrapArgs := &withGlobalFlagArgs{
+		GlobalFlags: nil,
+		CmdArgs:     v,
+	}
+	if !options.disableGlobalFlags {
+		wrapArgs.GlobalFlags = getGlobalFlags()
+	}
+
 	ctx := getParsingContext()
+	ctx.parsed = true
 	fs = ctx.getFlagSet()
 	fs.Init("", options.errorHandling)
-	if err = ctx.parseTags(reflect.ValueOf(v).Elem()); err != nil {
+	if err = ctx.parseTags(reflect.ValueOf(wrapArgs).Elem()); err != nil {
 		return fs, err
 	}
 	if options.cmdName != nil {
@@ -768,6 +804,11 @@ func getProgramName() string {
 	return filepath.Base(os.Args[0])
 }
 
+func newProgramingError(format string, args ...interface{}) *programingError {
+	msg := fmt.Sprintf(format, args...)
+	return &programingError{msg: msg}
+}
+
 type programingError struct {
 	msg string
 }
@@ -782,4 +823,18 @@ type ambiguousArgumentsError struct {
 
 func (e *ambiguousArgumentsError) Error() string {
 	return fmt.Sprintf("cannot resolve ambiguous arguments: %q", e.args)
+}
+
+// SetGlobalFlags sets global flags, global flags are available to all commands.
+// DisableGlobalFlags may be used to disable global flags for a specific
+// command when calling Parse.
+func SetGlobalFlags(v interface{}) {
+	if v != nil {
+		state.globalFlags = v
+	}
+}
+
+type withGlobalFlagArgs struct {
+	GlobalFlags interface{}
+	CmdArgs     interface{}
 }

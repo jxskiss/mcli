@@ -9,9 +9,6 @@ func ExampleAdd_addCommands() {
 	Add("browse", Example_githubCliCommandBrowse, "Open the repository in the browser")
 	Add("actions", dummyCmd, "Learn about working with GitHub Actions")
 
-	// Enable the "help" command.
-	AddHelp()
-
 	AddGroup("issue", "Manage issues")
 	Add("issue close", Example_githubCliCommandIssueClose, "Close issue")
 	Add("issue comment", Example_githubCliCommandIssueComment, "Create a new issue comment")
@@ -134,6 +131,9 @@ func ExampleAdd_addCommands() {
 	AddGroup("ssh-key", "Manage SSH keys")
 	Add("ssh-key add", dummyCmd, "Add an SSH key to your GitHub account")
 	Add("ssh-key list", dummyCmd, "Lists SSH keys in your GitHub account")
+
+	// Enable the "help" command.
+	AddHelp()
 }
 
 func setExampleTestMark() func() {
@@ -249,12 +249,12 @@ func ExampleRun_subCommandIssueCreate() {
 	//   gh issue create [flags]
 	//
 	// FLAGS:
-	//   -a, --assignee login            Assign people by their login. Use "@me" to self-assign.
+	//   -a, --assignee string           Assign people by their 'login'. Use "@me" to self-assign.
 	//   -b, --body string               Supply a body. Will prompt for one otherwise.
-	//   -F, --body-file file            Read body text from file (use "-" to read from standard input)
-	//   -l, --label name                Add labels by name
-	//   -m, --milestone name            Add the issue to a milestone by name
-	//   -p, --project name              Add the issue to projects by name
+	//   -F, --body-file string          Read body text from 'file' (use "-" to read from standard input)
+	//   -l, --label string              Add labels by 'name'
+	//   -m, --milestone string          Add the issue to a milestone by 'name'
+	//   -p, --project string            Add the issue to projects by 'name'
 	//       --recover string            Recover input from a failed run of create
 	//   -R, --repo [HOST/]OWNER/REPO    Select another repository using the [HOST/]OWNER/REPO format
 	//   -t, --title string              Supply a title. Will prompt for one otherwise.
@@ -311,12 +311,12 @@ func ExampleRun_helpIssueCreate() {
 	//   gh issue create [flags]
 	//
 	// FLAGS:
-	//   -a, --assignee login            Assign people by their login. Use "@me" to self-assign.
+	//   -a, --assignee string           Assign people by their 'login'. Use "@me" to self-assign.
 	//   -b, --body string               Supply a body. Will prompt for one otherwise.
-	//   -F, --body-file file            Read body text from file (use "-" to read from standard input)
-	//   -l, --label name                Add labels by name
-	//   -m, --milestone name            Add the issue to a milestone by name
-	//   -p, --project name              Add the issue to projects by name
+	//   -F, --body-file string          Read body text from 'file' (use "-" to read from standard input)
+	//   -l, --label string              Add labels by 'name'
+	//   -m, --milestone string          Add the issue to a milestone by 'name'
+	//   -p, --project string            Add the issue to projects by 'name'
 	//       --recover string            Recover input from a failed run of create
 	//   -R, --repo [HOST/]OWNER/REPO    Select another repository using the [HOST/]OWNER/REPO format
 	//   -t, --title string              Supply a title. Will prompt for one otherwise.
@@ -377,7 +377,7 @@ func Example_githubCliCommandBrowse() {
 		Commit    bool   `cli:"-c, --commit, Open the last commit"`
 		NoBrowser bool   `cli:"-n, --no-browser, Print destination URL instead of opening the browser"`
 		Projects  bool   `cli:"-p, --projects, Open repository projects"`
-		Repo      string `cli:"-R, --repo, Select another repository using the '[HOST/]OWNER/REPO' format"`
+		Repo      string "cli:\"-R, --repo, Select another repository using the `[HOST/]OWNER/REPO` format\""
 		Settings  bool   `cli:"-s, --settings, Open repository settings"`
 		Wiki      bool   `cli:"-w, --wiki, Open repository wiki"`
 
@@ -390,7 +390,7 @@ func Example_githubCliCommandBrowse() {
 }
 
 type CommonIssueArgs struct {
-	Repo string `cli:"-R, --repo, Select another repository using the '[HOST/]OWNER/REPO' format"`
+	Repo string "cli:\"-R, --repo, Select another repository using the `[HOST/]OWNER/REPO` format\""
 }
 
 /*

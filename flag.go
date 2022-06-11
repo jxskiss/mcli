@@ -62,6 +62,7 @@ type _flag struct {
 	_tags
 	_value
 
+	isGlobal   bool
 	hasDefault bool
 	deprecated bool
 	hidden     bool
@@ -83,7 +84,7 @@ func (f *_flag) Get() interface{} {
 	if f.rv.Type().Implements(flagGetterTyp) {
 		return f.rv.Interface().(flag.Getter).Get()
 	}
-	if f.rv.Addr().Type().Implements(flagGetterTyp) {
+	if f.rv.CanAddr() && f.rv.Addr().Type().Implements(flagGetterTyp) {
 		return f.rv.Addr().Interface().(flag.Getter).Get()
 	}
 	return f.rv.Interface()
@@ -97,7 +98,7 @@ func formatValue(rv reflect.Value) string {
 	if rv.Type().Implements(flagValueTyp) {
 		return rv.Interface().(flag.Value).String()
 	}
-	if rv.Addr().Type().Implements(flagValueTyp) {
+	if rv.CanAddr() && rv.Addr().Type().Implements(flagValueTyp) {
 		return rv.Addr().Interface().(flag.Value).String()
 	}
 	switch rv.Kind() {
@@ -303,7 +304,7 @@ func (f *_flag) getUsage(hasShortFlag bool) (prefix, usage string) {
 func unquoteUsage(f *_flag) (name, usage string) {
 	usage = f.description
 	for i := 0; i < len(usage); i++ {
-		if usage[i] == '`' || usage[i] == '\'' {
+		if usage[i] == '`' {
 			c := usage[i]
 			for j := i + 1; j < len(usage); j++ {
 				if usage[j] == c {
@@ -323,40 +324,40 @@ func unquoteUsage(f *_flag) (name, usage string) {
 
 func (f *_flag) validate() error {
 	if f.name == "" {
-		return &programingError{fmt.Sprintf("cannot parse name from cli tag %q", f.cliTag)}
+		return newProgramingError("cannot parse name from cli tag %q", f.cliTag)
 	}
 	if f.hidden && f.nonflag {
-		return &programingError{fmt.Sprintf("shall not set an argument to be hidden, %s", f.name)}
+		return newProgramingError("shall not set an argument to be hidden, %s", f.name)
 	}
 	if f.hidden && f.required {
-		return &programingError{fmt.Sprintf("modifers H, R (hidden and required) shall not be used together, %s", f.helpName())}
+		return newProgramingError("modifiers H, R (hidden and required) shall not be used together, %s", f.helpName())
 	}
 	if f.deprecated && f.required {
-		return &programingError{fmt.Sprintf("modifers D, R (deprecated and required) shall not be used together, %s", f.helpName())}
+		return newProgramingError("modifiers D, R (deprecated and required) shall not be used together, %s", f.helpName())
 	}
 	if !isSupportedType(f.rv) {
-		return &programingError{fmt.Sprintf("unsupported value type %v for %s", f.rv.Type(), f.helpName())}
+		return newProgramingError("unsupported value type %v for %s", f.rv.Type(), f.helpName())
 	}
 	if f.defaultValueTag != "" {
 		if f.isSlice() {
-			return &programingError{fmt.Sprintf("default value is unsupported for slice type, %s", f.helpName())}
+			return newProgramingError("default value is unsupported for slice type, %s", f.helpName())
 		}
 		if f.isMap() {
-			return &programingError{fmt.Sprintf("default value is unsupported for map type, %s", f.helpName())}
+			return newProgramingError("default value is unsupported for map type, %s", f.helpName())
 		}
 	}
 	if f.envTag != "" {
 		if f.isSlice() {
-			return &programingError{fmt.Sprintf("env is unsupported for slice type, %s", f.helpName())}
+			return newProgramingError("env is unsupported for slice type, %s", f.helpName())
 		}
 		if f.isMap() {
-			return &programingError{fmt.Sprintf("env is unsupported for slice type, %s", f.helpName())}
+			return newProgramingError("env is unsupported for slice type, %s", f.helpName())
 		}
 	}
 	return nil
 }
 
-func parseTags(fs *flag.FlagSet, rv reflect.Value) (flags, nonflags []*_flag, err error) {
+func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value) (flags, nonflags []*_flag, err error) {
 	rt := rv.Type()
 	for i := 0; i < rt.NumField(); i++ {
 		fv := rv.Field(i)
@@ -367,6 +368,22 @@ func parseTags(fs *flag.FlagSet, rv reflect.Value) (flags, nonflags []*_flag, er
 		}
 		defaultValue := strings.TrimSpace(ft.Tag.Get("default"))
 		envTag := strings.TrimSpace(ft.Tag.Get("env"))
+
+		isGlobalFlag := isGlobal
+		if ft.Name == "GlobalFlags" && rt == reflect.TypeOf(withGlobalFlagArgs{}) {
+			isGlobalFlag = true
+		}
+		if fv.IsValid() && fv.Kind() == reflect.Interface {
+			fv = fv.Elem()
+		}
+		if fv.IsValid() && fv.Kind() == reflect.Pointer &&
+			!fv.IsNil() && fv.Elem().Kind() == reflect.Struct {
+			fv = fv.Elem()
+		}
+		if !fv.IsValid() {
+			continue
+		}
+
 		if isIgnoreTag(cliTag) {
 			continue
 		}
@@ -374,7 +391,7 @@ func parseTags(fs *flag.FlagSet, rv reflect.Value) (flags, nonflags []*_flag, er
 			continue
 		}
 		if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) {
-			subFlags, subNonflags, subErr := parseTags(fs, fv)
+			subFlags, subNonflags, subErr := parseTags(isGlobalFlag, fs, fv)
 			if subErr != nil {
 				return nil, nil, subErr
 			}
@@ -386,7 +403,7 @@ func parseTags(fs *flag.FlagSet, rv reflect.Value) (flags, nonflags []*_flag, er
 			continue
 		}
 		var f *_flag
-		f, err = parseFlag(cliTag, defaultValue, envTag, fv)
+		f, err = parseFlag(isGlobalFlag, cliTag, defaultValue, envTag, fv)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -444,7 +461,8 @@ func isSupportedType(rv reflect.Value) bool {
 }
 
 func isFlagValueImpl(rv reflect.Value) bool {
-	return rv.Type().Implements(flagValueTyp) || rv.Addr().Type().Implements(flagValueTyp)
+	return rv.Type().Implements(flagValueTyp) ||
+		(rv.CanAddr() && rv.Addr().Type().Implements(flagValueTyp))
 }
 
 func isSupportedBasicType(kind reflect.Kind) bool {
@@ -461,8 +479,11 @@ func isSupportedBasicType(kind reflect.Kind) bool {
 
 var spaceRE = regexp.MustCompile(`\s+`)
 
-func parseFlag(cliTag, defaultValue, envTag string, rv reflect.Value) (*_flag, error) {
-	f := &_flag{_value: _value{rv}}
+func parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Value) (*_flag, error) {
+	f := &_flag{
+		_value:   _value{rv},
+		isGlobal: isGlobal,
+	}
 	f.cliTag = cliTag
 	f.defaultValueTag = defaultValue
 	f.envTag = envTag
@@ -534,7 +555,7 @@ func parseFlag(cliTag, defaultValue, envTag string, rv reflect.Value) (*_flag, e
 	if defaultValue != "" {
 		err := f.Set(defaultValue)
 		if err != nil {
-			return nil, &programingError{fmt.Sprintf("invalid default value %q for %s: %v", defaultValue, f.helpName(), err)}
+			return nil, newProgramingError("invalid default value %q for %s: %v", defaultValue, f.helpName(), err)
 		}
 		f.defValue = defaultValue
 		f.hasDefault = !f.isZero()
@@ -573,9 +594,9 @@ func hasBoolFlag(name string, args []string) bool {
 }
 
 var (
-	_flagSetActualOffset uintptr
-	_flagSetFormalOffset uintptr
-	_flagSetMapType      = reflect.TypeOf(map[string]*flag.Flag{})
+	_flagSet_actual_offset uintptr
+	_flagSet_formal_offset uintptr
+	_flagSetMapType        = reflect.TypeOf(map[string]*flag.Flag{})
 )
 
 func init() {
@@ -588,14 +609,14 @@ func init() {
 	if actualField.Type != _flagSetMapType || formalField.Type != _flagSetMapType {
 		panic("type of flag.FlagSet fields actual/formal is not map[string]*flag.Flag")
 	}
-	_flagSetActualOffset = actualField.Offset
-	_flagSetFormalOffset = formalField.Offset
+	_flagSet_actual_offset = actualField.Offset
+	_flagSet_formal_offset = formalField.Offset
 }
 
 func _flagSet_getActual(fs *flag.FlagSet) map[string]*flag.Flag {
-	return *(*map[string]*flag.Flag)(unsafe.Pointer(uintptr(unsafe.Pointer(fs)) + _flagSetActualOffset))
+	return *(*map[string]*flag.Flag)(unsafe.Pointer(uintptr(unsafe.Pointer(fs)) + _flagSet_actual_offset))
 }
 
 func _flagSet_getFormal(fs *flag.FlagSet) map[string]*flag.Flag {
-	return *(*map[string]*flag.Flag)(unsafe.Pointer(uintptr(unsafe.Pointer(fs)) + _flagSetFormalOffset))
+	return *(*map[string]*flag.Flag)(unsafe.Pointer(uintptr(unsafe.Pointer(fs)) + _flagSet_formal_offset))
 }
