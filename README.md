@@ -245,14 +245,18 @@ If there is slice or map arguments, it will match all following arguments.
 
 ## Changelog
 
+### v0.2.1 @ 2022-06-11
+
+- Improve compatibility with flag.FlagSet.
+
 ### v0.2.0 @ 2022-06-11
 
 New features:
 
-- support alternative 'mcli' tag
-- support global flags
-- support keep command order in help
-- improve examples and docs
+- Support alternative 'mcli' tag.
+- Support global flags.
+- Support keep command order in help.
+- Improve examples and docs.
 
 ### v0.1.1 @ 2022-03-17
 

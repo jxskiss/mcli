@@ -762,6 +762,7 @@ func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	if v == nil {
 		v = &struct{}{}
 	}
+	assertStructPointer(v)
 	options := &parseOptions{
 		errorHandling: flag.ExitOnError,
 	}
@@ -825,6 +826,13 @@ func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	return fs, err
 }
 
+func assertStructPointer(v interface{}) {
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
+		panic("argument must be a pointer to struct")
+	}
+}
+
 // PrintHelp prints usage doc of the current command to stderr.
 func PrintHelp() {
 	ctx := getParsingContext()
@@ -876,6 +884,7 @@ func (e *ambiguousArgumentsError) Error() string {
 // command when calling Parse.
 func SetGlobalFlags(v interface{}) {
 	if v != nil {
+		assertStructPointer(v)
 		state.globalFlags = v
 	}
 }
