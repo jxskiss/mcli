@@ -17,7 +17,7 @@ func main() {
 	mcli.Add("issue delete", dummyCmd, "Delete issue")
 	mcli.Add("issue edit", Example_githubCliCommandIssueEdit, "Edit an issue")
 	mcli.Add("issue list", dummyCmd, "List and filter issues in this repository")
-	mcli.Add("issue repopen", dummyCmd, "Reopen issue")
+	mcli.Add("issue reopen", dummyCmd, "Reopen issue")
 	mcli.Add("issue status", dummyCmd, "Show status of relevant issues")
 	mcli.Add("issue transfer", dummyCmd, "Transfer issue to another repository")
 	mcli.Add("issue view", dummyCmd, "View an issue")
@@ -53,7 +53,7 @@ func main() {
 	mcli.Add("pr merge", dummyCmd, "Merge a pull request")
 	mcli.Add("pr ready", dummyCmd, "Mark a pull request as ready for review")
 	mcli.Add("pr reopen", dummyCmd, "Reopen a pull request")
-	mcli.Add("pr review", dummyCmd, "mcli.Add a review to a pull request")
+	mcli.Add("pr review", dummyCmd, "Add a review to a pull request")
 	mcli.Add("pr status", dummyCmd, "Show status of relevant pull requests")
 	mcli.Add("pr view", dummyCmd, "View a pull request")
 
@@ -121,7 +121,7 @@ func main() {
 	mcli.Add("extension upgrade", dummyCmd, "Upgrade installed extensions")
 
 	mcli.AddGroup("gpg-key", "Manage GPG keys")
-	mcli.Add("gpg-key mcli.Add", dummyCmd, "mcli.Add a GPG key to your GitHub account")
+	mcli.Add("gpg-key add", dummyCmd, "Add a GPG key to your GitHub account")
 	mcli.Add("gpg-key list", dummyCmd, "Lists GPG keys in your GitHub account")
 
 	mcli.AddGroup("secret", "Manage GitHub secrets")
@@ -130,7 +130,7 @@ func main() {
 	mcli.Add("secret set", dummyCmd, "Create or update secrets")
 
 	mcli.AddGroup("ssh-key", "Manage SSH keys")
-	mcli.Add("ssh-key mcli.Add", dummyCmd, "mcli.Add an SSH key to your GitHub account")
+	mcli.Add("ssh-key add", dummyCmd, "Add an SSH key to your GitHub account")
 	mcli.Add("ssh-key list", dummyCmd, "Lists SSH keys in your GitHub account")
 
 	// Enable the "help" command.
@@ -244,8 +244,8 @@ USAGE
 FLAGS
   -b, --body string      Supply a body. Will prompt for one otherwise.
   -F, --body-file file   Read body text from file (use "-" to read from standard input)
-  -e, --editor           mcli.Add body using editor
-  -w, --web              mcli.Add body in browser
+  -e, --editor           Add body using editor
+  -w, --web              Add body in browser
 
 INHERITED FLAGS
       --help                     Show help for command
@@ -264,8 +264,8 @@ func Example_githubCliCommandIssueComment() {
 	var args struct {
 		Body     string `cli:"-b, --body        Supply a body. Will prompt for one otherwise."`
 		BodyFile string `cli:"-F, --body-file   Read body text from 'file' (use \"-\" to read from standard input)"`
-		Editor   bool   `cli:"-e, --editor,     mcli.Add body using editor"`
-		Web      bool   `cli:"-w, --web,        mcli.Add body in browser"`
+		Editor   bool   `cli:"-e, --editor,     Add body using editor"`
+		Web      bool   `cli:"-w, --web,        Add body in browser"`
 		CommonIssueArgs
 	}
 	_, err := mcli.Parse(&args, mcli.WithErrorHandling(flag.ContinueOnError))
@@ -284,9 +284,9 @@ FLAGS
   -a, --assignee login   Assign people by their login. Use "@me" to self-assign.
   -b, --body string      Supply a body. Will prompt for one otherwise.
   -F, --body-file file   Read body text from file (use "-" to read from standard input)
-  -l, --label name       mcli.Add labels by name
-  -m, --milestone name   mcli.Add the issue to a milestone by name
-  -p, --project name     mcli.Add the issue to projects by name
+  -l, --label name       Add labels by name
+  -m, --milestone name   Add the issue to a milestone by name
+  -p, --project name     Add the issue to projects by name
       --recover string   Recover input from a failed run of create
   -t, --title string     Supply a title. Will prompt for one otherwise.
   -w, --web              Open the browser to create an issue
@@ -314,9 +314,9 @@ func Example_githubCliCommandIssueCreate() {
 		Assignee  string `cli:"-a, --assignee    Assign people by their 'login'. Use \"@me\" to self-assign."`
 		Body      string `cli:"-b, --body        Supply a body. Will prompt for one otherwise."`
 		BodyFile  string `cli:"-F, --body-file   Read body text from 'file' (use \"-\" to read from standard input)"`
-		Label     string `cli:"-l, --label       mcli.Add labels by 'name'"`
-		Milestone string `cli:"-m, --milestone   mcli.Add the issue to a milestone by 'name'"`
-		Project   string `cli:"-p, --project     mcli.Add the issue to projects by 'name'"`
+		Label     string `cli:"-l, --label       Add labels by 'name'"`
+		Milestone string `cli:"-m, --milestone   Add the issue to a milestone by 'name'"`
+		Project   string `cli:"-p, --project     Add the issue to projects by 'name'"`
 		Recover   string `cli:"    --recover     Recover input from a failed run of create"`
 		Title     string `cli:"-t, --title       Supply a title. Will prompt for one otherwise."`
 		Web       bool   `cli:"-w, --web         Open the browser to create an issue"`
@@ -335,9 +335,9 @@ USAGE
   gh issue edit {<number> | <url>} [flags]
 
 FLAGS
-      --mcli.Add-assignee login      mcli.Add assigned users by their login. Use "@me" to assign yourself.
-      --mcli.Add-label name          mcli.Add labels by name
-      --mcli.Add-project name        mcli.Add the issue to projects by name
+      --add-assignee login      Add assigned users by their login. Use "@me" to assign yourself.
+      --add-label name          Add labels by name
+      --add-project name        Add the issue to projects by name
   -b, --body string             Set the new body.
   -F, --body-file file          Read body text from file (use "-" to read from standard input)
   -m, --milestone name          Edit the milestone the issue belongs to by name
@@ -352,9 +352,9 @@ INHERITED FLAGS
 
 EXAMPLES
   $ gh issue edit 23 --title "I found a bug" --body "Nothing works"
-  $ gh issue edit 23 --mcli.Add-label "bug,help wanted" --remove-label "core"
-  $ gh issue edit 23 --mcli.Add-assignee "@me" --remove-assignee monalisa,hubot
-  $ gh issue edit 23 --mcli.Add-project "Roadmap" --remove-project v1,v2
+  $ gh issue edit 23 --add-label "bug,help wanted" --remove-label "core"
+  $ gh issue edit 23 --add-assignee "@me" --remove-assignee monalisa,hubot
+  $ gh issue edit 23 --add-project "Roadmap" --remove-project v1,v2
   $ gh issue edit 23 --milestone "Version 1"
   $ gh issue edit 23 --body-file body.txt
 
@@ -368,9 +368,9 @@ func Example_githubCliCommandIssueEdit() {
 
 	// The description don't need to be aligned.
 	var args struct {
-		AddAssignee    bool   `cli:"--mcli.Add-assignee      mcli.Add assigned users by their 'login'. Use \"@me\" to assign yourself."`
-		AddLabel       string `cli:"--mcli.Add-label          mcli.Add labels by 'name'"`
-		AddProject     string `cli:"--mcli.Add-project        mcli.Add the issue to projects by 'name'"`
+		AddAssignee    bool   `cli:"--add-assignee      Add assigned users by their 'login'. Use \"@me\" to assign yourself."`
+		AddLabel       string `cli:"--add-label          Add labels by 'name'"`
+		AddProject     string `cli:"--add-project        Add the issue to projects by 'name'"`
 		Body           string `cli:"-b, --body             Set the new body."`
 		BodyFile       string `cli:"-F, --body-file          Read body text from 'file' (use \"-\" to read from standard input)"`
 		Milestone      string `cli:"-m, --milestone          Edit the milestone the issue belongs to by 'name'"`
