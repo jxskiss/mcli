@@ -13,258 +13,70 @@ import (
 
 const showHiddenFlag = "mcli-show-hidden"
 
-// Command holds the information of a command.
-type Command struct {
-	Name        string
-	Description string
-	Hidden      bool
-
-	f func()
-
-	idx   int
-	level int
+// NewApp creates a new cli application instance.
+func NewApp() *App {
+	return &App{}
 }
 
-func normalizeCmdName(name string) string {
-	name = strings.TrimSpace(name)
-	return strings.Join(strings.Fields(name), " ")
-}
-
-func isSubCommand(parent, sub string) bool {
-	return parent != sub && strings.HasPrefix(sub, parent+" ")
-}
-
-type commands []*Command
-
-func (p *commands) add(cmd *Command) {
-	cmd.Name = normalizeCmdName(cmd.Name)
-	if cmd.Name == "" {
-		panic("command name must not be empty")
-	}
-	for _, x := range *p {
-		if x.Name == cmd.Name {
-			panic("command name must be unique")
-		}
-	}
-	cmd.level = len(strings.Fields(cmd.Name))
-	*p = append(*p, cmd)
-}
-
-func (p commands) sort() {
-	sort.Slice(p, func(i, j int) bool {
-		return p[i].Name < p[j].Name
-	})
-}
-
-func (p commands) search(cmdArgs []string) (ctx *parsingContext, hasSub bool) {
-	ctx = &parsingContext{}
-	flagIdx := len(cmdArgs)
-	for i, x := range cmdArgs {
-		if strings.HasPrefix(x, "-") {
-			flagIdx = i
-			break
-		}
-	}
-	tryName := ""
-	ambiguousIdx := -1
-	args := cmdArgs[:]
-	var cmd *Command
-	for i := 0; i < len(cmdArgs); i++ {
-		arg := cmdArgs[i]
-		if strings.HasPrefix(arg, "-") {
-			break
-		}
-		args = cmdArgs[i+1:]
-		if tryName != "" {
-			tryName += " "
-		}
-		tryName += arg
-		idx := sort.Search(len(p), func(i int) bool {
-			return p[i].Name >= tryName
-		})
-		if idx < len(p) &&
-			(p[idx].Name == tryName || isSubCommand(tryName, p[idx].Name)) {
-			hasSub = true
-			ambiguousIdx = i + 1
-			ctx.name = tryName
-			if p[idx].Name == tryName {
-				cmd = p[idx]
-			} else {
-				cmd = nil
-			}
-			continue
-		}
-		if ambiguousIdx == -1 {
-			ambiguousIdx = i
-		}
-		args = cmdArgs[flagIdx:]
-		break
-	}
-	ctx.cmd = cmd
-	ctx.args = &args
-	if ambiguousIdx >= 0 {
-		ctx.ambiguousArgs = clip(cmdArgs[ambiguousIdx:flagIdx])
-	}
-	return
-}
-
-func (p commands) listSubCommandsToPrint(name string, showHidden bool) (sub commands) {
-	sub = p._listSubCommandsToPrint(name, showHidden, false)
-	if len(sub) > 10 {
-		sub = p._listSubCommandsToPrint(name, showHidden, true)
-	}
-	return sub
-}
-
-func (p commands) _listSubCommandsToPrint(name string, showHidden, onlyNextLevel bool) (sub commands) {
-	name = normalizeCmdName(name)
-	wantLevel := len(strings.Fields(name)) + 1
-	var preCmd = &Command{}
-	for _, cmd := range p {
-		if cmd.Name != name && strings.HasPrefix(cmd.Name, name) {
-			// Don't print hidden commands.
-			if cmd.Hidden && !showHidden {
-				continue
-			}
-			if onlyNextLevel {
-				if cmd.level < wantLevel {
-					continue
-				}
-				if cmd.level > wantLevel {
-					_names := strings.Fields(cmd.Name)
-					parentCmdName := strings.Join(_names[:wantLevel], " ")
-					if parentCmdName == preCmd.Name {
-						continue
-					}
-					cmd = &Command{
-						Name:        parentCmdName,
-						Description: "(Use -h to see available sub commands)",
-					}
-				}
-				// else cmd.Level == wantLevel
-			}
-			sub = append(sub, cmd)
-			preCmd = cmd
-		}
-	}
-	return
-}
-
-func (p commands) suggest(name string) []string {
-	type withDistance struct {
-		name     string
-		distance int
-	}
-	const minDistance = 2
-	var levenshteinSuggestions []string
-	var prefixSuggestions []withDistance
-	for _, cmd := range p {
-		if !cmd.Hidden {
-			levenshteinDistance := ld(name, cmd.Name, true)
-			isPrefix := strings.HasPrefix(strings.ToLower(cmd.Name), strings.ToLower(name))
-			if levenshteinDistance <= minDistance {
-				levenshteinSuggestions = append(levenshteinSuggestions, cmd.Name)
-			} else if isPrefix {
-				prefixSuggestions = append(prefixSuggestions, withDistance{cmd.Name, levenshteinDistance})
-			}
-		}
-	}
-	sort.SliceStable(prefixSuggestions, func(i, j int) bool {
-		return prefixSuggestions[i].distance < prefixSuggestions[j].distance
-	})
-	suggestions := levenshteinSuggestions
-	for _, x := range prefixSuggestions {
-		suggestions = append(suggestions, x.name)
-	}
-	if len(suggestions) > 5 {
-		suggestions = suggestions[:5]
-	}
-	return suggestions
-}
-
-// ld compares two strings and returns the levenshtein distance between them.
-func ld(s, t string, ignoreCase bool) int {
-	if ignoreCase {
-		s = strings.ToLower(s)
-		t = strings.ToLower(t)
-	}
-	d := make([][]int, len(s)+1)
-	for i := range d {
-		d[i] = make([]int, len(t)+1)
-	}
-	for i := range d {
-		d[i][0] = i
-	}
-	for j := range d[0] {
-		d[0][j] = j
-	}
-	for j := 1; j <= len(t); j++ {
-		for i := 1; i <= len(s); i++ {
-			if s[i-1] == t[j-1] {
-				d[i][j] = d[i-1][j-1]
-			} else {
-				min := d[i-1][j]
-				if d[i][j-1] < min {
-					min = d[i][j-1]
-				}
-				if d[i-1][j-1] < min {
-					min = d[i-1][j-1]
-				}
-				d[i][j] = min + 1
-			}
-		}
-
-	}
-	return d[len(s)][len(t)]
-}
-
-var state struct {
-	cmds commands
-	*parsingContext
-
+type App struct {
+	cmds        commands
 	globalFlags interface{}
 
 	cmdIdx       int
 	keepCmdOrder bool
+
+	fs   *flag.FlagSet
+	pctx *parsingContext
 }
 
-func addCommand(cmd *Command) {
-	state.cmdIdx += 1
-	cmd.idx = state.cmdIdx
-	state.cmds.add(cmd)
+func (p *App) addCommand(cmd *Command) {
+	p.cmdIdx += 1
+	cmd.idx = p.cmdIdx
+	p.cmds.add(cmd)
 }
 
-func getGlobalFlags() interface{} {
-	return state.globalFlags
+func (p *App) getGlobalFlags() interface{} {
+	return p.globalFlags
 }
 
-func getParsingContext() *parsingContext {
-	if state.parsingContext != nil {
-		return state.parsingContext
+func (p *App) getParsingContext() *parsingContext {
+	if p.pctx == nil {
+		p.resetParsingContext()
 	}
-	return &parsingContext{}
+	return p.pctx
+}
+
+func (p *App) resetParsingContext() {
+	p.pctx = &parsingContext{app: p}
+	p.fs = nil
+}
+
+func (p *App) getFlagSet() *flag.FlagSet {
+	if p.fs == nil {
+		p.fs = flag.NewFlagSet("", flag.ExitOnError)
+		p.fs.Usage = p.printUsage
+	}
+	return p.fs
 }
 
 type parsingContext struct {
+	app *App
+
 	name string
 	args *[]string
 
 	ambiguousArgs []string
 	showHidden    bool
+	isHelpCmd     bool
 
 	cmd      *Command
-	fs       *flag.FlagSet
 	flags    []*_flag
 	nonflags []*_flag
 	parsed   bool
 }
 
 func (ctx *parsingContext) getFlagSet() *flag.FlagSet {
-	if ctx.fs == nil {
-		ctx.fs = flag.NewFlagSet("", flag.ExitOnError)
-		ctx.fs.Usage = ctx.printUsage
-	}
-	return ctx.fs
+	return ctx.app.getFlagSet()
 }
 
 func (ctx *parsingContext) getInvalidCmdName() string {
@@ -451,7 +263,7 @@ func (ctx *parsingContext) failError(err error) {
 	fs := ctx.getFlagSet()
 	fmt.Fprintln(getFlagSetOutput(fs), err.Error())
 	if _, ok := err.(*ambiguousArgumentsError); ok {
-		ctx.printSuggestions(ctx.getInvalidCmdName())
+		ctx.app.printSuggestions(ctx.getInvalidCmdName())
 	}
 	fs.Usage()
 	switch fs.ErrorHandling() {
@@ -462,8 +274,9 @@ func (ctx *parsingContext) failError(err error) {
 	}
 }
 
-func (ctx *parsingContext) printSuggestions(invalidCmdName string) {
-	cmds := state.cmds
+func (p *App) printSuggestions(invalidCmdName string) {
+	cmds := p.cmds
+	ctx := p.getParsingContext()
 	out := getFlagSetOutput(ctx.getFlagSet())
 	if invalidCmdName != "" {
 		sugg := cmds.suggest(invalidCmdName)
@@ -477,8 +290,9 @@ func (ctx *parsingContext) printSuggestions(invalidCmdName string) {
 	}
 }
 
-func (ctx *parsingContext) printUsage() {
-	globalFlags := getGlobalFlags()
+func (p *App) printUsage() {
+	globalFlags := p.getGlobalFlags()
+	ctx := p.getParsingContext()
 	if !ctx.parsed && globalFlags != nil {
 		wrapArgs := &withGlobalFlagArgs{
 			GlobalFlags: globalFlags,
@@ -487,8 +301,8 @@ func (ctx *parsingContext) printUsage() {
 		_ = ctx.parseTags(reflect.ValueOf(wrapArgs).Elem())
 	}
 
-	cmds := state.cmds
-	keepCmdOrder := state.keepCmdOrder
+	cmds := p.cmds
+	keepCmdOrder := p.keepCmdOrder
 
 	fs := ctx.getFlagSet()
 	cmd := ctx.cmd
@@ -654,8 +468,8 @@ func printWithAlignment(out io.Writer, lines [][2]string) {
 }
 
 // Add adds a command.
-func Add(name string, f func(), description string) {
-	addCommand(&Command{
+func (p *App) Add(name string, f func(), description string) {
+	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
 		f:           f,
@@ -666,8 +480,8 @@ func Add(name string, f func(), description string) {
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
-func AddHidden(name string, f func(), description string) {
-	addCommand(&Command{
+func (p *App) AddHidden(name string, f func(), description string) {
+	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
 		Hidden:      true,
@@ -680,46 +494,54 @@ func AddHidden(name string, f func(), description string) {
 // It's not required to add group before adding sub commands, but user
 // can use this function to add a description to a group, which will be
 // showed in help.
-func AddGroup(name string, description string) {
-	addCommand(&Command{
+func (p *App) AddGroup(name string, description string) {
+	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
-		f:           groupCmd,
+		f:           p.groupCmd,
 	})
 }
 
 // AddHelp enables the "help" command to print help about any command.
-func AddHelp() {
-	addCommand(&Command{
+func (p *App) AddHelp() {
+	p.addCommand(&Command{
 		Name:        "help",
 		Description: "Help about any command",
-		f:           helpCmd,
+		f:           p.helpCmd,
 	})
 }
 
-func groupCmd() {
-	Parse(nil)
-	PrintHelp()
+func (p *App) groupCmd() {
+	p.Parse(nil)
+	p.PrintHelp()
 }
 
-func helpCmd() {
-	ctx := getParsingContext()
+func (p *App) helpCmd() {
+	ctx := p.getParsingContext()
+	ctx.isHelpCmd = true
 	if len(ctx.ambiguousArgs) == 0 {
-		runWithArgs(nil)
+		p.runWithArgs(nil)
 		return
 	}
-	runWithArgs(append(ctx.ambiguousArgs, "-h"))
+	p.runWithArgs(append(ctx.ambiguousArgs, "-h"))
 }
 
-// Run runs the program, it will parse the command line and search
-// for a registered command, it runs the command if a command is found,
-// else it will report an error and exit the program.
-func Run() {
-	runWithArgs(os.Args[1:])
+// Run is the entry point to an application, it parses the command line
+// and searches for a registered command, it runs the command if a command
+// is found, else it will report an error and exit the program.
+//
+// Optionally you may specify args to parse, by default it parses the
+// command line arguments os.Args[1:].
+func (p *App) Run(args ...string) {
+	if len(args) == 0 {
+		args = os.Args[1:]
+	}
+	p.runWithArgs(args)
 }
 
-func runWithArgs(osArgs []string) {
-	ctx, invalidCmdName, found := _search(osArgs)
+func (p *App) runWithArgs(args []string) {
+	invalidCmdName, found := p.searchCmd(args)
+	ctx := p.getParsingContext()
 	if found && ctx.cmd != nil {
 		ctx.cmd.f()
 		return
@@ -728,37 +550,42 @@ func runWithArgs(osArgs []string) {
 		out := getFlagSetOutput(ctx.getFlagSet())
 		progName := getProgramName()
 		fmt.Fprintf(out, "'%s' is not a valid command. See '%s -h' for help.\n", invalidCmdName, progName)
-		ctx.printSuggestions(invalidCmdName)
+		p.printSuggestions(invalidCmdName)
 	}
 	ctx.showHidden = hasBoolFlag(showHiddenFlag, os.Args[1:])
-	ctx.printUsage()
+	p.printUsage()
 }
 
-// _search helps to do testing.
-func _search(osArgs []string) (ctx *parsingContext, invalidCmdName string, found bool) {
-	cmds := state.cmds
+// searchCmd helps to do testing.
+func (p *App) searchCmd(osArgs []string) (invalidCmdName string, found bool) {
+	cmds := p.cmds
 	cmds.sort()
-	ctx, hasSub := cmds.search(osArgs)
-	state.parsingContext = ctx
+
+	if p.getParsingContext().isHelpCmd {
+		p.resetParsingContext()
+	}
+
+	ctx := p.getParsingContext()
+	hasSub := cmds.search(ctx, osArgs)
 
 	// A command is matched exactly or is parent of the requested
 	// command, just run the command.
 	if ctx.cmd != nil {
-		return ctx, "", true
+		return "", true
 	}
 
 	// There are sub commands available, don't report "command not found".
 	if hasSub {
-		return ctx, "", false
+		return "", false
 	}
 
 	// Else the requested command must be invalid.
-	return ctx, ctx.getInvalidCmdName(), false
+	return ctx.getInvalidCmdName(), false
 }
 
 // Parse parses the command line for flags and arguments.
 // v should be a pointer to a struct, else it panics.
-func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
+func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	if v == nil {
 		v = &struct{}{}
 	}
@@ -775,10 +602,10 @@ func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 		CmdArgs:     v,
 	}
 	if !options.disableGlobalFlags {
-		wrapArgs.GlobalFlags = getGlobalFlags()
+		wrapArgs.GlobalFlags = p.getGlobalFlags()
 	}
 
-	ctx := getParsingContext()
+	ctx := p.getParsingContext()
 	ctx.parsed = true
 	fs = ctx.getFlagSet()
 	fs.Init("", options.errorHandling)
@@ -834,9 +661,8 @@ func assertStructPointer(v interface{}) {
 }
 
 // PrintHelp prints usage doc of the current command to stderr.
-func PrintHelp() {
-	ctx := getParsingContext()
-	ctx.printUsage()
+func (p *App) PrintHelp() {
+	p.printUsage()
 }
 
 func clip(s []string) []string {
@@ -882,10 +708,10 @@ func (e *ambiguousArgumentsError) Error() string {
 // SetGlobalFlags sets global flags, global flags are available to all commands.
 // DisableGlobalFlags may be used to disable global flags for a specific
 // command when calling Parse.
-func SetGlobalFlags(v interface{}) {
+func (p *App) SetGlobalFlags(v interface{}) {
 	if v != nil {
 		assertStructPointer(v)
-		state.globalFlags = v
+		p.globalFlags = v
 	}
 }
 
@@ -896,6 +722,6 @@ type withGlobalFlagArgs struct {
 
 // KeepCommandOrder makes Parse to print commands in the order of adding
 // the commands. By default, it prints commands in ascii-order.
-func KeepCommandOrder() {
-	state.keepCmdOrder = true
+func (p *App) KeepCommandOrder() {
+	p.keepCmdOrder = true
 }

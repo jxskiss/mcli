@@ -11,11 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func resetState() {
-	state.cmds = nil
-	state.parsingContext = nil
-	state.globalFlags = nil
-	state.keepCmdOrder = false
+func resetGlobalApp() {
+	globalApp = NewApp()
 	for _, env := range os.Environ() {
 		key := strings.SplitN(env, "=", 2)[0]
 		os.Unsetenv(key)
@@ -27,7 +24,7 @@ func dummyCmd() {
 }
 
 func TestAddCommands(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	Add("cmd1", dummyCmd, "A cmd1 description")
 	AddHidden("cmd2", dummyCmd, "A hidden cmd2 description")
 	AddGroup("group1", "A group1 description")
@@ -35,12 +32,12 @@ func TestAddCommands(t *testing.T) {
 	Add("group1 cmd2", dummyCmd, "A group1 cmd2 description")
 	Add("group1 cmd3 sub1", dummyCmd, "A group1 cmd3 sub1 description")
 
-	assert.Equal(t, 6, len(state.cmds))
-	assert.Nil(t, state.parsingContext)
+	assert.Equal(t, 6, len(globalApp.cmds))
+	assert.Nil(t, globalApp.pctx)
 }
 
 func TestParsing_WithoutCallingRun(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	var args struct {
 		A bool  `cli:"-a, -a-flag, description a flag"`
 		B bool  `cli:"-b, description b flag" default:"true"`
@@ -48,9 +45,9 @@ func TestParsing_WithoutCallingRun(t *testing.T) {
 	}
 	Parse(&args, WithArgs([]string{"-a", "-c-flag", "12345"}))
 
-	// assert we don't modify the global state
-	assert.Equal(t, 0, len(state.cmds))
-	assert.Nil(t, state.parsingContext)
+	// assert we do modify the global state
+	assert.Equal(t, 0, len(globalApp.cmds))
+	assert.NotNil(t, globalApp.pctx)
 
 	// assert the arg values
 	assert.True(t, args.A)
@@ -59,7 +56,7 @@ func TestParsing_WithoutCallingRun(t *testing.T) {
 }
 
 func TestParsing_CheckFlagSetValues(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	var args struct {
 		A  bool     `cli:"-a,  -a-flag, description a flag"`
 		A1 bool     `cli:"-1, -a1-flag"`
@@ -163,7 +160,7 @@ func TestParsing_CheckFlagSetValues(t *testing.T) {
 }
 
 func TestParsing_DefaultValues(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	var args struct {
 		A1 bool `cli:"-a1"` // default false
 		A2 bool `cli:"-a2" default:"true"`
@@ -212,7 +209,7 @@ func TestParsing_DefaultValues(t *testing.T) {
 }
 
 func TestParse_EnvValues(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	var args struct {
 		A1 bool   `cli:"-a1"`
 		A2 bool   `cli:"-a2" default:"true" env:"A2_BOOL, A2_BOOL_1"`
@@ -254,8 +251,11 @@ func TestParse_EnvValues(t *testing.T) {
 	for _, x := range []string{
 		" (default true)",
 		` (env "A2_BOOL", "A2_BOOL_1")`,
+		` (env "A3_BOOL", "A3_BOOL_1")`,
 		` (default "b2default")`,
 		` (env "B2_STRING")`,
+		` (default "b3default")`,
+		` (env "B3_STRING", "B3_STRING_1")`,
 	} {
 		_ = x
 		assert.Contains(t, got, x)
@@ -276,7 +276,6 @@ type AnotherCommonArgs struct {
 }
 
 func TestParsing_TagSyntax(t *testing.T) {
-
 	var args struct {
 
 		// Modifier
@@ -294,16 +293,20 @@ func TestParsing_TagSyntax(t *testing.T) {
 		// manually ignored
 		AnotherCommonArgs `cli:"-"`
 	}
+
+	resetGlobalApp()
 	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError), WithArgs([]string{}))
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "flag is required but not set: -m1")
 
+	resetGlobalApp()
 	_, err = Parse(&args, WithErrorHandling(flag.ContinueOnError), WithArgs([]string{
 		"-i", "ignoredstr",
 	}))
 	assert.NotNil(t, err)
 	assert.Equal(t, err.Error(), "flag provided but not defined: -i")
 
+	resetGlobalApp()
 	fs, err := Parse(&args, WithErrorHandling(flag.ContinueOnError), WithArgs([]string{
 		"-m1", "m1str",
 		"--m2", "m2str",
@@ -329,37 +332,56 @@ func TestParsing_TagSyntax(t *testing.T) {
 	assert.Nil(t, fs.Lookup("ignored"))
 }
 
-func Test_searchCommand(t *testing.T) {
-	resetState()
-	Add("cmd1", dummyCmd, "A cmd1 description")
-	AddHidden("cmd2", dummyCmd, "A hidden cmd2 description")
-	AddGroup("group1", "A group1 description")
-	Add("group1 cmd1", dummyCmd, "A group1 cmd1 description")
-	Add("group1 cmd2", dummyCmd, "A group1 cmd2 description")
-	Add("group1 cmd3 sub1", dummyCmd, "A group1 cmd3 sub1 description")
+func _search(args []string) (ctx *parsingContext, invalidCmdName string, found bool) {
+	invalidCmdName, found = globalApp.searchCmd(args)
+	ctx = globalApp.getParsingContext()
+	return
+}
 
+func Test_searchCommand(t *testing.T) {
+	addCommands := func() {
+		Add("cmd1", dummyCmd, "A cmd1 description")
+		AddHidden("cmd2", dummyCmd, "A hidden cmd2 description")
+		AddGroup("group1", "A group1 description")
+		Add("group1 cmd1", dummyCmd, "A group1 cmd1 description")
+		Add("group1 cmd2", dummyCmd, "A group1 cmd2 description")
+		Add("group1 cmd3 sub1", dummyCmd, "A group1 cmd3 sub1 description")
+	}
+
+	resetGlobalApp()
+	addCommands()
 	ctx, _, found := _search([]string{"cmd1"})
 	assert.True(t, found)
 	assert.Equal(t, "cmd1", ctx.name)
 	assert.Equal(t, "cmd1", ctx.cmd.Name)
 
+	resetGlobalApp()
+	addCommands()
 	ctx, _, found = _search([]string{"cmd2", "-h"})
 	assert.True(t, found)
 	assert.Equal(t, "cmd2", ctx.name)
 	assert.Equal(t, "cmd2", ctx.cmd.Name)
 
+	resetGlobalApp()
+	addCommands()
 	ctx, _, found = _search([]string{"group1"})
 	assert.True(t, found)
 	assert.Equal(t, "group1", ctx.name)
 
+	resetGlobalApp()
+	addCommands()
 	ctx, _, found = _search([]string{"group1", "cmd99"})
 	assert.True(t, found)
 	assert.Equal(t, "group1", ctx.cmd.Name)
 
+	resetGlobalApp()
+	addCommands()
 	ctx, invalidCmdName, found := _search([]string{"cmd9", "sub1", "sub2"})
 	assert.False(t, found)
 	assert.Equal(t, "cmd9 sub1 sub2", invalidCmdName)
 
+	resetGlobalApp()
+	addCommands()
 	ctx, invalidCmdName, found = _search([]string{"group1", "cmd3", "sub2"})
 	assert.False(t, found)
 	assert.Nil(t, ctx.cmd)
@@ -369,7 +391,7 @@ func Test_searchCommand(t *testing.T) {
 }
 
 func Test_runGroupCommand(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	Add("cmd1", dummyCmd, "Dummy cmd1 command")
 	AddGroup("group1", "Dummy group1 group")
 	Add("group1 cmd1", dummyCmd, "Dummy group1 cmd1 command")
@@ -380,7 +402,7 @@ func Test_runGroupCommand(t *testing.T) {
 	assert.Equal(t, "group1", ctx.cmd.Name)
 
 	var buf bytes.Buffer
-	getParsingContext().getFlagSet().SetOutput(&buf)
+	globalApp.getParsingContext().getFlagSet().SetOutput(&buf)
 	ctx.cmd.f()
 
 	got := buf.String()
@@ -397,7 +419,7 @@ func Test_runGroupCommand(t *testing.T) {
 }
 
 func Test_runCommandNotFound(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	Add("cmd1", dummyCmd, "Dummy cmd1 command")
 	AddGroup("group1", "Dummy group1 group")
 	Add("group1 cmd1", dummyCmd, "Dummy group1 cmd1 command")
@@ -414,7 +436,7 @@ func Test_runCommandNotFound(t *testing.T) {
 }
 
 func Test_printAvailableCommands(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	Add("config", dummyCmd, "config settings")
 	Add("start", dummyCmd, "start service")
 	Add("stop", dummyCmd, "stop service")
@@ -437,8 +459,8 @@ func Test_printAvailableCommands(t *testing.T) {
 	assert.Nil(t, ctx.cmd)
 
 	var buf bytes.Buffer
-	ctx.getFlagSet().SetOutput(&buf)
-	ctx.printUsage()
+	globalApp.getFlagSet().SetOutput(&buf)
+	globalApp.printUsage()
 
 	got := buf.String()
 	assert.NotContains(t, got, "not a valid command")
@@ -500,8 +522,8 @@ func Test_printAvailableCommands(t *testing.T) {
 	assert.Equal(t, 0, len(ctx.ambiguousArgs))
 
 	buf.Reset()
-	ctx.getFlagSet().SetOutput(&buf)
-	ctx.printUsage()
+	globalApp.getFlagSet().SetOutput(&buf)
+	globalApp.printUsage()
 
 	got = buf.String()
 	assert.NotContains(t, got, "not a valid command")
@@ -539,7 +561,7 @@ func (f *flagValueImpl2) Set(s string) error {
 }
 
 func TestParse_FlagValue(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	var args struct {
 		A flagValueImpl1 `cli:"-a"`
 		B flagValueImpl2 `cli:"-b"`
@@ -555,6 +577,7 @@ type SomeComplexType struct {
 }
 
 func TestParse_UnsupportedType(t *testing.T) {
+	resetGlobalApp()
 	var args1 struct {
 		A *bool `cli:"-a"`
 	}
@@ -573,7 +596,7 @@ func TestParse_UnsupportedType(t *testing.T) {
 }
 
 func TestWithName(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	var args struct {
 		A flagValueImpl1 `cli:"-a"`
 		B flagValueImpl2 `cli:"-b"`
@@ -595,15 +618,18 @@ func TestWithName(t *testing.T) {
 }
 
 func TestShowHidden(t *testing.T) {
-	resetState()
-	Add("cmd1", dummyCmd, "A cmd1 description")
-	AddHidden("cmd2", dummyCmd, "A hidden cmd2 description")
-	AddGroup("group1", "A group1 description")
-	Add("group1 cmd1", dummyCmd, "A group1 cmd1 description")
-	Add("group1 cmd2", dummyCmd, "A group1 cmd2 description")
-	Add("group1 cmd3 sub1", dummyCmd, "A group1 cmd3 sub1 description")
-	AddHidden("group1 cmd4", dummyCmd, "A group1 cmd4 hidden command")
+	var addCommands = func() {
+		Add("cmd1", dummyCmd, "A cmd1 description")
+		AddHidden("cmd2", dummyCmd, "A hidden cmd2 description")
+		AddGroup("group1", "A group1 description")
+		Add("group1 cmd1", dummyCmd, "A group1 cmd1 description")
+		Add("group1 cmd2", dummyCmd, "A group1 cmd2 description")
+		Add("group1 cmd3 sub1", dummyCmd, "A group1 cmd3 sub1 description")
+		AddHidden("group1 cmd4", dummyCmd, "A group1 cmd4 hidden command")
+	}
 
+	resetGlobalApp()
+	addCommands()
 	fs, err := Parse(&struct{}{},
 		WithErrorHandling(flag.ContinueOnError),
 		WithName("group1"),
@@ -617,6 +643,8 @@ func TestShowHidden(t *testing.T) {
 	got := buf.String()
 	assert.Contains(t, got, "group1 cmd4 (HIDDEN)")
 
+	resetGlobalApp()
+	addCommands()
 	var args struct {
 		HiddenFlag1 string `cli:"#H, -a1"`
 	}
@@ -641,7 +669,7 @@ func TestReorderFlags(t *testing.T) {
 		Text string `cli:"#R, text, The 'message' you want to send"`
 	}
 
-	resetState()
+	resetGlobalApp()
 	args1 := &args{}
 	fs, err := Parse(args1,
 		WithErrorHandling(flag.ContinueOnError),
@@ -651,7 +679,7 @@ func TestReorderFlags(t *testing.T) {
 	assert.Equal(t, "hello", args1.Text)
 	assert.Equal(t, []string{"hello"}, fs.Args())
 
-	resetState()
+	resetGlobalApp()
 	args2 := &args{}
 	fs, err = Parse(args2,
 		WithErrorHandling(flag.ContinueOnError),

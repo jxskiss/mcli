@@ -16,7 +16,7 @@ func ExampleAdd_addCommands() {
 	Add("issue delete", dummyCmd, "Delete issue")
 	Add("issue edit", Example_githubCliCommandIssueEdit, "Edit an issue")
 	Add("issue list", dummyCmd, "List and filter issues in this repository")
-	Add("issue repopen", dummyCmd, "Reopen issue")
+	Add("issue reopen", dummyCmd, "Reopen issue")
 	Add("issue status", dummyCmd, "Show status of relevant issues")
 	Add("issue transfer", dummyCmd, "Transfer issue to another repository")
 	Add("issue view", dummyCmd, "View an issue")
@@ -136,7 +136,7 @@ func ExampleAdd_addCommands() {
 	AddHelp()
 }
 
-func setExampleTestMark() func() {
+func markExampleTest() func() {
 	isExampleTest = true
 	return func() {
 		isExampleTest = false
@@ -144,8 +144,8 @@ func setExampleTestMark() func() {
 }
 
 func ExampleRun_mainCommand() {
-	resetState()
-	defer setExampleTestMark()()
+	resetGlobalApp()
+	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
 	os.Args = []string{"gh", "-h"}
@@ -179,8 +179,8 @@ func ExampleRun_mainCommand() {
 }
 
 func ExampleRun_groupCommand() {
-	resetState()
-	defer setExampleTestMark()()
+	resetGlobalApp()
+	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
 	os.Args = []string{"gh", "issue"}
@@ -199,15 +199,15 @@ func ExampleRun_groupCommand() {
 	//   issue delete      Delete issue
 	//   issue edit        Edit an issue
 	//   issue list        List and filter issues in this repository
-	//   issue repopen     Reopen issue
+	//   issue reopen      Reopen issue
 	//   issue status      Show status of relevant issues
 	//   issue transfer    Transfer issue to another repository
 	//   issue view        View an issue
 }
 
 func ExampleRun_subCommandBrowse() {
-	resetState()
-	defer setExampleTestMark()()
+	resetGlobalApp()
+	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
 	os.Args = []string{"gh", "browse", "-h"}
@@ -235,8 +235,8 @@ func ExampleRun_subCommandBrowse() {
 }
 
 func ExampleRun_subCommandIssueCreate() {
-	resetState()
-	defer setExampleTestMark()()
+	resetGlobalApp()
+	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
 	os.Args = []string{"gh", "issue", "create", "-h"}
@@ -262,8 +262,8 @@ func ExampleRun_subCommandIssueCreate() {
 }
 
 func ExampleRun_helpCommand() {
-	resetState()
-	defer setExampleTestMark()()
+	resetGlobalApp()
+	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
 	os.Args = []string{"gh", "help"}
@@ -297,8 +297,8 @@ func ExampleRun_helpCommand() {
 }
 
 func ExampleRun_helpIssueCreate() {
-	resetState()
-	defer setExampleTestMark()()
+	resetGlobalApp()
+	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
 	os.Args = []string{"gh", "help", "issue", "create"}

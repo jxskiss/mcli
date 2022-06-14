@@ -10,7 +10,7 @@ import (
 )
 
 func Test_flag_DefaultValue(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	var args struct {
 		A bool          `cli:"-a" default:"true"`
 		B string        `cli:"-b" default:"astr"`
@@ -50,7 +50,7 @@ func Test_flag_DefaultValue(t *testing.T) {
 type MyMap map[string]string
 
 func Test_flag_Map(t *testing.T) {
-	resetState()
+	resetGlobalApp()
 	var args struct {
 		M1 map[string]string        `cli:"-m1"`
 		M2 MyMap                    `cli:"-m2"`
