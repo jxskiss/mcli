@@ -376,7 +376,7 @@ func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value) (flags, nonfla
 		if fv.IsValid() && fv.Kind() == reflect.Interface {
 			fv = fv.Elem()
 		}
-		if fv.IsValid() && fv.Kind() == reflect.Pointer &&
+		if fv.IsValid() && fv.Kind() == reflect.Ptr &&
 			!fv.IsNil() && fv.Elem().Kind() == reflect.Struct {
 			fv = fv.Elem()
 		}

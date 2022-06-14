@@ -828,7 +828,7 @@ func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 
 func assertStructPointer(v interface{}) {
 	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Pointer || rv.Elem().Kind() != reflect.Struct {
+	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
 		panic("argument must be a pointer to struct")
 	}
 }
