@@ -7,6 +7,9 @@ type parseOptions struct {
 	args          *[]string
 	errorHandling flag.ErrorHandling
 
+	replaceUsage func() string
+	footer       func() string
+
 	disableGlobalFlags bool
 }
 
@@ -40,5 +43,21 @@ func WithName(name string) ParseOpt {
 func DisableGlobalFlags() ParseOpt {
 	return func(options *parseOptions) {
 		options.disableGlobalFlags = true
+	}
+}
+
+// ReplaceUsage specifies a function to generate a usage help to replace the
+// default help.
+func ReplaceUsage(f func() string) ParseOpt {
+	return func(options *parseOptions) {
+		options.replaceUsage = f
+	}
+}
+
+// WithFooter specifies a function to generate extra help text to print
+// after the default help.
+func WithFooter(f func() string) ParseOpt {
+	return func(options *parseOptions) {
+		options.footer = f
 	}
 }

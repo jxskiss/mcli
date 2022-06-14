@@ -69,6 +69,9 @@ type parsingContext struct {
 	showHidden    bool
 	isHelpCmd     bool
 
+	customUsage func() string
+	helpFooter  func() string
+
 	cmd      *Command
 	flags    []*_flag
 	nonflags []*_flag
@@ -293,6 +296,16 @@ func (p *App) printSuggestions(invalidCmdName string) {
 func (p *App) printUsage() {
 	globalFlags := p.getGlobalFlags()
 	ctx := p.getParsingContext()
+
+	fs := ctx.getFlagSet()
+	out := getFlagSetOutput(fs)
+
+	if ctx.customUsage != nil {
+		help := strings.TrimSpace(ctx.customUsage())
+		fmt.Fprintf(out, "%s\n\n", help)
+		return
+	}
+
 	if !ctx.parsed && globalFlags != nil {
 		wrapArgs := &withGlobalFlagArgs{
 			GlobalFlags: globalFlags,
@@ -304,7 +317,6 @@ func (p *App) printUsage() {
 	cmds := p.cmds
 	keepCmdOrder := p.keepCmdOrder
 
-	fs := ctx.getFlagSet()
 	cmd := ctx.cmd
 	cmdName := ctx.name
 	flags := ctx.flags
@@ -321,7 +333,6 @@ func (p *App) printUsage() {
 	}
 	subCmds := cmds.listSubCommandsToPrint(cmdName, showHidden)
 
-	out := getFlagSetOutput(fs)
 	progName := getProgramName()
 	hasFlags, hasNonflags := flagCount > 0, len(nonflags) > 0
 	hasSubCmds := len(subCmds) > 0
@@ -395,6 +406,11 @@ func (p *App) printUsage() {
 		fmt.Fprint(out, "GLOBAL FLAGS:\n")
 		printWithAlignment(out, globalFlagHelp)
 		fmt.Fprint(out, "\n")
+	}
+
+	if ctx.helpFooter != nil {
+		footer := strings.TrimSpace(ctx.helpFooter())
+		fmt.Fprintf(out, "%s\n\n", footer)
 	}
 }
 
@@ -597,6 +613,12 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 		o(options)
 	}
 
+	if options.replaceUsage != nil {
+		p.getParsingContext().customUsage = options.replaceUsage
+	} else if options.footer != nil {
+		p.getParsingContext().helpFooter = options.footer
+	}
+
 	wrapArgs := &withGlobalFlagArgs{
 		GlobalFlags: nil,
 		CmdArgs:     v,
@@ -653,6 +675,14 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 	return fs, err
 }
 
+func (p *App) wrapUsageFunc(f func() string) func() {
+	return func() {
+		help := f()
+		out := getFlagSetOutput(p.getFlagSet())
+		fmt.Fprintf(out, "%s\n\n", strings.TrimSpace(help))
+	}
+}
+
 func assertStructPointer(v interface{}) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
@@ -662,6 +692,7 @@ func assertStructPointer(v interface{}) {
 
 // PrintHelp prints usage doc of the current command to stderr.
 func (p *App) PrintHelp() {
+	p.getParsingContext().isHelpCmd = true
 	p.printUsage()
 }
 
