@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 
 	"github.com/jxskiss/mcli"
 )
@@ -201,7 +202,8 @@ func Example_githubCliCommandBrowse() {
 	}{}
 	_, err := mcli.Parse(&args, mcli.WithErrorHandling(flag.ContinueOnError))
 	if err != nil && err != flag.ErrHelp {
-		panic(err)
+		fmt.Printf("mcli.Parse error: %v", err)
+		fmt.Println()
 	}
 }
 
@@ -231,7 +233,8 @@ func Example_githubCliCommandIssueClose() {
 	}
 	_, err := mcli.Parse(&args, mcli.WithErrorHandling(flag.ContinueOnError))
 	if err != nil && err != flag.ErrHelp {
-		panic(err)
+		fmt.Printf("mcli.Parse error: %v", err)
+		fmt.Println()
 	}
 }
 
@@ -270,7 +273,8 @@ func Example_githubCliCommandIssueComment() {
 	}
 	_, err := mcli.Parse(&args, mcli.WithErrorHandling(flag.ContinueOnError))
 	if err != nil && err != flag.ErrHelp {
-		panic(err)
+		fmt.Printf("mcli.Parse error: %v", err)
+		fmt.Println()
 	}
 }
 
@@ -324,7 +328,8 @@ func Example_githubCliCommandIssueCreate() {
 	}
 	_, err := mcli.Parse(&args, mcli.WithErrorHandling(flag.ContinueOnError))
 	if err != nil && err != flag.ErrHelp {
-		panic(err)
+		fmt.Printf("mcli.Parse error: %v", err)
+		fmt.Println()
 	}
 }
 
@@ -384,7 +389,8 @@ func Example_githubCliCommandIssueEdit() {
 	// Optionally, we can specify a custom ErrorHandling option.
 	_, err := mcli.Parse(&args, mcli.WithErrorHandling(flag.ContinueOnError))
 	if err != nil && err != flag.ErrHelp {
-		panic(err)
+		fmt.Printf("mcli.Parse error: %v", err)
+		fmt.Println()
 	}
 }
 

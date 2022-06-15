@@ -19,10 +19,9 @@ func NewApp() *App {
 }
 
 type App struct {
-	cmds        commands
-	globalFlags interface{}
-
-	cmdIdx       int
+	cmds         commands
+	groups       map[string]bool
+	globalFlags  interface{}
 	keepCmdOrder bool
 
 	ctx *parsingContext
@@ -30,9 +29,13 @@ type App struct {
 }
 
 func (p *App) addCommand(cmd *Command) {
-	p.cmdIdx += 1
-	cmd.idx = p.cmdIdx
 	p.cmds.add(cmd)
+	if p.groups == nil {
+		p.groups = make(map[string]bool)
+	}
+	if group := getGroupName(cmd.Name); group != "" {
+		p.groups[group] = true
+	}
 }
 
 func (p *App) getGlobalFlags() interface{} {
@@ -67,8 +70,9 @@ type parsingContext struct {
 	opts *parseOptions
 
 	ambiguousArgs []string
-	showHidden    bool
+	hasFlags      bool
 	isHelpCmd     bool
+	showHidden    bool
 
 	cmd      *Command
 	flags    []*_flag
@@ -130,7 +134,11 @@ func (ctx *parsingContext) parseNonflags() (allArgs []string, err error) {
 		j++
 	}
 	if j < len(ambiguousArgs) {
-		err = &ambiguousArgumentsError{ambiguousArgs}
+		if ctx.hasFlags {
+			err = newInvalidCmdError(ctx)
+		} else {
+			err = &ambiguousArgumentsError{ambiguousArgs}
+		}
 		ctx.failError(err)
 		return
 	}
@@ -149,6 +157,11 @@ func (ctx *parsingContext) parseNonflags() (allArgs []string, err error) {
 			i++
 		}
 		j++
+	}
+	if j < len(allArgs) {
+		err = &unexpectedArgsError{allArgs[j:]}
+		ctx.failError(err)
+		return
 	}
 	return allArgs, nil
 }
@@ -263,10 +276,11 @@ func (ctx *parsingContext) failf(errp *error, format string, a ...interface{}) {
 func (ctx *parsingContext) failError(err error) {
 	fs := ctx.getFlagSet()
 	fmt.Fprintln(getFlagSetOutput(fs), err.Error())
-	if _, ok := err.(*ambiguousArgumentsError); ok {
+	if _, ok := err.(*invalidCmdError); ok {
 		ctx.app.printSuggestions(ctx.getInvalidCmdName())
+	} else {
+		fs.Usage()
 	}
-	fs.Usage()
 	switch fs.ErrorHandling() {
 	case flag.ExitOnError:
 		os.Exit(2)
@@ -533,11 +547,35 @@ func (p *App) groupCmd() {
 func (p *App) helpCmd() {
 	ctx := p.getParsingContext()
 	ctx.isHelpCmd = true
+
+	// i.e. "program help"
 	if len(ctx.ambiguousArgs) == 0 {
 		p.runWithArgs(nil)
 		return
 	}
+
+	// i.e. "program help group cmd"
+	cmdName := strings.Join(ctx.ambiguousArgs, " ")
+	isValid := p.validateHelpCommand(cmdName)
+	if !isValid {
+		// failError will exit the program, we modify ctx.name here to
+		// help to check suggestions.
+		ctx.name = ""
+		ctx.failError(newInvalidCmdError(ctx))
+		return
+	}
+
+	// We got a valid command, print the help.
 	p.runWithArgs(append(ctx.ambiguousArgs, "-h"))
+}
+
+func (p *App) validateHelpCommand(name string) bool {
+	for _, cmd := range p.cmds {
+		if cmd.Name == name {
+			return true
+		}
+	}
+	return p.groups[name]
 }
 
 // Run is the entry point to an application, it parses the command line
@@ -562,9 +600,10 @@ func (p *App) runWithArgs(args []string) {
 	}
 	if invalidCmdName != "" {
 		out := getFlagSetOutput(ctx.getFlagSet())
-		progName := getProgramName()
-		fmt.Fprintf(out, "'%s' is not a valid command. See '%s -h' for help.\n", invalidCmdName, progName)
+		err := newInvalidCmdError(ctx)
+		fmt.Fprintln(out, err.Error())
 		p.printSuggestions(invalidCmdName)
+		os.Exit(2)
 	}
 	ctx.showHidden = hasBoolFlag(showHiddenFlag, os.Args[1:])
 	p.printUsage()
@@ -582,8 +621,7 @@ func (p *App) searchCmd(osArgs []string) (invalidCmdName string, found bool) {
 	ctx := p.getParsingContext()
 	hasSub := cmds.search(ctx, osArgs)
 
-	// A command is matched exactly or is parent of the requested
-	// command, just run the command.
+	// A command is matched exactly or is parent of the requested command.
 	if ctx.cmd != nil {
 		return "", true
 	}
@@ -664,14 +702,6 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 	return fs, err
 }
 
-func (p *App) wrapUsageFunc(f func() string) func() {
-	return func() {
-		help := f()
-		out := getFlagSetOutput(p.getFlagSet())
-		fmt.Fprintf(out, "%s\n\n", strings.TrimSpace(help))
-	}
-}
-
 func assertStructPointer(v interface{}) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
@@ -683,6 +713,27 @@ func assertStructPointer(v interface{}) {
 func (p *App) PrintHelp() {
 	p.getParsingContext().isHelpCmd = true
 	p.printUsage()
+}
+
+// SetGlobalFlags sets global flags, global flags are available to all commands.
+// DisableGlobalFlags may be used to disable global flags for a specific
+// command when calling Parse.
+func (p *App) SetGlobalFlags(v interface{}) {
+	if v != nil {
+		assertStructPointer(v)
+		p.globalFlags = v
+	}
+}
+
+type withGlobalFlagArgs struct {
+	GlobalFlags interface{}
+	CmdArgs     interface{}
+}
+
+// KeepCommandOrder makes Parse to print commands in the order of adding
+// the commands. By default, it prints commands in ascii-order.
+func (p *App) KeepCommandOrder() {
+	p.keepCmdOrder = true
 }
 
 func clip(s []string) []string {
@@ -717,31 +768,45 @@ func (e *programingError) Error() string {
 	return e.msg
 }
 
+func newInvalidCmdError(ctx *parsingContext) *invalidCmdError {
+	return &invalidCmdError{
+		groupName:      ctx.name,
+		invalidCmdName: ctx.getInvalidCmdName(),
+	}
+}
+
+type invalidCmdError struct {
+	groupName      string
+	invalidCmdName string
+}
+
+func (e *invalidCmdError) Error() string {
+	cmdName := getProgramName()
+	if e.groupName != "" {
+		cmdName += " " + e.groupName
+	}
+	return fmt.Sprintf("'%s' is not a valid command. See '%s -h' for help.", e.invalidCmdName, cmdName)
+}
+
 type ambiguousArgumentsError struct {
 	args []string
 }
 
 func (e *ambiguousArgumentsError) Error() string {
-	return fmt.Sprintf("cannot resolve ambiguous arguments: %q", e.args)
+	return fmt.Sprintf("cannot resolve ambiguous %s", formatErrorArguments(e.args))
 }
 
-// SetGlobalFlags sets global flags, global flags are available to all commands.
-// DisableGlobalFlags may be used to disable global flags for a specific
-// command when calling Parse.
-func (p *App) SetGlobalFlags(v interface{}) {
-	if v != nil {
-		assertStructPointer(v)
-		p.globalFlags = v
+type unexpectedArgsError struct {
+	args []string
+}
+
+func (e *unexpectedArgsError) Error() string {
+	return fmt.Sprintf("got unexpected %s", formatErrorArguments(e.args))
+}
+
+func formatErrorArguments(args []string) string {
+	if len(args) == 1 {
+		return fmt.Sprintf("argument: '%s'", args[0])
 	}
-}
-
-type withGlobalFlagArgs struct {
-	GlobalFlags interface{}
-	CmdArgs     interface{}
-}
-
-// KeepCommandOrder makes Parse to print commands in the order of adding
-// the commands. By default, it prints commands in ascii-order.
-func (p *App) KeepCommandOrder() {
-	p.keepCmdOrder = true
+	return fmt.Sprintf("arguments: '%s'", strings.Join(args, " "))
 }

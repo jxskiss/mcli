@@ -22,6 +22,14 @@ func normalizeCmdName(name string) string {
 	return strings.Join(strings.Fields(name), " ")
 }
 
+func getGroupName(name string) string {
+	if name == "" {
+		return ""
+	}
+	fields := strings.Fields(name)
+	return strings.Join(fields[:len(fields)-1], " ")
+}
+
 func isSubCommand(parent, sub string) bool {
 	return parent != sub && strings.HasPrefix(sub, parent+" ")
 }
@@ -38,6 +46,7 @@ func (p *commands) add(cmd *Command) {
 			panic("command name must be unique")
 		}
 	}
+	cmd.idx = len(*p) + 1
 	cmd.level = len(strings.Fields(cmd.Name))
 	*p = append(*p, cmd)
 }
@@ -53,6 +62,7 @@ func (p commands) search(ctx *parsingContext, cmdArgs []string) (hasSub bool) {
 	for i, x := range cmdArgs {
 		if strings.HasPrefix(x, "-") {
 			flagIdx = i
+			ctx.hasFlags = true
 			break
 		}
 	}
