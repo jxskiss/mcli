@@ -1,6 +1,11 @@
 package main
 
-import "github.com/jxskiss/mcli"
+import (
+	"fmt"
+	"os"
+
+	"github.com/jxskiss/mcli"
+)
 
 /*
 NAME:
@@ -200,8 +205,26 @@ func cmdDnshelp() {
 	var args struct {
 		Code string `cli:"-c"`
 	}
-	mcli.Parse(&args, mcli.DisableGlobalFlags())
-	mcli.PrintHelp()
+	mcli.Parse(&args, mcli.DisableGlobalFlags(), mcli.ReplaceUsage(func() string {
+		return `
+Credentials for DNS providers must be passed through environment variables.
+
+To display the documentation for a DNS providers:
+
+  $ lego dnshelp -c code
+
+All DNS codes:
+  acme-dns, alidns, allinkl, arvancloud, auroradns, autodns, azure, bindman, bluecat, checkdomain, clouddns, cloudflare, cloudns, cloudxns, conoha, constellix, desec, designate, digitalocean, dnsimple, dnsmadeeasy, dnspod, dode, domeneshop, dreamhost, duckdns, dyn, dynu, easydns, edgedns, epik, exec, exoscale, freemyip, gandi, gandiv5, gcloud, gcore, glesys, godaddy, hetzner, hostingde, hosttech, httpreq, hurricane, hyperone, ibmcloud, iij, iijdpf, infoblox, infomaniak, internetbs, inwx, ionos, iwantmyname, joker, lightsail, linode, liquidweb, loopia, luadns, manual, mydnsjp, mythicbeasts, namecheap, namedotcom, namesilo, netcup, netlify, nicmanager, nifcloud, njalla, ns1, oraclecloud, otc, ovh, pdns, porkbun, rackspace, regru, rfc2136, rimuhosting, route53, safedns, sakuracloud, scaleway, selectel, servercow, simply, sonic, stackpath, tencentcloud, transip, vegadns, vercel, versio, vinyldns, vscale, vultr, wedos, yandex, zoneee, zonomi
+
+More information: https://go-acme.github.io/lego/dns
+`
+	}))
+
+	if args.Code == "" {
+		mcli.PrintHelp()
+	}
+
+	fmt.Println(os.Args)
 }
 
 /*
