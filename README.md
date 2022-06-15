@@ -247,6 +247,13 @@ If there is slice or map arguments, it will match all following arguments.
 
 ## Changelog
 
+### v0.3.0 @ 2022-06-16
+
+- Fix: reflect.Pointer when using with Go below 1.18.
+- Fix: error handling for invalid command.
+- New: add options `ReplaceUsage` and `WithFooter` to customize usage help.
+- Change: refactor code for better maintainability.
+
 ### v0.2.1 @ 2022-06-11
 
 - Improve compatibility with flag.FlagSet.
