@@ -25,8 +25,8 @@ type App struct {
 	cmdIdx       int
 	keepCmdOrder bool
 
-	fs   *flag.FlagSet
-	pctx *parsingContext
+	ctx *parsingContext
+	fs  *flag.FlagSet
 }
 
 func (p *App) addCommand(cmd *Command) {
@@ -40,14 +40,14 @@ func (p *App) getGlobalFlags() interface{} {
 }
 
 func (p *App) getParsingContext() *parsingContext {
-	if p.pctx == nil {
+	if p.ctx == nil {
 		p.resetParsingContext()
 	}
-	return p.pctx
+	return p.ctx
 }
 
 func (p *App) resetParsingContext() {
-	p.pctx = &parsingContext{app: p}
+	p.ctx = &parsingContext{app: p, opts: newParseOptions()}
 	p.fs = nil
 }
 
@@ -64,13 +64,11 @@ type parsingContext struct {
 
 	name string
 	args *[]string
+	opts *parseOptions
 
 	ambiguousArgs []string
 	showHidden    bool
 	isHelpCmd     bool
-
-	customUsage func() string
-	helpFooter  func() string
 
 	cmd      *Command
 	flags    []*_flag
@@ -300,8 +298,8 @@ func (p *App) printUsage() {
 	fs := ctx.getFlagSet()
 	out := getFlagSetOutput(fs)
 
-	if ctx.customUsage != nil {
-		help := strings.TrimSpace(ctx.customUsage())
+	if ctx.opts.customUsage != nil {
+		help := strings.TrimSpace(ctx.opts.customUsage())
 		fmt.Fprintf(out, "%s\n\n", help)
 		return
 	}
@@ -408,8 +406,8 @@ func (p *App) printUsage() {
 		fmt.Fprint(out, "\n")
 	}
 
-	if ctx.helpFooter != nil {
-		footer := strings.TrimSpace(ctx.helpFooter())
+	if ctx.opts.helpFooter != nil {
+		footer := strings.TrimSpace(ctx.opts.helpFooter())
 		fmt.Fprintf(out, "%s\n\n", footer)
 	}
 }
@@ -606,29 +604,20 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 		v = &struct{}{}
 	}
 	assertStructPointer(v)
-	options := &parseOptions{
-		errorHandling: flag.ExitOnError,
-	}
-	for _, o := range opts {
-		o(options)
-	}
 
-	if options.replaceUsage != nil {
-		p.getParsingContext().customUsage = options.replaceUsage
-	} else if options.footer != nil {
-		p.getParsingContext().helpFooter = options.footer
-	}
+	ctx := p.getParsingContext()
+	ctx.opts = newParseOptions(opts...)
+	ctx.parsed = true
+	options := ctx.opts
 
 	wrapArgs := &withGlobalFlagArgs{
 		GlobalFlags: nil,
 		CmdArgs:     v,
 	}
-	if !options.disableGlobalFlags {
+	if !ctx.opts.disableGlobalFlags {
 		wrapArgs.GlobalFlags = p.getGlobalFlags()
 	}
 
-	ctx := p.getParsingContext()
-	ctx.parsed = true
 	fs = ctx.getFlagSet()
 	fs.Init("", options.errorHandling)
 	if err = ctx.parseTags(reflect.ValueOf(wrapArgs).Elem()); err != nil {
@@ -638,20 +627,20 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 		ctx.name = *options.cmdName
 	}
 
-	var osArgs []string
+	var cmdArgs []string
 	if options.args != nil {
-		osArgs = *options.args
+		cmdArgs = *options.args
 	} else if ctx.args != nil {
-		osArgs = *ctx.args
+		cmdArgs = *ctx.args
 	} else {
-		osArgs = os.Args[1:]
+		cmdArgs = os.Args[1:]
 	}
 	flagsReordered := ctx.args != nil
 	if !flagsReordered {
-		osArgs = ctx.reorderFlags(osArgs)
+		cmdArgs = ctx.reorderFlags(cmdArgs)
 	}
 
-	if hasBoolFlag(showHiddenFlag, osArgs) {
+	if hasBoolFlag(showHiddenFlag, cmdArgs) {
 		ctx.showHidden = true
 		fs.BoolVar(&ctx.showHidden, showHiddenFlag, true, "show hidden commands and flags")
 	}
@@ -661,7 +650,7 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 		return fs, err
 	}
 
-	if err = fs.Parse(osArgs); err != nil {
+	if err = fs.Parse(cmdArgs); err != nil {
 		return fs, err
 	}
 	nonflagArgs, err := ctx.parseNonflags()

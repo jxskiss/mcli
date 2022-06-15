@@ -33,7 +33,7 @@ func TestAddCommands(t *testing.T) {
 	Add("group1 cmd3 sub1", dummyCmd, "A group1 cmd3 sub1 description")
 
 	assert.Equal(t, 6, len(globalApp.cmds))
-	assert.Nil(t, globalApp.pctx)
+	assert.Nil(t, globalApp.ctx)
 }
 
 func TestParsing_WithoutCallingRun(t *testing.T) {
@@ -47,7 +47,7 @@ func TestParsing_WithoutCallingRun(t *testing.T) {
 
 	// assert we do modify the global state
 	assert.Equal(t, 0, len(globalApp.cmds))
-	assert.NotNil(t, globalApp.pctx)
+	assert.NotNil(t, globalApp.ctx)
 
 	// assert the arg values
 	assert.True(t, args.A)
