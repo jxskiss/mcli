@@ -62,7 +62,6 @@ func (p commands) search(ctx *parsingContext, cmdArgs []string) (hasSub bool) {
 	for i, x := range cmdArgs {
 		if strings.HasPrefix(x, "-") {
 			flagIdx = i
-			ctx.hasFlags = true
 			break
 		}
 	}

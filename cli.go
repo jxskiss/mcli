@@ -70,7 +70,6 @@ type parsingContext struct {
 	opts *parseOptions
 
 	ambiguousArgs []string
-	hasFlags      bool
 	isHelpCmd     bool
 	showHidden    bool
 
@@ -105,6 +104,7 @@ func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 	}
 	ctx.flags = flags
 	ctx.nonflags = nonflags
+	ctx.parsed = true
 	return nil
 }
 
@@ -122,29 +122,12 @@ func (ctx *parsingContext) reorderFlags(args []string) []string {
 }
 
 func (ctx *parsingContext) parseNonflags() (allArgs []string, err error) {
-	ambiguousArgs := ctx.ambiguousArgs
+	ambiguousArgs := clip(ctx.ambiguousArgs)
 	afterFlagArgs := ctx.getFlagSet().Args()
-	nonflags := ctx.nonflags
-	i, j := 0, 0
-	for i < len(nonflags) && j < len(ambiguousArgs) {
-		f := nonflags[i]
-		if !(f.isSlice() || f.isMap()) {
-			i++
-		}
-		j++
-	}
-	if j < len(ambiguousArgs) {
-		if ctx.hasFlags {
-			err = newInvalidCmdError(ctx)
-		} else {
-			err = &ambiguousArgumentsError{ambiguousArgs}
-		}
-		ctx.failError(err)
-		return
-	}
 
 	allArgs = append(ambiguousArgs, afterFlagArgs...)
-	i, j = 0, 0
+	nonflags := ctx.nonflags
+	i, j := 0, 0
 	for i < len(nonflags) && j < len(allArgs) {
 		f := nonflags[i]
 		arg := allArgs[j]
@@ -209,44 +192,6 @@ func readEnv(fs *flag.FlagSet, f *_flag) (found bool, err error) {
 	return
 }
 
-func (ctx *parsingContext) tidyFlagSet(nonflagArgs []string) {
-	fs := ctx.getFlagSet()
-	flags := ctx.flags
-	m := make(map[string]*_flag)
-	for _, f := range flags {
-		m[f.name] = f
-		if f.short != "" {
-			m[f.short] = f
-		}
-	}
-
-	// This is awkward, but we can not simply call flag.Value's Set
-	// method, the Set operation may be not idempotent.
-	// Thus, we unsafely modify FlagSet's unexported internal data,
-	// this may break in a future Go release.
-
-	actual := _flagSet_getActual(fs)
-	formal := _flagSet_getFormal(fs)
-	fs.Visit(func(ff *flag.Flag) {
-		f := m[ff.Name]
-		if f == nil {
-			return
-		}
-		if f.name != ff.Name {
-			formal[f.name].Value = ff.Value
-			actual[f.name] = formal[f.name]
-		}
-		if f.short != "" && f.short != ff.Name {
-			formal[f.short].Value = ff.Value
-			actual[f.short] = formal[f.short]
-		}
-	})
-
-	if len(nonflagArgs) > 0 {
-		_flagSet_setArgs(fs, nonflagArgs)
-	}
-}
-
 func (ctx *parsingContext) checkRequired() (err error) {
 	flags := ctx.flags
 	nonflags := ctx.nonflags
@@ -275,12 +220,16 @@ func (ctx *parsingContext) failf(errp *error, format string, a ...interface{}) {
 
 func (ctx *parsingContext) failError(err error) {
 	fs := ctx.getFlagSet()
-	fmt.Fprintln(getFlagSetOutput(fs), err.Error())
+	out := getFlagSetOutput(fs)
+	fmt.Fprintln(out, err.Error())
 	if _, ok := err.(*invalidCmdError); ok {
 		ctx.app.printSuggestions(ctx.getInvalidCmdName())
+		fmt.Fprintln(out, "")
 	} else {
 		fs.Usage()
 	}
+
+	// Keep same behavior with (*flag.FlagSet).Parse.
 	switch fs.ErrorHandling() {
 	case flag.ExitOnError:
 		os.Exit(2)
@@ -300,7 +249,6 @@ func (p *App) printSuggestions(invalidCmdName string) {
 			for _, cmdName := range sugg {
 				fmt.Fprintf(out, "    \t%s\n", cmdName)
 			}
-			fmt.Fprint(out, "\n")
 		}
 	}
 }
@@ -322,8 +270,10 @@ func (p *App) printUsage() {
 		wrapArgs := &withGlobalFlagArgs{
 			GlobalFlags: globalFlags,
 		}
-		ctx.parsed = true
-		_ = ctx.parseTags(reflect.ValueOf(wrapArgs).Elem())
+		err := ctx.parseTags(reflect.ValueOf(wrapArgs).Elem())
+		if err != nil {
+			return
+		}
 	}
 
 	cmds := p.cmds
@@ -380,7 +330,7 @@ func (p *App) printUsage() {
 	fmt.Fprint(out, usage, "\n\n")
 
 	if hasSubCmds {
-		printAvailableCommands(out, cmdName, cmds, showHidden, keepCmdOrder)
+		printSubCommands(out, subCmds, showHidden, keepCmdOrder)
 		fmt.Fprint(out, "\n")
 	}
 
@@ -426,14 +376,10 @@ func (p *App) printUsage() {
 	}
 }
 
-func printAvailableCommands(out io.Writer, name string, cmds commands, showHidden bool, keepCmdOrder bool) {
-	if sub := cmds.listSubCommandsToPrint(name, showHidden); len(sub) > 0 {
-		cmds = sub
-	}
+func printSubCommands(out io.Writer, cmds commands, showHidden bool, keepCmdOrder bool) {
 	if len(cmds) == 0 {
 		return
 	}
-
 	if keepCmdOrder {
 		sort.Slice(cmds, func(i, j int) bool {
 			return cmds[i].idx < cmds[j].idx
@@ -599,13 +545,11 @@ func (p *App) runWithArgs(args []string) {
 		return
 	}
 	if invalidCmdName != "" {
-		out := getFlagSetOutput(ctx.getFlagSet())
 		err := newInvalidCmdError(ctx)
-		fmt.Fprintln(out, err.Error())
-		p.printSuggestions(invalidCmdName)
+		ctx.failError(err)
 		os.Exit(2)
 	}
-	ctx.showHidden = hasBoolFlag(showHiddenFlag, os.Args[1:])
+	ctx.showHidden = hasBoolFlag(showHiddenFlag, args)
 	p.printUsage()
 }
 
@@ -645,7 +589,6 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 
 	ctx := p.getParsingContext()
 	ctx.opts = newParseOptions(opts...)
-	ctx.parsed = true
 	options := ctx.opts
 
 	wrapArgs := &withGlobalFlagArgs{
@@ -688,6 +631,14 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 		return fs, err
 	}
 
+	// If the command does not receive arguments, but there are still
+	// arguments before flags, it is absolutely an invalid command.
+	if !checkNonflagsLength(ctx.nonflags, ctx.ambiguousArgs) {
+		err = newInvalidCmdError(ctx)
+		ctx.failError(err)
+		return fs, err
+	}
+
 	if err = fs.Parse(cmdArgs); err != nil {
 		return fs, err
 	}
@@ -698,7 +649,7 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 	if err = ctx.checkRequired(); err != nil {
 		return fs, err
 	}
-	ctx.tidyFlagSet(nonflagArgs)
+	tidyFlagSet(fs, ctx.flags, nonflagArgs)
 	return fs, err
 }
 
@@ -709,9 +660,20 @@ func assertStructPointer(v interface{}) {
 	}
 }
 
+func checkNonflagsLength(nonflags []*_flag, args []string) (valid bool) {
+	i, j := 0, 0
+	for i < len(nonflags) && j < len(args) {
+		f := nonflags[i]
+		if !(f.isSlice() || f.isMap()) {
+			i++
+		}
+		j++
+	}
+	return j == len(args)
+}
+
 // PrintHelp prints usage doc of the current command to stderr.
 func (p *App) PrintHelp() {
-	p.getParsingContext().isHelpCmd = true
 	p.printUsage()
 }
 

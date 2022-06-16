@@ -144,7 +144,7 @@ func markExampleTest() func() {
 }
 
 func ExampleRun_mainCommand() {
-	resetGlobalApp()
+	resetDefaultApp()
 	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
@@ -179,7 +179,7 @@ func ExampleRun_mainCommand() {
 }
 
 func ExampleRun_groupCommand() {
-	resetGlobalApp()
+	resetDefaultApp()
 	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
@@ -206,7 +206,7 @@ func ExampleRun_groupCommand() {
 }
 
 func ExampleRun_subCommandBrowse() {
-	resetGlobalApp()
+	resetDefaultApp()
 	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
@@ -235,7 +235,7 @@ func ExampleRun_subCommandBrowse() {
 }
 
 func ExampleRun_subCommandIssueCreate() {
-	resetGlobalApp()
+	resetDefaultApp()
 	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
@@ -262,7 +262,7 @@ func ExampleRun_subCommandIssueCreate() {
 }
 
 func ExampleRun_helpCommand() {
-	resetGlobalApp()
+	resetDefaultApp()
 	defer markExampleTest()()
 
 	ExampleAdd_addCommands()
@@ -297,7 +297,7 @@ func ExampleRun_helpCommand() {
 }
 
 func ExampleRun_helpIssueCreate() {
-	resetGlobalApp()
+	resetDefaultApp()
 	defer markExampleTest()()
 
 	ExampleAdd_addCommands()

@@ -593,6 +593,42 @@ func hasBoolFlag(name string, args []string) bool {
 	return false
 }
 
+func tidyFlagSet(fs *flag.FlagSet, flags []*_flag, nonflagArgs []string) {
+	m := make(map[string]*_flag)
+	for _, f := range flags {
+		m[f.name] = f
+		if f.short != "" {
+			m[f.short] = f
+		}
+	}
+
+	// This is awkward, but we can not simply call flag.Value's Set
+	// method, the Set operation may be not idempotent.
+	// Thus, we unsafely modify FlagSet's unexported internal data,
+	// this may break in a future Go release.
+
+	actual := _flagSet_getActual(fs)
+	formal := _flagSet_getFormal(fs)
+	fs.Visit(func(ff *flag.Flag) {
+		f := m[ff.Name]
+		if f == nil {
+			return
+		}
+		if f.name != ff.Name {
+			formal[f.name].Value = ff.Value
+			actual[f.name] = formal[f.name]
+		}
+		if f.short != "" && f.short != ff.Name {
+			formal[f.short].Value = ff.Value
+			actual[f.short] = formal[f.short]
+		}
+	})
+
+	if len(nonflagArgs) > 0 {
+		_flagSet_setArgs(fs, nonflagArgs)
+	}
+}
+
 var (
 	_flagSet_actual_offset uintptr
 	_flagSet_formal_offset uintptr
