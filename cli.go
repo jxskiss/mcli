@@ -425,16 +425,17 @@ func printWithAlignment(out io.Writer, lines [][2]string) {
 			maxPrefixLen = n
 		}
 	}
+	padding := "\n" + strings.Repeat(" ", maxPrefixLen+4)
 	for _, line := range lines {
 		x, y := line[0], line[1]
 		fmt.Fprint(out, x)
 		if y != "" {
 			if len(x) <= _N {
 				fmt.Fprint(out, strings.Repeat(" ", maxPrefixLen+4-len(x)))
-				fmt.Fprint(out, strings.ReplaceAll(y, "\n", "\n    \t"))
+				fmt.Fprint(out, strings.ReplaceAll(y, "\n", padding))
 			} else {
-				fmt.Fprint(out, "\n    \t")
-				fmt.Fprint(out, strings.ReplaceAll(y, "\n", "\n    \t"))
+				fmt.Fprint(out, padding)
+				fmt.Fprint(out, strings.ReplaceAll(y, "\n", padding))
 			}
 		}
 		fmt.Fprint(out, "\n")
