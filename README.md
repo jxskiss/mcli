@@ -163,6 +163,8 @@ Also, there are some sophisticated examples:
   By default, it exits the program when an error happens.
 - `WithName` specifies the command name to use when printing usage doc.
 - `DisableGlobalFlags` tells `Parse` to don't parse and print global flags in help.
+- `ReplaceUsage` tells `Parse` to use a custom usage function instead of the default.
+- `WithFooter` adds a footer message after the default help.
 
 ## Tag syntax
 
@@ -246,6 +248,11 @@ and all arguments can be accessed by calling flagSet.Args() and flagSet.Arg(i).
 If there is slice or map arguments, it will match all following arguments.
 
 ## Changelog
+
+### v0.3.1 @ 2022-06-17
+
+- Fix parsing flag '--mcli-show-hidden'
+- Change: tidy code for better maintainability
 
 ### v0.3.0 @ 2022-06-16
 
