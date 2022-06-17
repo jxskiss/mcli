@@ -689,3 +689,23 @@ func TestReorderFlags(t *testing.T) {
 	assert.Equal(t, "hello", args1.Text)
 	assert.Equal(t, []string{"hello"}, fs.Args())
 }
+
+func TestApp_AllowPosixSTMO(t *testing.T) {
+	var args1 struct {
+		ABool bool   `cli:"-a, --abool, axxx"`
+		BBool bool   `cli:"-b, --bbool, bxxx"`
+		CBool bool   `cli:"-c, --cbool, cxxx"`
+		DStr  string `cli:"-d, --dstr, dxxx"`
+		EBool bool   `cli:"-e, -ebool, exxx"`
+	}
+
+	resetDefaultApp()
+	SetOptions(Options{AllowPosixSTMO: true})
+	fs, err := Parse(&args1, WithArgs([]string{"-abce"}))
+	assert.Nil(t, err)
+	assert.Equal(t, "true", fs.Lookup("ebool").Value.String())
+	assert.True(t, args1.ABool)
+	assert.True(t, args1.BBool)
+	assert.True(t, args1.CBool)
+	assert.True(t, args1.EBool)
+}

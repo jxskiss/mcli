@@ -8,6 +8,18 @@ func init() {
 
 var defaultApp *App
 
+// SetOptions sets optional options for App.
+func SetOptions(opts Options) {
+	defaultApp.SetOptions(opts)
+}
+
+// SetGlobalFlags sets global flags, global flags are available to all commands.
+// DisableGlobalFlags may be used to disable global flags for a specific
+// command when calling Parse.
+func SetGlobalFlags(v interface{}) {
+	defaultApp.SetGlobalFlags(v)
+}
+
 // Add adds a command.
 func Add(name string, f func(), description string) {
 	defaultApp.Add(name, f, description)
@@ -54,17 +66,4 @@ func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 // PrintHelp prints usage doc of the current command to stderr.
 func PrintHelp() {
 	defaultApp.PrintHelp()
-}
-
-// SetGlobalFlags sets global flags, global flags are available to all commands.
-// DisableGlobalFlags may be used to disable global flags for a specific
-// command when calling Parse.
-func SetGlobalFlags(v interface{}) {
-	defaultApp.SetGlobalFlags(v)
-}
-
-// KeepCommandOrder makes Parse to print commands in the order of adding
-// the commands. By default, it prints commands in ascii-order.
-func KeepCommandOrder() {
-	defaultApp.KeepCommandOrder()
 }

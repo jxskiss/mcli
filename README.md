@@ -20,28 +20,32 @@
 `mcli` is a minimal but powerful cli library for Go.
 `m` stands for minimal and magic.
 
-It is extremely easy to use, it makes you like writing cli programs in Go.
+It is extremely easy to use, it makes you love writing cli programs in Go.
 
 Disclaimer: the original idea is borrowed from [shafreeck/cortana](https://github.com/shafreeck/cortana),
 which is licensed under the Apache License 2.0.
 
 ## Features
 
-1. Extremely easy to use, simple but powerful API to define commands, flags and arguments.
-2. Add arbitrary level sub-command with single line code.
-3. Define command flags and arguments inside the command processor using struct tag.
-4. Define global flags apply to all commands.
-5. Read environment variables for flags and arguments.
-6. Set default value for flags and arguments.
-7. Work with slice, map out of box, of course the bool, string, integer, unsigned integer,
-   float, duration types are also supported.
-8. Automatic help for commands, flags and arguments.
-9. Mark commands, flags as hidden, hidden commands and flags won't be showed in help,
-   except that when a special flag "--mcli-show-hidden" is provided.
-10. Mark flags, arguments as required, it reports error when not given.
-11. Mark flags as deprecated.
-12. Automatic suggestions like git.
-13. Compatible with the standard library's flag.FlagSet.
+* Easy to use, dead simple yet very powerful API to define commands, flags and arguments.
+* Add arbitrary nested sub-command with single line code.
+* Define command flags and arguments inside the command processor using struct tag.
+* Define global flags apply to all commands.
+* Read environment variables for flags and arguments.
+* Set default value for flags and arguments.
+* Work with slice, map out of box, of course the basic types bool, string, integer,
+  unsigned integer, float, duration are also supported.
+* Mark commands, flags as hidden, hidden commands and flags won't be showed in help,
+  except that when a special flag `--mcli-show-hidden` is provided.
+* Mark flags, arguments as required, it reports error when not given.
+* Mark flags as deprecated.
+* Automatic suggestions like git.
+* Automatic help generation for commands, flags and arguments.
+* Automatic help flag recognition of `-h`, `--help`, etc.
+* Compatible with the standard library's flag.FlagSet.
+* Optional posix-style single token multiple options command line parsing.
+* Flexibility to define your own usage messages.
+* Makes you love writing cli programs in Go.
 
 ## Usage
 
@@ -144,6 +148,8 @@ Also, there are some sophisticated examples:
 
 ## API
 
+- `SetOptions` sets optional options for App.
+- `SetGlobalFlags` sets global flags, global flags are available to all commands.
 - `Add` adds a command.
 - `AddHidden` adds a hidden command.
 - `AddGroup` adds a group explicitly. A group is a common prefix for some commands.
@@ -153,8 +159,6 @@ Also, there are some sophisticated examples:
 - `Parse` parses the command line for flags and arguments.
 - `Run` runs the program, it will parse the command line, search for a registered command and run it.
 - `PrintHelp` prints usage doc of the current command to stderr.
-- `SetGlobalFlags` sets global flags, global flags are available to all commands.
-- `KeepCommandOrder` makes `Parse` to print commands in the order of adding the commands.
 
 ### Custom parsing options
 
@@ -249,9 +253,15 @@ If there is slice or map arguments, it will match all following arguments.
 
 ## Changelog
 
+### v0.4.0 (upcoming)
+
+- New: new option to allow parsing posix-style single token multiple options.
+- Change: optimize help padding.
+- Change: remove api `KeepCommandOrder`, replaced by `SetOptions`.
+
 ### v0.3.1 @ 2022-06-17
 
-- Fix parsing flag '--mcli-show-hidden'
+- Fix parsing flag `--mcli-show-hidden`
 - Change: tidy code for better maintainability
 
 ### v0.3.0 @ 2022-06-16

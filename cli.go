@@ -13,19 +13,40 @@ import (
 
 const showHiddenFlag = "mcli-show-hidden"
 
+// Options specifies optional options for an App.
+type Options struct {
+
+	// KeepCommandOrder makes Parse to print commands in the order of
+	// adding the commands.
+	// By default, it prints commands in lexicographic order.
+	KeepCommandOrder bool
+
+	// AllowPosixSTMO enables using the posix-style single token to specify
+	// multiple boolean options. e.g. ‘-abc’ is equivalent to ‘-a -b -c’.
+	AllowPosixSTMO bool
+}
+
 // NewApp creates a new cli application instance.
+// Typically, there is no need to manually create an application, using
+// the package-level functions with the default application is preferred.
 func NewApp() *App {
 	return &App{}
 }
 
+// App holds the state of a cli application.
 type App struct {
-	cmds         commands
-	groups       map[string]bool
-	globalFlags  interface{}
-	keepCmdOrder bool
+	opts        Options
+	cmds        commands
+	groups      map[string]bool
+	globalFlags interface{}
 
 	ctx *parsingContext
 	fs  *flag.FlagSet
+}
+
+// SetOptions sets optional options for App.
+func (p *App) SetOptions(opts Options) {
+	p.opts = opts
 }
 
 func (p *App) addCommand(cmd *Command) {
@@ -74,6 +95,7 @@ type parsingContext struct {
 	showHidden    bool
 
 	cmd      *Command
+	flagMap  map[string]*_flag
 	flags    []*_flag
 	nonflags []*_flag
 	parsed   bool
@@ -94,7 +116,8 @@ func (ctx *parsingContext) getInvalidCmdName() string {
 
 func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 	fs := ctx.getFlagSet()
-	flags, nonflags, err := parseTags(false, fs, rv)
+	flagMap := make(map[string]*_flag)
+	flags, nonflags, err := parseTags(false, fs, rv, flagMap)
 	if err != nil {
 		if _, ok := err.(*programingError); ok {
 			panic(err)
@@ -102,6 +125,7 @@ func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 		ctx.failError(err)
 		return err
 	}
+	ctx.flagMap = flagMap
 	ctx.flags = flags
 	ctx.nonflags = nonflags
 	ctx.parsed = true
@@ -277,7 +301,7 @@ func (p *App) printUsage() {
 	}
 
 	cmds := p.cmds
-	keepCmdOrder := p.keepCmdOrder
+	keepCmdOrder := p.opts.KeepCommandOrder
 
 	cmd := ctx.cmd
 	cmdName := ctx.name
@@ -640,6 +664,11 @@ func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err erro
 		return fs, err
 	}
 
+	// Expand the posix-style single-token-multiple-values flags.
+	if p.opts.AllowPosixSTMO {
+		cmdArgs = expandSMTOFlags(ctx.flagMap, cmdArgs)
+	}
+
 	if err = fs.Parse(cmdArgs); err != nil {
 		return fs, err
 	}
@@ -673,6 +702,37 @@ func checkNonflagsLength(nonflags []*_flag, args []string) (valid bool) {
 	return j == len(args)
 }
 
+func expandSMTOFlags(flagMap map[string]*_flag, args []string) []string {
+	out := make([]string, 0, len(args))
+	for _, a := range args {
+		if !strings.HasPrefix(a, "-") || strings.HasPrefix(a, "--") {
+			out = append(out, a)
+			continue
+		}
+		name := a[1:]
+		if f := flagMap[name]; f != nil {
+			out = append(out, a)
+			continue
+		}
+		shouldExpand := true
+		for i := 0; i < len(name); i++ {
+			f := flagMap[name[i:i+1]]
+			if f == nil || !f.isBoolean() {
+				shouldExpand = false
+				break
+			}
+		}
+		if !shouldExpand {
+			out = append(out, a)
+			continue
+		}
+		for i := 0; i < len(name); i++ {
+			out = append(out, "-"+name[i:i+1])
+		}
+	}
+	return out
+}
+
 // PrintHelp prints usage doc of the current command to stderr.
 func (p *App) PrintHelp() {
 	p.printUsage()
@@ -691,12 +751,6 @@ func (p *App) SetGlobalFlags(v interface{}) {
 type withGlobalFlagArgs struct {
 	GlobalFlags interface{}
 	CmdArgs     interface{}
-}
-
-// KeepCommandOrder makes Parse to print commands in the order of adding
-// the commands. By default, it prints commands in ascii-order.
-func (p *App) KeepCommandOrder() {
-	p.keepCmdOrder = true
 }
 
 func clip(s []string) []string {
@@ -749,14 +803,6 @@ func (e *invalidCmdError) Error() string {
 		cmdName += " " + e.groupName
 	}
 	return fmt.Sprintf("'%s' is not a valid command. See '%s -h' for help.", e.invalidCmdName, cmdName)
-}
-
-type ambiguousArgumentsError struct {
-	args []string
-}
-
-func (e *ambiguousArgumentsError) Error() string {
-	return fmt.Sprintf("cannot resolve ambiguous %s", formatErrorArguments(e.args))
 }
 
 type unexpectedArgsError struct {

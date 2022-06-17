@@ -198,6 +198,10 @@ func applyValue(rv reflect.Value, s string) error {
 	return nil
 }
 
+func (f *_flag) isBoolean() bool {
+	return f.rv.Kind() == reflect.Bool
+}
+
 func (f *_flag) isSlice() bool {
 	return f.rv.Kind() == reflect.Slice
 }
@@ -330,10 +334,10 @@ func (f *_flag) validate() error {
 		return newProgramingError("shall not set an argument to be hidden, %s", f.name)
 	}
 	if f.hidden && f.required {
-		return newProgramingError("modifiers H, R (hidden and required) shall not be used together, %s", f.helpName())
+		return newProgramingError("modifiers H & R shall not be used together, %s", f.helpName())
 	}
 	if f.deprecated && f.required {
-		return newProgramingError("modifiers D, R (deprecated and required) shall not be used together, %s", f.helpName())
+		return newProgramingError("modifiers D & R shall not be used together, %s", f.helpName())
 	}
 	if !isSupportedType(f.rv) {
 		return newProgramingError("unsupported value type %v for %s", f.rv.Type(), f.helpName())
@@ -357,7 +361,18 @@ func (f *_flag) validate() error {
 	return nil
 }
 
-func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value) (flags, nonflags []*_flag, err error) {
+func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (flags, nonflags []*_flag, err error) {
+
+	appendFlag := func(f *_flag) {
+		if f.name != "" {
+			flagMap[f.name] = f
+		}
+		if f.short != "" {
+			flagMap[f.short] = f
+		}
+		flags = append(flags, f)
+	}
+
 	rt := rv.Type()
 	for i := 0; i < rt.NumField(); i++ {
 		fv := rv.Field(i)
@@ -391,11 +406,13 @@ func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value) (flags, nonfla
 			continue
 		}
 		if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) {
-			subFlags, subNonflags, subErr := parseTags(isGlobalFlag, fs, fv)
+			subFlags, subNonflags, subErr := parseTags(isGlobalFlag, fs, fv, flagMap)
 			if subErr != nil {
 				return nil, nil, subErr
 			}
-			flags = append(flags, subFlags...)
+			for _, f := range subFlags {
+				appendFlag(f)
+			}
 			nonflags = append(nonflags, subNonflags...)
 			continue
 		}
@@ -414,7 +431,7 @@ func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value) (flags, nonfla
 			nonflags = append(nonflags, f)
 			continue
 		}
-		flags = append(flags, f)
+		appendFlag(f)
 		if fv.Kind() == reflect.Bool {
 			ptr := fv.Addr().Interface().(*bool)
 			fs.BoolVar(ptr, f.name, f.rv.Bool(), f.description)
