@@ -104,12 +104,12 @@ func formatValue(rv reflect.Value) string {
 	switch rv.Kind() {
 	case reflect.Bool:
 		return strconv.FormatBool(rv.Bool())
-	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if rv.Type() == reflect.TypeOf(time.Duration(0)) {
 			return rv.Interface().(time.Duration).String()
 		}
 		return strconv.FormatInt(rv.Int(), 10)
-	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return strconv.FormatUint(rv.Uint(), 10)
 	case reflect.Float32, reflect.Float64:
 		return strconv.FormatFloat(rv.Float(), 'g', -1, 64)
@@ -147,7 +147,7 @@ func applyValue(rv reflect.Value, s string) error {
 			return err
 		}
 		rv.SetBool(b)
-	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		var i int64
 		var d time.Duration
 		var err error
@@ -161,7 +161,7 @@ func applyValue(rv reflect.Value, s string) error {
 			return err
 		}
 		rv.SetInt(i)
-	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		u, err := strconv.ParseUint(s, 10, 64)
 		if err != nil {
 			return err
@@ -175,23 +175,23 @@ func applyValue(rv reflect.Value, s string) error {
 		rv.SetFloat(f)
 	case reflect.String:
 		rv.SetString(s)
-	case reflect.Slice:
+	case reflect.Slice: // []basicType
 		e := reflect.New(rv.Type().Elem()).Elem()
 		if err := applyValue(e, s); err != nil {
 			return err
 		}
 		rv.Set(reflect.Append(rv, e))
-	case reflect.Map: // map[string]string
+	case reflect.Map: // map[string]basicType
 		if rv.IsNil() {
 			rv.Set(reflect.MakeMap(rv.Type()))
 		}
 		parts := append(strings.SplitN(s, "=", 2), "")
 		k := parts[0]
-		val := reflect.New(rv.Type().Elem())
-		if err := applyValue(val.Elem(), parts[1]); err != nil {
+		val := reflect.New(rv.Type().Elem()).Elem()
+		if err := applyValue(val, parts[1]); err != nil {
 			return err
 		}
-		rv.SetMapIndex(reflect.ValueOf(k), val.Elem())
+		rv.SetMapIndex(reflect.ValueOf(k), val)
 	default:
 		panic(fmt.Sprintf("unspported flag value type: %v", rv.Type()))
 	}
@@ -225,9 +225,9 @@ func (f *_flag) isZero() bool {
 
 func (f *_flag) helpName() string {
 	if f.nonflag {
-		return "argument " + f.name
+		return fmt.Sprintf("argument '%s'", f.name)
 	}
-	return "flag -" + f.name
+	return fmt.Sprintf("flag '-%s'", f.name)
 }
 
 func (f *_flag) usageName() string {
@@ -244,12 +244,12 @@ func usageName(typ reflect.Type) string {
 	switch typ.Kind() {
 	case reflect.Bool:
 		return "bool"
-	case reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		if typ == reflect.TypeOf(time.Duration(0)) {
 			return "duration"
 		}
 		return "int"
-	case reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return "uint"
 	case reflect.Float32, reflect.Float64:
 		return "float"
@@ -259,7 +259,8 @@ func usageName(typ reflect.Type) string {
 		elemName := usageName(typ.Elem())
 		return "[]" + elemName
 	case reflect.Map:
-		return "map"
+		elemName := usageName(typ.Elem())
+		return "map[string]" + elemName
 	default:
 		return "value"
 	}
@@ -361,6 +362,19 @@ func (f *_flag) validate() error {
 	return nil
 }
 
+func validateNonflags(nonflags []*_flag) error {
+	var compositeTypeArg *_flag
+	for _, f := range nonflags {
+		if compositeTypeArg != nil {
+			return newProgramingError("%s after composite type %s will never get a value, you may define it as a flag", f.helpName(), compositeTypeArg.helpName())
+		}
+		if isCompositeType(f.rv.Kind()) {
+			compositeTypeArg = f
+		}
+	}
+	return nil
+}
+
 func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (flags, nonflags []*_flag, err error) {
 
 	appendFlag := func(f *_flag) {
@@ -445,6 +459,9 @@ func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[st
 			fs.Var(f, f.short, f.description)
 		}
 	}
+	if err = validateNonflags(nonflags); err != nil {
+		return nil, nil, err
+	}
 	sort.Slice(flags, func(i, j int) bool {
 		return strings.ToLower(flags[i].name) < strings.ToLower(flags[j].name)
 	})
@@ -485,13 +502,17 @@ func isFlagValueImpl(rv reflect.Value) bool {
 func isSupportedBasicType(kind reflect.Kind) bool {
 	switch kind {
 	case reflect.Bool,
-		reflect.Int, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
 		reflect.Float32, reflect.Float64,
 		reflect.String:
 		return true
 	}
 	return false
+}
+
+func isCompositeType(kind reflect.Kind) bool {
+	return !isSupportedBasicType(kind)
 }
 
 var spaceRE = regexp.MustCompile(`\s+`)

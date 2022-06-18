@@ -47,6 +47,38 @@ func Test_flag_DefaultValue(t *testing.T) {
 	assert.Contains(t, got, `(default "arg2str")`)
 }
 
+func Test_flag_CompositeType(t *testing.T) {
+	table := [][]interface{}{
+		{&struct {
+			S1 []uint8 `cli:"s1"`
+		}{}, "s1 []uint"},
+		{&struct {
+			S2 []time.Duration `cli:"s2"`
+		}{}, "s2 []duration"},
+		{&struct {
+			M1 map[string]float64 `cli:"m1"`
+		}{}, "m1 map[string]float"},
+		{&struct {
+			M2 map[string]time.Duration `cli:"m2"`
+		}{}, "m2 map[string]duration"},
+	}
+
+	for _, row := range table {
+		resetDefaultApp()
+		args := row[0]
+		fs, err := Parse(args, WithErrorHandling(flag.ContinueOnError), WithArgs([]string{}))
+		assert.Nil(t, err)
+
+		var buf bytes.Buffer
+		fs.SetOutput(&buf)
+		fs.Usage()
+
+		got := buf.String()
+		want := row[1]
+		assert.Contains(t, got, want)
+	}
+}
+
 type MyMap map[string]string
 
 func Test_flag_Map(t *testing.T) {

@@ -178,7 +178,6 @@ func TestParsing_DefaultValues(t *testing.T) {
 		Slice2 []string `cli:"-slice2"`
 
 		Arg1 []int `cli:"arg1"`
-		Arg2 []int `cli:"arg2"`
 	}
 	_, err := Parse(&args, WithArgs([]string{
 		"-a1",
@@ -205,7 +204,6 @@ func TestParsing_DefaultValues(t *testing.T) {
 	assert.Equal(t, []string{"d", "e", "f"}, args.Slice2)
 
 	assert.Equal(t, []int{1, 2, 3}, args.Arg1) // from input args
-	assert.Nil(t, args.Arg2)
 }
 
 func TestParse_EnvValues(t *testing.T) {
