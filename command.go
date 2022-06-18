@@ -11,6 +11,8 @@ type Command struct {
 	Description string
 	Hidden      bool
 
+	aliasOf string
+
 	f func()
 
 	idx   int
@@ -37,15 +39,6 @@ func isSubCommand(parent, sub string) bool {
 type commands []*Command
 
 func (p *commands) add(cmd *Command) {
-	cmd.Name = normalizeCmdName(cmd.Name)
-	if cmd.Name == "" {
-		panic("command name must not be empty")
-	}
-	for _, x := range *p {
-		if x.Name == cmd.Name {
-			panic("command name must be unique")
-		}
-	}
 	cmd.idx = len(*p) + 1
 	cmd.level = len(strings.Fields(cmd.Name))
 	*p = append(*p, cmd)

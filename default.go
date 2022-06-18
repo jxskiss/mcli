@@ -25,6 +25,11 @@ func Add(name string, f func(), description string) {
 	defaultApp.Add(name, f, description)
 }
 
+// AddAlias adds an alias name for a command.
+func AddAlias(aliasName, target string) {
+	defaultApp.AddAlias(aliasName, target)
+}
+
 // AddHidden adds a hidden command.
 //
 // A hidden command won't be showed in help, except that when a special flag

@@ -709,3 +709,20 @@ func TestApp_AllowPosixSTMO(t *testing.T) {
 	assert.True(t, args1.CBool)
 	assert.True(t, args1.EBool)
 }
+
+func TestApp_AliasCommand(t *testing.T) {
+	resetDefaultApp()
+	Add("cmd1", dummyCmd, "dummy cmd1")
+	Add("cmd2", dummyCmd, "dummy cmd2")
+	AddAlias("cmd3", "cmd1")
+
+	var buf bytes.Buffer
+	defaultApp.getFlagSet().SetOutput(&buf)
+	PrintHelp()
+
+	got := buf.String()
+	assert.Contains(t, got, "COMMANDS")
+	assert.Contains(t, got, "cmd1    dummy cmd1")
+	assert.Contains(t, got, "cmd2    dummy cmd2")
+	assert.Contains(t, got, `cmd3    Alias of command "cmd1"`)
+}

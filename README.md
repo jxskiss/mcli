@@ -44,7 +44,9 @@ which is licensed under the Apache License 2.0.
 * Automatic help flag recognition of `-h`, `--help`, etc.
 * Compatible with the standard library's flag.FlagSet.
 * Optional posix-style single token multiple options command line parsing.
+* Alias command, so you can reorganize commands without breaking them.
 * Flexibility to define your own usage messages.
+* Minimal dependency.
 * Makes you love writing cli programs in Go.
 
 ## Usage
@@ -256,6 +258,7 @@ If there is slice or map arguments, it will match all following arguments.
 ### v0.4.0 (upcoming)
 
 - New: new option to allow parsing posix-style single token multiple options.
+- New: support alias commands.
 - Change: optimize help padding.
 - Change: remove api `KeepCommandOrder`, replaced by `SetOptions`.
 

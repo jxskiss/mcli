@@ -35,13 +35,14 @@ func NewApp() *App {
 
 // App holds the state of a cli application.
 type App struct {
-	opts        Options
+	opts Options
+
+	cmdMap      map[string]*Command
 	cmds        commands
 	groups      map[string]bool
 	globalFlags interface{}
 
 	ctx *parsingContext
-	fs  *flag.FlagSet
 }
 
 // SetOptions sets optional options for App.
@@ -50,6 +51,17 @@ func (p *App) SetOptions(opts Options) {
 }
 
 func (p *App) addCommand(cmd *Command) {
+	cmd.Name = normalizeCmdName(cmd.Name)
+	if cmd.Name == "" {
+		panic("command name must not be empty")
+	}
+	if p.cmdMap[cmd.Name] != nil {
+		panic("command name must be unique")
+	}
+	if p.cmdMap == nil {
+		p.cmdMap = make(map[string]*Command)
+	}
+	p.cmdMap[cmd.Name] = cmd
 	p.cmds.add(cmd)
 	if p.groups == nil {
 		p.groups = make(map[string]bool)
@@ -72,19 +84,15 @@ func (p *App) getParsingContext() *parsingContext {
 
 func (p *App) resetParsingContext() {
 	p.ctx = &parsingContext{app: p, opts: newParseOptions()}
-	p.fs = nil
 }
 
 func (p *App) getFlagSet() *flag.FlagSet {
-	if p.fs == nil {
-		p.fs = flag.NewFlagSet("", flag.ExitOnError)
-		p.fs.Usage = p.printUsage
-	}
-	return p.fs
+	return p.getParsingContext().getFlagSet()
 }
 
 type parsingContext struct {
 	app *App
+	fs  *flag.FlagSet
 
 	name string
 	args *[]string
@@ -102,7 +110,11 @@ type parsingContext struct {
 }
 
 func (ctx *parsingContext) getFlagSet() *flag.FlagSet {
-	return ctx.app.getFlagSet()
+	if ctx.fs == nil {
+		ctx.fs = flag.NewFlagSet("", flag.ExitOnError)
+		ctx.fs.Usage = ctx.app.printUsage
+	}
+	return ctx.fs
 }
 
 func (ctx *parsingContext) getInvalidCmdName() string {
@@ -303,7 +315,6 @@ func (p *App) printUsage() {
 	cmds := p.cmds
 	keepCmdOrder := p.opts.KeepCommandOrder
 
-	cmd := ctx.cmd
 	cmdName := ctx.name
 	flags := ctx.flags
 	nonflags := ctx.nonflags
@@ -318,13 +329,24 @@ func (p *App) printUsage() {
 		}
 	}
 	subCmds := cmds.listSubCommandsToPrint(cmdName, showHidden)
-
 	progName := getProgramName()
 	hasFlags, hasNonflags := flagCount > 0, len(nonflags) > 0
 	hasSubCmds := len(subCmds) > 0
+
 	usage := ""
-	if cmd != nil && cmd.Description != "" {
-		usage += cmd.Description + "\n\n"
+	cmd := ctx.cmd
+	if cmd != nil {
+		if cmd.aliasOf != "" {
+			usage += cmd.Description + "\n"
+			cmd = p.cmdMap[cmd.aliasOf]
+			cmdName = cmd.Name
+		}
+		if cmd.Description != "" {
+			usage += cmd.Description + "\n"
+		}
+		if usage != "" {
+			usage += "\n"
+		}
 	}
 	usage += "USAGE:\n  " + progName
 	if cmdName != "" {
@@ -472,6 +494,22 @@ func (p *App) Add(name string, f func(), description string) {
 		Name:        name,
 		Description: description,
 		f:           f,
+	})
+}
+
+// AddAlias adds an alias name for a command.
+func (p *App) AddAlias(aliasName, target string) {
+	cmd := p.cmdMap[target]
+	if cmd == nil {
+		panic(fmt.Sprintf("alias command target %q does not exist", target))
+	}
+
+	desc := fmt.Sprintf("Alias of command %q", target)
+	p.addCommand(&Command{
+		Name:        aliasName,
+		Description: desc,
+		aliasOf:     target,
+		f:           cmd.f,
 	})
 }
 

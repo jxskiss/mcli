@@ -569,3 +569,25 @@ func Example_githubCliCommandIssueEdit() {
 		panic(err)
 	}
 }
+
+func ExampleAddAlias() {
+	defer markExampleTest()()
+
+	var addCommands = func() {
+		Add("cmda", dummyCmd, "A description for cmda")
+		Add("cmdb", dummyCmd, "Do something with this cmdb command")
+		AddAlias("cmd alias", "cmdb")
+	}
+
+	resetDefaultApp()
+	addCommands()
+	os.Args = []string{"demo", "cmd", "alias"}
+	Run()
+
+	// Output:
+	// Alias of command "cmdb"
+	// Do something with this cmdb command
+	//
+	// USAGE:
+	//   demo cmdb
+}
