@@ -153,6 +153,7 @@ Also, there are some sophisticated examples:
 - `SetOptions` sets optional options for App.
 - `SetGlobalFlags` sets global flags, global flags are available to all commands.
 - `Add` adds a command.
+- `AddAlias` adds an alias name for a command.
 - `AddHidden` adds a hidden command.
 - `AddGroup` adds a group explicitly. A group is a common prefix for some commands.
   It's not required to add group before adding sub commands, but user can use this function
@@ -255,36 +256,23 @@ If there is slice or map arguments, it will match all following arguments.
 
 ## Changelog
 
-### v0.4.0 (upcoming)
+### v0.4.0 @ 2022-06-18
 
-- New: new option to allow parsing posix-style single token multiple options.
-- New: support alias commands.
-- Change: optimize help padding.
-- Change: remove api `KeepCommandOrder`, replaced by `SetOptions`.
-
-### v0.3.1 @ 2022-06-17
-
-- Fix parsing flag `--mcli-show-hidden`
-- Change: tidy code for better maintainability
-
-### v0.3.0 @ 2022-06-16
-
-- Fix: reflect.Pointer when using with Go below 1.18.
+- Fix: reflect.Pointer not exists when using with Go below 1.18.
 - Fix: error handling for invalid command.
 - New: add options `ReplaceUsage` and `WithFooter` to customize usage help.
+- New: add option to allow parsing posix-style single token multiple options.
+- New: support alias commands.
+- Change: remove api `KeepCommandOrder`, replaced by `SetOptions`.
+- Change: optimize help padding.
 - Change: refactor code for better maintainability.
 
 ### v0.2.1 @ 2022-06-11
 
-- Improve compatibility with flag.FlagSet.
-
-### v0.2.0 @ 2022-06-11
-
-New features:
-
 - Support alternative 'mcli' tag.
 - Support global flags.
 - Support keep command order in help.
+- Improve compatibility with flag.FlagSet.
 - Improve examples and docs.
 
 ### v0.1.1 @ 2022-03-17
