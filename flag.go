@@ -1,6 +1,7 @@
 package mcli
 
 import (
+	"encoding"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -47,9 +48,15 @@ func (m Modifier) apply(f *_flag) {
 	}
 }
 
+type textValue interface {
+	encoding.TextMarshaler
+	encoding.TextUnmarshaler
+}
+
 var (
 	flagGetterTyp = reflect.TypeOf((*flag.Getter)(nil)).Elem()
 	flagValueTyp  = reflect.TypeOf((*flag.Value)(nil)).Elem()
+	textValueTyp  = reflect.TypeOf((*textValue)(nil)).Elem()
 )
 
 // _flag implements flag.Value.
@@ -95,11 +102,22 @@ func (f *_flag) String() string {
 }
 
 func formatValue(rv reflect.Value) string {
+	if rv.Kind() == reflect.Ptr && rv.IsNil() {
+		rv = reflect.New(rv.Type().Elem())
+	}
 	if rv.Type().Implements(flagValueTyp) {
 		return rv.Interface().(flag.Value).String()
 	}
 	if rv.CanAddr() && rv.Addr().Type().Implements(flagValueTyp) {
 		return rv.Addr().Interface().(flag.Value).String()
+	}
+	if rv.Type().Implements(textValueTyp) {
+		b, _ := rv.Interface().(textValue).MarshalText()
+		return string(b)
+	}
+	if rv.CanAddr() && rv.Addr().Type().Implements(textValueTyp) {
+		b, _ := rv.Addr().Interface().(textValue).MarshalText()
+		return string(b)
 	}
 	switch rv.Kind() {
 	case reflect.Bool:
@@ -134,11 +152,20 @@ func applyValue(rv reflect.Value, s string) error {
 	if s == "" {
 		return nil
 	}
+	if rv.Kind() == reflect.Ptr && rv.IsNil() {
+		rv.Set(reflect.New(rv.Type().Elem()))
+	}
 	if rv.Type().Implements(flagValueTyp) {
 		return rv.Interface().(flag.Value).Set(s)
 	}
-	if rv.Addr().Type().Implements(flagValueTyp) {
+	if rv.CanAddr() && rv.Addr().Type().Implements(flagValueTyp) {
 		return rv.Addr().Interface().(flag.Value).Set(s)
+	}
+	if rv.Type().Implements(textValueTyp) {
+		return rv.Interface().(textValue).UnmarshalText([]byte(s))
+	}
+	if rv.CanAddr() && rv.Addr().Type().Implements(textValueTyp) {
+		return rv.Addr().Interface().(textValue).UnmarshalText([]byte(s))
 	}
 	switch rv.Kind() {
 	case reflect.Bool:
@@ -216,10 +243,27 @@ func (f *_flag) isString() bool {
 
 func (f *_flag) isZero() bool {
 	typ := f.rv.Type()
+	if isFlagValueImpl(f.rv) || isTextValueImpl(f.rv) {
+		var z reflect.Value
+		if typ.Kind() == reflect.Ptr {
+			z = reflect.New(typ.Elem())
+		} else {
+			z = reflect.Zero(typ)
+		}
+		var zeroStr string
+		if isFlagValueImpl(f.rv) {
+			zeroStr = z.Interface().(flag.Value).String()
+		} else {
+			b, _ := z.Interface().(textValue).MarshalText()
+			zeroStr = string(b)
+		}
+		return f.defValue == zeroStr
+	}
+	// Check comparable values.
 	if f.rv.Type().Comparable() {
 		return reflect.Zero(typ).Interface() == f.rv.Interface()
 	}
-	// else it must be a slice or a map
+	// Else it must be a slice or a map.
 	return f.rv.Len() == 0
 }
 
@@ -419,7 +463,7 @@ func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[st
 		if ft.PkgPath != "" { // unexported fields
 			continue
 		}
-		if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) {
+		if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) && !isTextValueImpl(fv) {
 			subFlags, subNonflags, subErr := parseTags(isGlobalFlag, fs, fv, flagMap)
 			if subErr != nil {
 				return nil, nil, subErr
@@ -477,7 +521,7 @@ func isSupportedType(rv reflect.Value) bool {
 	if _, ok := rv.Interface().(bool); ok {
 		return true
 	}
-	if isFlagValueImpl(rv) {
+	if isFlagValueImpl(rv) || isTextValueImpl(rv) {
 		return true
 	}
 	if isSupportedBasicType(rv.Kind()) {
@@ -499,6 +543,11 @@ func isFlagValueImpl(rv reflect.Value) bool {
 		(rv.CanAddr() && rv.Addr().Type().Implements(flagValueTyp))
 }
 
+func isTextValueImpl(rv reflect.Value) bool {
+	return rv.Type().Implements(textValueTyp) ||
+		(rv.CanAddr() && rv.Addr().Type().Implements(textValueTyp))
+}
+
 func isSupportedBasicType(kind reflect.Kind) bool {
 	switch kind {
 	case reflect.Bool,
@@ -512,7 +561,7 @@ func isSupportedBasicType(kind reflect.Kind) bool {
 }
 
 func isCompositeType(kind reflect.Kind) bool {
-	return !isSupportedBasicType(kind)
+	return kind == reflect.Slice || kind == reflect.Map
 }
 
 var spaceRE = regexp.MustCompile(`\s+`)

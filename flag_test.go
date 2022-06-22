@@ -3,6 +3,7 @@ package mcli
 import (
 	"bytes"
 	"flag"
+	"net"
 	"testing"
 	"time"
 
@@ -102,4 +103,35 @@ func Test_flag_Map(t *testing.T) {
 	assert.Equal(t, map[string]string{"key1": "val1", "key2": "val2"}, args.M1)
 	assert.Equal(t, MyMap{"key3": "val3", "key4": "val4"}, args.M2)
 	assert.Equal(t, map[string]time.Duration{"key5": time.Second, "key6": 100 * time.Millisecond}, args.M3)
+}
+
+func Test_flag_TextValue(t *testing.T) {
+	type args struct {
+		A1 net.IP     `cli:"-a1"`
+		A2 time.Time  `cli:"-a2"`
+		A3 *time.Time `cli:"-a3"`
+	}
+
+	app1 := NewApp()
+	args1 := &args{}
+	fs, err := app1.Parse(args1, WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{
+			"-a1", "4.3.2.1",
+			"-a2", "2022-06-23T01:00:00+08:00",
+			"-a3", "2022-06-23T02:00:00+08:00",
+		}))
+	_ = fs
+	assert.Nil(t, err)
+	assert.Equal(t, "4.3.2.1", args1.A1.String())
+	assert.Equal(t, "2022-06-23T01:00:00+08:00", args1.A2.Format(time.RFC3339))
+	assert.Equal(t, "2022-06-23T02:00:00+08:00", args1.A3.Format(time.RFC3339))
+
+	app2 := NewApp()
+	args2 := &args{}
+	fs, err = app2.Parse(args2, WithErrorHandling(flag.ContinueOnError), WithArgs([]string{}))
+	_ = fs
+	assert.Nil(t, err)
+	assert.Zero(t, args2.A1)
+	assert.True(t, args2.A2.IsZero())
+	assert.Nil(t, args2.A3)
 }
