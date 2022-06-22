@@ -21,7 +21,8 @@ func SetGlobalFlags(v interface{}) {
 }
 
 // Add adds a command.
-func Add(name string, f func(), description string) {
+// f must be a function of signature `func()` or `func(*App)`, else it panics.
+func Add(name string, f interface{}, description string) {
 	defaultApp.Add(name, f, description)
 }
 
@@ -31,10 +32,11 @@ func AddAlias(aliasName, target string) {
 }
 
 // AddHidden adds a hidden command.
+// f must be a function of signature `func()` or `func(*App)`, else it panics.
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
-func AddHidden(name string, f func(), description string) {
+func AddHidden(name string, f interface{}, description string) {
 	defaultApp.AddHidden(name, f, description)
 }
 

@@ -122,7 +122,7 @@ func formatValue(rv reflect.Value) string {
 		b, _ := json.Marshal(rv.Interface())
 		return string(b)
 	default:
-		return ""
+		panic(fmt.Sprintf("unsupported value type: %v", rv.Type()))
 	}
 }
 
@@ -193,7 +193,7 @@ func applyValue(rv reflect.Value, s string) error {
 		}
 		rv.SetMapIndex(reflect.ValueOf(k), val)
 	default:
-		panic(fmt.Sprintf("unspported flag value type: %v", rv.Type()))
+		panic(fmt.Sprintf("unsupported value type: %v", rv.Type()))
 	}
 	return nil
 }

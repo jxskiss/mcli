@@ -489,12 +489,24 @@ func printWithAlignment(out io.Writer, lines [][2]string) {
 }
 
 // Add adds a command.
-func (p *App) Add(name string, f func(), description string) {
+// f must be a function of signature `func()` or `func(*App)`, else it panics.
+func (p *App) Add(name string, f interface{}, description string) {
+	ff := p.validateFunc(f)
 	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
-		f:           f,
+		f:           ff,
 	})
+}
+
+func (p *App) validateFunc(f interface{}) func() {
+	switch ff := f.(type) {
+	case func():
+		return ff
+	case func(*App):
+		return func() { ff(p) }
+	}
+	panic(fmt.Sprintf("unsupported function type: %T", f))
 }
 
 // AddAlias adds an alias name for a command.
@@ -514,15 +526,17 @@ func (p *App) AddAlias(aliasName, target string) {
 }
 
 // AddHidden adds a hidden command.
+// f must be a function of signature `func()` or `func(*App)`, else it panics.
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
-func (p *App) AddHidden(name string, f func(), description string) {
+func (p *App) AddHidden(name string, f interface{}, description string) {
+	ff := p.validateFunc(f)
 	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
 		Hidden:      true,
-		f:           f,
+		f:           ff,
 	})
 }
 
