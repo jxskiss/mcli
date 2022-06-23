@@ -114,7 +114,7 @@ func Test_flag_TextValue(t *testing.T) {
 
 	app1 := NewApp()
 	args1 := &args{}
-	fs, err := app1.Parse(args1, WithErrorHandling(flag.ContinueOnError),
+	fs, err := app1.parseArgs(args1, WithErrorHandling(flag.ContinueOnError),
 		WithArgs([]string{
 			"-a1", "4.3.2.1",
 			"-a2", "2022-06-23T01:00:00+08:00",
@@ -128,7 +128,7 @@ func Test_flag_TextValue(t *testing.T) {
 
 	app2 := NewApp()
 	args2 := &args{}
-	fs, err = app2.Parse(args2, WithErrorHandling(flag.ContinueOnError), WithArgs([]string{}))
+	fs, err = app2.parseArgs(args2, WithErrorHandling(flag.ContinueOnError), WithArgs([]string{}))
 	_ = fs
 	assert.Nil(t, err)
 	assert.Zero(t, args2.A1)

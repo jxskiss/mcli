@@ -336,9 +336,9 @@ func (p *App) printUsage() {
 	usage := ""
 	cmd := ctx.cmd
 	if cmd != nil {
-		if cmd.aliasOf != "" {
+		if cmd.AliasOf != "" {
 			usage += cmd.Description + "\n"
-			cmd = p.cmdMap[cmd.aliasOf]
+			cmd = p.cmdMap[cmd.AliasOf]
 			cmdName = cmd.Name
 		}
 		if cmd.Description != "" {
@@ -489,7 +489,7 @@ func printWithAlignment(out io.Writer, lines [][2]string) {
 }
 
 // Add adds a command.
-// f must be a function of signature `func()` or `func(*App)`, else it panics.
+// f must be a function of signature `func()` or `func(*Context)`, else it panics.
 func (p *App) Add(name string, f interface{}, description string) {
 	ff := p.validateFunc(f)
 	p.addCommand(&Command{
@@ -503,8 +503,12 @@ func (p *App) validateFunc(f interface{}) func() {
 	switch ff := f.(type) {
 	case func():
 		return ff
-	case func(*App):
-		return func() { ff(p) }
+	case func(*Context):
+		return func() {
+			cmd := p.getParsingContext().cmd
+			ctx := newContext(p, cmd)
+			ff(ctx)
+		}
 	}
 	panic(fmt.Sprintf("unsupported function type: %T", f))
 }
@@ -520,13 +524,13 @@ func (p *App) AddAlias(aliasName, target string) {
 	p.addCommand(&Command{
 		Name:        aliasName,
 		Description: desc,
-		aliasOf:     target,
+		AliasOf:     target,
 		f:           cmd.f,
 	})
 }
 
 // AddHidden adds a hidden command.
-// f must be a function of signature `func()` or `func(*App)`, else it panics.
+// f must be a function of signature `func()` or `func(*Context)`, else it panics.
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
@@ -563,8 +567,8 @@ func (p *App) AddHelp() {
 }
 
 func (p *App) groupCmd() {
-	p.Parse(nil)
-	p.PrintHelp()
+	p.parseArgs(nil)
+	p.printUsage()
 }
 
 func (p *App) helpCmd() {
@@ -656,9 +660,9 @@ func (p *App) searchCmd(osArgs []string) (invalidCmdName string, found bool) {
 	return ctx.getInvalidCmdName(), false
 }
 
-// Parse parses the command line for flags and arguments.
-// v should be a pointer to a struct, else it panics.
-func (p *App) Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
+// parseArgs parses the command line for flags and arguments.
+// v must be a pointer to a struct, else it panics.
+func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	if v == nil {
 		v = &struct{}{}
 	}
@@ -783,11 +787,6 @@ func expandSMTOFlags(flagMap map[string]*_flag, args []string) []string {
 		}
 	}
 	return out
-}
-
-// PrintHelp prints usage doc of the current command to stderr.
-func (p *App) PrintHelp() {
-	p.printUsage()
 }
 
 // SetGlobalFlags sets global flags, global flags are available to all commands.

@@ -11,7 +11,7 @@ type Command struct {
 	Description string
 	Hidden      bool
 
-	aliasOf string
+	AliasOf string
 
 	f func()
 

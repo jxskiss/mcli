@@ -21,7 +21,7 @@ func SetGlobalFlags(v interface{}) {
 }
 
 // Add adds a command.
-// f must be a function of signature `func()` or `func(*App)`, else it panics.
+// f must be a function of signature `func()` or `func(*Context)`, else it panics.
 func Add(name string, f interface{}, description string) {
 	defaultApp.Add(name, f, description)
 }
@@ -32,7 +32,7 @@ func AddAlias(aliasName, target string) {
 }
 
 // AddHidden adds a hidden command.
-// f must be a function of signature `func()` or `func(*App)`, else it panics.
+// f must be a function of signature `func()` or `func(*Context)`, else it panics.
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
@@ -65,12 +65,12 @@ func Run(args ...string) {
 }
 
 // Parse parses the command line for flags and arguments.
-// v should be a pointer to a struct, else it panics.
+// v must be a pointer to a struct, else it panics.
 func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
-	return defaultApp.Parse(v, opts...)
+	return defaultApp.parseArgs(v, opts...)
 }
 
 // PrintHelp prints usage doc of the current command to stderr.
 func PrintHelp() {
-	defaultApp.PrintHelp()
+	defaultApp.printUsage()
 }

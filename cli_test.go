@@ -23,9 +23,9 @@ func dummyCmd() {
 	PrintHelp()
 }
 
-func dummyCmdWithApp(app *App) {
-	app.Parse(nil)
-	app.PrintHelp()
+func dummyCmdWithContext(ctx *Context) {
+	ctx.Parse(nil)
+	ctx.PrintHelp()
 }
 
 func TestAddCommands(t *testing.T) {
@@ -730,10 +730,10 @@ func TestApp_AliasCommand(t *testing.T) {
 	assert.Contains(t, got, `cmd3    Alias of command "cmd1"`)
 }
 
-func TestApp_FunctionWithApp(t *testing.T) {
+func TestApp_FunctionWithContext(t *testing.T) {
 	resetDefaultApp()
-	Add("cmd1", dummyCmdWithApp, "dummy cmd1")
-	Add("cmd2", dummyCmdWithApp, "dummy cmd2")
+	Add("cmd1", dummyCmdWithContext, "dummy cmd1")
+	Add("cmd2", dummyCmdWithContext, "dummy cmd2")
 	AddAlias("cmd3", "cmd1")
 
 	var buf bytes.Buffer
