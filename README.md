@@ -22,7 +22,7 @@
 
 It is extremely easy to use, it makes you love writing cli programs in Go.
 
-Disclaimer: the original idea is borrowed from [shafreeck/cortana](https://github.com/shafreeck/cortana),
+Disclaimer: the original idea is inspired by [shafreeck/cortana](https://github.com/shafreeck/cortana),
 which is licensed under the Apache License 2.0.
 
 ## Features
@@ -255,6 +255,16 @@ and all arguments can be accessed by calling flagSet.Args() and flagSet.Arg(i).
 If there is slice or map arguments, it will match all following arguments.
 
 ## Changelog
+
+### v0.5.0 @ 2022-06-22
+
+- New: validate non-flag arguments for invalid usage.
+- New: support value implementing encoding.TextUnmarshaler,
+       allowing command-line flags and arguments to have types such as big.Int,
+       netip.Addr, and time.Time.
+- New: add type Context to allow using `func(*Context)` as command action,
+       making it easier to use manually created App.
+- Change: drop support for Go < 1.17.
 
 ### v0.4.0 @ 2022-06-18
 

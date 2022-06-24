@@ -61,13 +61,14 @@ GLOBAL OPTIONS:
 var globalFlags GlobalFlags
 
 func main() {
-	mcli.SetGlobalFlags(&globalFlags)
-	mcli.Add("run", cmdRun, "Register an account, then create and install a certificate")
-	mcli.Add("revoke", cmdRevoke, "Revoke a certificate")
-	mcli.Add("renew", cmdRenew, "Renew a certificate")
-	mcli.Add("dnshelp", cmdDnshelp, "Shows additional help for the '--dns' global option")
-	mcli.Add("list", cmdList, "Display certificates and accounts information")
-	mcli.Run()
+	app := mcli.NewApp()
+	app.SetGlobalFlags(&globalFlags)
+	app.Add("run", cmdRun, "Register an account, then create and install a certificate")
+	app.Add("revoke", cmdRevoke, "Revoke a certificate")
+	app.Add("renew", cmdRenew, "Renew a certificate")
+	app.Add("dnshelp", cmdDnshelp, "Shows additional help for the '--dns' global option")
+	app.Add("list", cmdList, "Display certificates and accounts information")
+	app.Run()
 }
 
 type GlobalFlags struct {
@@ -125,13 +126,13 @@ OPTIONS:
 
 */
 
-func cmdRun() {
+func cmdRun(ctx *mcli.Context) {
 	var args struct {
 		CommonCertFlags
 		Hook string `cli:"--run-hook, Define a hook. The hook is executed when the certificates are effectively created."`
 	}
-	mcli.Parse(&args)
-	mcli.PrintHelp()
+	ctx.Parse(&args)
+	ctx.PrintHelp()
 }
 
 /*
@@ -148,13 +149,13 @@ OPTIONS:
 
 */
 
-func cmdRevoke() {
+func cmdRevoke(ctx *mcli.Context) {
 	var args struct {
 		Keep   bool `cli:"-k, --keep, Keep the certificates after the revocation instead of archiving them."`
 		Reason int  `cli:"--reason, Identifies the reason for the certificate revocation. See https://www.rfc-editor.org/rfc/rfc5280.html#section-5.3.1. 0(unspecified),1(keyCompromise),2(cACompromise),3(affiliationChanged),4(superseded),5(cessationOfOperation),6(certificateHold),8(removeFromCRL),9(privilegeWithdrawn),10(aACompromise)"`
 	}
-	mcli.Parse(&args)
-	mcli.PrintHelp()
+	ctx.Parse(&args)
+	ctx.PrintHelp()
 }
 
 /*
@@ -176,15 +177,15 @@ OPTIONS:
 
 */
 
-func cmdRenew() {
+func cmdRenew(ctx *mcli.Context) {
 	var args struct {
 		CommonCertFlags
 		Days      int    `cli:"--days, The number of days left on a certificate to renew it." default:"30"`
 		ReuseKey  bool   `cli:"--reuse-key, Used to indicate you want to reuse your current private key for the new certificate."`
 		RenewHook string `cli:"--renew-hook, Define a hook. The hook is executed only when the certificates are effectively renewed."`
 	}
-	mcli.Parse(&args)
-	mcli.PrintHelp()
+	ctx.Parse(&args)
+	ctx.PrintHelp()
 }
 
 /*
@@ -201,11 +202,11 @@ More information: https://go-acme.github.io/lego/dns
 
 */
 
-func cmdDnshelp() {
+func cmdDnshelp(ctx *mcli.Context) {
 	var args struct {
 		Code string `cli:"-c"`
 	}
-	mcli.Parse(&args, mcli.DisableGlobalFlags(), mcli.ReplaceUsage(func() string {
+	ctx.Parse(&args, mcli.DisableGlobalFlags(), mcli.ReplaceUsage(func() string {
 		return `
 Credentials for DNS providers must be passed through environment variables.
 
@@ -221,7 +222,7 @@ More information: https://go-acme.github.io/lego/dns
 	}))
 
 	if args.Code == "" {
-		mcli.PrintHelp()
+		ctx.PrintHelp()
 	}
 
 	fmt.Println(os.Args)
@@ -241,11 +242,11 @@ OPTIONS:
 
 */
 
-func cmdList() {
+func cmdList(ctx *mcli.Context) {
 	var args struct {
 		Accounts bool `cli:"-a, --accounts, Display accounts."`
 		Names    bool `cli:"-n, --names, Display certificate common names only."`
 	}
-	mcli.Parse(&args)
-	mcli.PrintHelp()
+	ctx.Parse(&args)
+	ctx.PrintHelp()
 }
