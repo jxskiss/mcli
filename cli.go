@@ -577,7 +577,7 @@ func (p *App) helpCmd() {
 
 	// i.e. "program help"
 	if len(ctx.ambiguousArgs) == 0 {
-		p.runWithArgs(nil)
+		p.runWithArgs(nil, true)
 		return
 	}
 
@@ -593,7 +593,7 @@ func (p *App) helpCmd() {
 	}
 
 	// We got a valid command, print the help.
-	p.runWithArgs(append(ctx.ambiguousArgs, "-h"))
+	p.runWithArgs(append(ctx.ambiguousArgs, "-h"), true)
 }
 
 func (p *App) validateHelpCommand(name string) bool {
@@ -615,10 +615,10 @@ func (p *App) Run(args ...string) {
 	if len(args) == 0 {
 		args = os.Args[1:]
 	}
-	p.runWithArgs(args)
+	p.runWithArgs(args, true)
 }
 
-func (p *App) runWithArgs(args []string) {
+func (p *App) runWithArgs(args []string, exitOnInvalidCmd bool) {
 	invalidCmdName, found := p.searchCmd(args)
 	ctx := p.getParsingContext()
 	if found && ctx.cmd != nil {
@@ -628,10 +628,13 @@ func (p *App) runWithArgs(args []string) {
 	if invalidCmdName != "" {
 		err := newInvalidCmdError(ctx)
 		ctx.failError(err)
-		os.Exit(2)
+		if exitOnInvalidCmd {
+			os.Exit(2)
+		}
+	} else {
+		ctx.showHidden = hasBoolFlag(showHiddenFlag, args)
+		p.printUsage()
 	}
-	ctx.showHidden = hasBoolFlag(showHiddenFlag, args)
-	p.printUsage()
 }
 
 // searchCmd helps to do testing.

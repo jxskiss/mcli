@@ -388,7 +388,7 @@ func Test_searchCommand(t *testing.T) {
 	ctx, invalidCmdName, found = _search([]string{"group1", "cmd3", "sub2"})
 	assert.False(t, found)
 	assert.Nil(t, ctx.cmd)
-	assert.Equal(t, "", invalidCmdName)
+	assert.Equal(t, "group1 cmd3 sub2", invalidCmdName)
 	assert.Equal(t, "group1 cmd3", ctx.name)
 	assert.Equal(t, []string{"sub2"}, ctx.ambiguousArgs)
 }
@@ -754,4 +754,27 @@ func TestApp_FunctionWithContext(t *testing.T) {
 	got = buf.String()
 	assert.Contains(t, got, `Alias of command "cmd1"`)
 	assert.Contains(t, got, "dummy cmd1")
+}
+
+func TestApp_printSuggestion(t *testing.T) {
+	resetDefaultApp()
+	defaultApp.getFlagSet().Init("", flag.ContinueOnError)
+
+	Add("group-one cmd-one", dummyCmdWithContext, "group one command one")
+	Add("group-one cmd-two", dummyCmdWithContext, "group one command two")
+	Add("group-two cmd-three", dummyCmdWithContext, "group two command three")
+	Add("group-two cmd-four", dummyCmdWithContext, "group two command four")
+
+	var buf bytes.Buffer
+	defaultApp.getFlagSet().SetOutput(&buf)
+	defaultApp.runWithArgs([]string{"group-one", "cmd-ona"}, false)
+	got := buf.String()
+	assert.Contains(t, got, "Did you mean this?\n")
+	assert.Contains(t, got, "group-one cmd-one")
+
+	buf.Reset()
+	defaultApp.runWithArgs([]string{"group-two", "cmd-tree"}, false)
+	got = buf.String()
+	assert.Contains(t, got, "Did you mean this?\n")
+	assert.Contains(t, got, "group-two cmd-three")
 }

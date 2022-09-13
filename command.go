@@ -86,6 +86,8 @@ func (p commands) search(ctx *parsingContext, cmdArgs []string) (hasSub bool) {
 				cmd = nil
 			}
 			continue
+		} else {
+			hasSub = false
 		}
 		if ambiguousIdx == -1 {
 			ambiguousIdx = i
