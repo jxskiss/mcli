@@ -259,35 +259,4 @@ If there is slice or map arguments, it will match all following arguments.
 
 ## Changelog
 
-### v0.5.0 @ 2022-06-22
-
-- New: validate non-flag arguments for invalid usage.
-- New: support value implementing encoding.TextUnmarshaler,
-       allowing command-line flags and arguments to have types such as big.Int,
-       netip.Addr, and time.Time.
-- New: add type Context to allow using `func(*Context)` as command action,
-       making it easier to use manually created App.
-- Change: drop support for Go < 1.17.
-
-### v0.4.0 @ 2022-06-18
-
-- Fix: reflect.Pointer not exists when using with Go below 1.18.
-- Fix: error handling for invalid command.
-- New: add options `ReplaceUsage` and `WithFooter` to customize usage help.
-- New: add option to allow parsing posix-style single token multiple options.
-- New: support alias commands.
-- Change: remove api `KeepCommandOrder`, replaced by `SetOptions`.
-- Change: optimize help padding.
-- Change: refactor code for better maintainability.
-
-### v0.2.1 @ 2022-06-11
-
-- Support alternative 'mcli' tag.
-- Support global flags.
-- Support keep command order in help.
-- Improve compatibility with flag.FlagSet.
-- Improve examples and docs.
-
-### v0.1.1 @ 2022-03-17
-
-Initial public release.
+See [CHANGELOG](./CHANGELOG.md) for detailed change history.
