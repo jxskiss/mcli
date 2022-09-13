@@ -2,6 +2,7 @@
 
 [![GoDoc](https://img.shields.io/badge/api-Godoc-blue.svg)][godoc]
 [![Go Report Card](https://goreportcard.com/badge/github.com/jxskiss/mcli)][goreport]
+[![Coverage](https://codecov.io/gh/jxskiss/mcli/branch/main/graph/badge.svg)][codecov]
 [![Issues](https://img.shields.io/github/issues/jxskiss/mcli.svg)][issues]
 [![GitHub release](http://img.shields.io/github/release/jxskiss/mcli.svg)][release]
 [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg)][license]
@@ -9,6 +10,8 @@
 [godoc]: https://pkg.go.dev/github.com/jxskiss/mcli
 
 [goreport]: https://goreportcard.com/report/github.com/jxskiss/mcli
+
+[codecov]: https://codecov.io/gh/jxskiss/mcli
 
 [issues]: https://github.com/jxskiss/mcli/issues
 
