@@ -79,7 +79,7 @@ FLAGS:
   -n, --name string    Who do you want to say to (default "tom")
 
 ARGUMENTS:
-  text message (REQUIRED)    The message you want to send
+  text string (REQUIRED)    The 'message' you want to send
 
 exit status 2
 
@@ -138,7 +138,7 @@ func runCmd2Sub1() {
         Web      bool   `cli:"-w, --web,        Add body in browser"`
 
         // Can embed other structs.
-        CommonIssueArgs
+        Cmd2CommonArgs
     }
     mcli.Parse(&args)
 

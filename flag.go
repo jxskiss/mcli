@@ -270,24 +270,16 @@ func (f *_flag) isString() bool {
 
 func (f *_flag) isZero() bool {
 	typ := f.rv.Type()
-	if isFlagValueImpl(f.rv) || isTextValueImpl(f.rv) {
-		var z reflect.Value
-		if typ.Kind() == reflect.Ptr {
-			z = reflect.New(typ.Elem())
-		} else {
-			z = reflect.Zero(typ)
-		}
-		var zeroStr string
-		if isFlagValueImpl(f.rv) {
-			zeroStr = z.Interface().(flag.Value).String()
-		} else {
-			b, _ := z.Interface().(textValue).MarshalText()
-			zeroStr = string(b)
-		}
-		return f.defValue == zeroStr
+	if isFlagValueImpl(f.rv) {
+		zero := zeroFlagValueStr(f.rv)
+		return f.defValue == zero
+	}
+	if isTextValueImpl(f.rv) {
+		zero := zeroTextValueStr(f.rv)
+		return f.defValue == zero
 	}
 	// Check comparable values.
-	if f.rv.Type().Comparable() {
+	if typ.Comparable() {
 		return reflect.Zero(typ).Interface() == f.rv.Interface()
 	}
 	// Else it must be a slice or a map.
@@ -414,7 +406,7 @@ func (f *_flag) validate() error {
 	if !isSupportedType(f.rv) {
 		return newProgramingError("unsupported value type %v for %s", f.rv.Type(), f.helpName())
 	}
-	if f.defaultValueTag != "" {
+	if f.defaultValueTag != "" && !isFlagValueImpl(f.rv) && !isTextValueImpl(f.rv) {
 		if f.isSlice() {
 			return newProgramingError("default value is unsupported for slice type, %s", f.helpName())
 		}
@@ -433,7 +425,7 @@ func (f *_flag) validate() error {
 	return nil
 }
 
-func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (flags, nonflags []*_flag, err error) {
+func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (flags, nonflags []*_flag, err error) {
 	p := &flagParser{
 		fs:      fs,
 		flagMap: flagMap,
@@ -529,7 +521,7 @@ func (p *flagParser) parseField(
 
 	// Got a struct field, parse it recursively.
 	if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) && !isTextValueImpl(fv) {
-		subFlags, subNonflags, subErr := parseTags(isGlobalFlag, p.fs, fv, p.flagMap)
+		subFlags, subNonflags, subErr := parseFlags(isGlobalFlag, p.fs, fv, p.flagMap)
 		if subErr != nil {
 			return subErr
 		}
@@ -545,7 +537,7 @@ func (p *flagParser) parseField(
 
 	// Parse the flag.
 	var f *_flag
-	f, err := parseFlag(isGlobalFlag, cliTag, defaultValue, envTag, fv)
+	f, err := p.parseFlag(isGlobalFlag, cliTag, defaultValue, envTag, fv)
 	if err != nil {
 		return err
 	}
@@ -562,80 +554,9 @@ func (p *flagParser) parseField(
 	return nil
 }
 
-func (p *flagParser) validateNonflags() error {
-	var compositeTypeArg *_flag
-	for _, f := range p.nonflags {
-		if compositeTypeArg != nil {
-			return newProgramingError("%s after composite type %s will never get a value, you may define it as a flag", f.helpName(), compositeTypeArg.helpName())
-		}
-		if isCompositeType(f.rv.Kind()) {
-			compositeTypeArg = f
-		}
-	}
-	return nil
-}
-
-func (p *flagParser) sortFlags() {
-	sort.Slice(p.flags, func(i, j int) bool {
-		return strings.ToLower(p.flags[i].name) < strings.ToLower(p.flags[j].name)
-	})
-}
-
-func isIgnoreTag(tag string) bool {
-	parts := strings.Split(tag, ",")
-	return strings.TrimSpace(parts[0]) == "-"
-}
-
-func isSupportedType(rv reflect.Value) bool {
-	if _, ok := rv.Interface().(bool); ok {
-		return true
-	}
-	if isFlagValueImpl(rv) || isTextValueImpl(rv) {
-		return true
-	}
-	if isSupportedBasicType(rv.Kind()) {
-		return true
-	}
-	if rv.Kind() == reflect.Slice && isSupportedBasicType(rv.Type().Elem().Kind()) {
-		return true
-	}
-	if rv.Kind() == reflect.Map &&
-		rv.Type().Key().Kind() == reflect.String &&
-		isSupportedBasicType(rv.Type().Elem().Kind()) {
-		return true
-	}
-	return false
-}
-
-func isFlagValueImpl(rv reflect.Value) bool {
-	return rv.Type().Implements(flagValueTyp) ||
-		(rv.CanAddr() && rv.Addr().Type().Implements(flagValueTyp))
-}
-
-func isTextValueImpl(rv reflect.Value) bool {
-	return rv.Type().Implements(textValueTyp) ||
-		(rv.CanAddr() && rv.Addr().Type().Implements(textValueTyp))
-}
-
-func isSupportedBasicType(kind reflect.Kind) bool {
-	switch kind {
-	case reflect.Bool,
-		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-		reflect.Float32, reflect.Float64,
-		reflect.String:
-		return true
-	}
-	return false
-}
-
-func isCompositeType(kind reflect.Kind) bool {
-	return kind == reflect.Slice || kind == reflect.Map
-}
-
 var spaceRE = regexp.MustCompile(`\s+`)
 
-func parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Value) (*_flag, error) {
+func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Value) (*_flag, error) {
 	f := &_flag{
 		_value:   _value{rv},
 		isGlobal: isGlobal,
@@ -644,7 +565,7 @@ func parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Va
 	f.defaultValueTag = defaultValue
 	f.envTag = envTag
 
-	_parseCliTag(f, cliTag)
+	p.parseCliTag(f, cliTag)
 
 	if f.name == "" {
 		f.name = f.short
@@ -669,7 +590,7 @@ func parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Va
 	return f, nil
 }
 
-func _parseCliTag(f *_flag, cliTag string) {
+func (p *flagParser) parseCliTag(f *_flag, cliTag string) {
 	const (
 		modifier = iota
 		short
@@ -725,6 +646,98 @@ func _parseCliTag(f *_flag, cliTag string) {
 			f.description = p
 		}
 	}
+}
+
+func (p *flagParser) validateNonflags() error {
+	var compositeTypeArg *_flag
+	for _, f := range p.nonflags {
+		if compositeTypeArg != nil {
+			return newProgramingError("%s after composite type %s will never get a value, you may define it as a flag", f.helpName(), compositeTypeArg.helpName())
+		}
+		if isCompositeType(f.rv.Kind()) {
+			compositeTypeArg = f
+		}
+	}
+	return nil
+}
+
+func (p *flagParser) sortFlags() {
+	sort.Slice(p.flags, func(i, j int) bool {
+		return strings.ToLower(p.flags[i].name) < strings.ToLower(p.flags[j].name)
+	})
+}
+
+func isIgnoreTag(tag string) bool {
+	parts := strings.Split(tag, ",")
+	return strings.TrimSpace(parts[0]) == "-"
+}
+
+func isSupportedType(rv reflect.Value) bool {
+	if _, ok := rv.Interface().(bool); ok {
+		return true
+	}
+	if isFlagValueImpl(rv) || isTextValueImpl(rv) {
+		return true
+	}
+	if isSupportedBasicType(rv.Kind()) {
+		return true
+	}
+	if rv.Kind() == reflect.Slice && isSupportedBasicType(rv.Type().Elem().Kind()) {
+		return true
+	}
+	if rv.Kind() == reflect.Map &&
+		rv.Type().Key().Kind() == reflect.String &&
+		isSupportedBasicType(rv.Type().Elem().Kind()) {
+		return true
+	}
+	return false
+}
+
+func isFlagValueImpl(rv reflect.Value) bool {
+	return rv.Type().Implements(flagValueTyp) ||
+		(rv.CanAddr() && rv.Addr().Type().Implements(flagValueTyp))
+}
+
+func zeroFlagValueStr(rv reflect.Value) string {
+	typ := rv.Type()
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	zero := reflect.New(typ)
+	zero.Elem().Set(reflect.Zero(typ))
+	return zero.Interface().(flag.Value).String()
+}
+
+func isTextValueImpl(rv reflect.Value) bool {
+	return rv.Type().Implements(textValueTyp) ||
+		(rv.CanAddr() && rv.Addr().Type().Implements(textValueTyp))
+}
+
+func zeroTextValueStr(rv reflect.Value) string {
+	typ := rv.Type()
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+	}
+	zero := reflect.New(typ)
+	zero.Elem().Set(reflect.Zero(typ))
+	b, _ := zero.Interface().(textValue).MarshalText()
+	return string(b)
+}
+
+func isSupportedBasicType(kind reflect.Kind) bool {
+	switch kind {
+	case reflect.Bool,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64,
+		reflect.String:
+		return true
+	}
+	return false
+}
+
+func isCompositeType(kind reflect.Kind) bool {
+	return kind == reflect.Slice || kind == reflect.Map
 }
 
 func splitByComma(value string) []string {

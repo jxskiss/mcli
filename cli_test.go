@@ -598,28 +598,6 @@ func TestParse_UnsupportedType(t *testing.T) {
 	}
 }
 
-func TestWithName(t *testing.T) {
-	resetDefaultApp()
-	var args struct {
-		A flagValueImpl1 `cli:"-a"`
-		B flagValueImpl2 `cli:"-b"`
-	}
-	fs, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
-		WithName("my awesome command"),
-		WithArgs([]string{"-a", "1234", "-b", "abcd"}))
-	assert.Nil(t, err)
-
-	var buf bytes.Buffer
-	fs.SetOutput(&buf)
-	fs.Usage()
-
-	got := buf.String()
-	assert.Contains(t, got, "my awesome command [flags]\n")
-	assert.Contains(t, got, "FLAGS:")
-	assert.Contains(t, got, "  -a value")
-	assert.Contains(t, got, "  -b value")
-}
-
 func TestShowHidden(t *testing.T) {
 	var addCommands = func() {
 		Add("cmd1", dummyCmd, "A cmd1 description")

@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 )
 
@@ -129,7 +128,7 @@ func (ctx *parsingContext) getInvalidCmdName() string {
 func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 	fs := ctx.getFlagSet()
 	flagMap := make(map[string]*_flag)
-	flags, nonflags, err := parseTags(false, fs, rv, flagMap)
+	flags, nonflags, err := parseFlags(false, fs, rv, flagMap)
 	if err != nil {
 		if _, ok := err.(*programingError); ok {
 			panic(err)
@@ -291,72 +290,6 @@ func (p *App) printSuggestions(invalidCmdName string) {
 
 func (p *App) printUsage() {
 	newUsagePrinter(p).Do()
-}
-
-func printSubCommands(out io.Writer, cmds commands, showHidden bool, keepCmdOrder bool) {
-	if len(cmds) == 0 {
-		return
-	}
-	if keepCmdOrder {
-		sort.Slice(cmds, func(i, j int) bool {
-			return cmds[i].idx < cmds[j].idx
-		})
-	}
-
-	var cmdLines [][2]string
-	prefix := []string{""}
-	preName := ""
-	for _, cmd := range cmds {
-		if cmd.Name == "" || (cmd.Hidden && !showHidden) {
-			continue
-		}
-		if preName != "" && cmd.Name != preName {
-			if strings.HasPrefix(cmd.Name, preName) {
-				prefix = append(prefix, preName)
-			} else {
-				for i := len(prefix) - 1; i > 0; i-- {
-					if !strings.HasPrefix(cmd.Name, prefix[i]) {
-						prefix = prefix[:i]
-					}
-				}
-			}
-		}
-		leafCmdName := strings.TrimSpace(strings.TrimPrefix(cmd.Name, prefix[len(prefix)-1]))
-		name := strings.Repeat("  ", len(prefix)) + leafCmdName
-		description := cmd.Description
-		if cmd.Hidden {
-			name += " (HIDDEN)"
-		}
-		cmdLines = append(cmdLines, [2]string{name, description})
-		preName = cmd.Name
-	}
-	fmt.Fprint(out, "COMMANDS:\n")
-	printWithAlignment(out, cmdLines)
-}
-
-func printWithAlignment(out io.Writer, lines [][2]string) {
-	const _N = 36
-	maxPrefixLen := 0
-	for _, line := range lines {
-		if n := len(line[0]); n > maxPrefixLen && n <= _N {
-			maxPrefixLen = n
-		}
-	}
-	padding := "\n" + strings.Repeat(" ", maxPrefixLen+4)
-	for _, line := range lines {
-		x, y := line[0], line[1]
-		fmt.Fprint(out, x)
-		if y != "" {
-			if len(x) <= _N {
-				fmt.Fprint(out, strings.Repeat(" ", maxPrefixLen+4-len(x)))
-				fmt.Fprint(out, strings.ReplaceAll(y, "\n", padding))
-			} else {
-				fmt.Fprint(out, padding)
-				fmt.Fprint(out, strings.ReplaceAll(y, "\n", padding))
-			}
-		}
-		fmt.Fprint(out, "\n")
-	}
 }
 
 // Add adds a command.
@@ -596,7 +529,7 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 
 	// Expand the posix-style single-token-multiple-values flags.
 	if p.opts.AllowPosixSTMO {
-		cmdArgs = expandSMTOFlags(ctx.flagMap, cmdArgs)
+		cmdArgs = expandSTMOFlags(ctx.flagMap, cmdArgs)
 	}
 
 	if err = fs.Parse(cmdArgs); err != nil {
@@ -632,7 +565,7 @@ func checkNonflagsLength(nonflags []*_flag, args []string) (valid bool) {
 	return j == len(args)
 }
 
-func expandSMTOFlags(flagMap map[string]*_flag, args []string) []string {
+func expandSTMOFlags(flagMap map[string]*_flag, args []string) []string {
 	out := make([]string, 0, len(args))
 	for _, a := range args {
 		if !strings.HasPrefix(a, "-") || strings.HasPrefix(a, "--") {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"flag"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -134,4 +135,30 @@ func Test_flag_TextValue(t *testing.T) {
 	assert.Zero(t, args2.A1)
 	assert.True(t, args2.A2.IsZero())
 	assert.Nil(t, args2.A3)
+}
+
+type stringArray []string
+
+func (t stringArray) String() string {
+	return strings.Join(t, ", ")
+}
+
+func (t *stringArray) Set(s string) error {
+	*t = append(*t, s)
+	return nil
+}
+
+func Test_flag_isZero(t *testing.T) {
+	var args struct {
+		A1 net.IP      `cli:"-a1" default:"1.2.3.4"`
+		A2 stringArray `cli:"#R, -a2"`
+	}
+
+	app := NewApp()
+	fs, err := app.parseArgs(&args, WithErrorHandling(flag.ContinueOnError), WithArgs([]string{}))
+	assert.Equal(t, err.Error(), "flag is required but not set: -a2")
+	assert.NotNil(t, fs.Lookup("a1"))
+	assert.NotNil(t, fs.Lookup("a2"))
+	assert.Equal(t, "1.2.3.4", fs.Lookup("a1").DefValue)
+	assert.Equal(t, "1.2.3.4", args.A1.String())
 }
