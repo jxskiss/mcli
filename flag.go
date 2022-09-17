@@ -176,6 +176,9 @@ func applyValue(rv reflect.Value, s string) error {
 }
 
 func applyValueOfBasicType(rv reflect.Value, s string) error {
+	if isIntegerValue(rv) {
+		return applyIntegerValue(rv, s)
+	}
 	switch rv.Kind() {
 	case reflect.Bool:
 		b, err := strconv.ParseBool(s)
@@ -183,26 +186,6 @@ func applyValueOfBasicType(rv reflect.Value, s string) error {
 			return err
 		}
 		rv.SetBool(b)
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		var i int64
-		var d time.Duration
-		var err error
-		if rv.Type() == reflect.TypeOf(time.Duration(0)) {
-			d, err = time.ParseDuration(s)
-			i = int64(d)
-		} else {
-			i, err = strconv.ParseInt(s, 10, 64)
-		}
-		if err != nil {
-			return err
-		}
-		rv.SetInt(i)
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		u, err := strconv.ParseUint(s, 10, 64)
-		if err != nil {
-			return err
-		}
-		rv.SetUint(u)
 	case reflect.Float32, reflect.Float64:
 		f, err := strconv.ParseFloat(s, 64)
 		if err != nil {
@@ -230,6 +213,41 @@ func applyValueOfBasicType(rv reflect.Value, s string) error {
 		rv.SetMapIndex(reflect.ValueOf(k), val)
 	default:
 		panic(fmt.Sprintf("unsupported value type: %v", rv.Type()))
+	}
+	return nil
+}
+
+func isIntegerValue(rv reflect.Value) bool {
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return true
+	}
+	return false
+}
+
+func applyIntegerValue(rv reflect.Value, s string) error {
+	switch rv.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		var i int64
+		var d time.Duration
+		var err error
+		if rv.Type() == reflect.TypeOf(time.Duration(0)) {
+			d, err = time.ParseDuration(s)
+			i = int64(d)
+		} else {
+			i, err = strconv.ParseInt(s, 10, 64)
+		}
+		if err != nil {
+			return err
+		}
+		rv.SetInt(i)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		u, err := strconv.ParseUint(s, 10, 64)
+		if err != nil {
+			return err
+		}
+		rv.SetUint(u)
 	}
 	return nil
 }
@@ -415,106 +433,11 @@ func (f *_flag) validate() error {
 	return nil
 }
 
-func validateNonflags(nonflags []*_flag) error {
-	var compositeTypeArg *_flag
-	for _, f := range nonflags {
-		if compositeTypeArg != nil {
-			return newProgramingError("%s after composite type %s will never get a value, you may define it as a flag", f.helpName(), compositeTypeArg.helpName())
-		}
-		if isCompositeType(f.rv.Kind()) {
-			compositeTypeArg = f
-		}
-	}
-	return nil
-}
-
 func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (flags, nonflags []*_flag, err error) {
-
-	appendFlag := func(f *_flag) {
-		if f.name != "" {
-			flagMap[f.name] = f
-		}
-		if f.short != "" {
-			flagMap[f.short] = f
-		}
-		flags = append(flags, f)
+	p := &flagParser{
+		fs:      fs,
+		flagMap: flagMap,
 	}
-
-	addToFlagSet := func(f *_flag, fv reflect.Value) {
-		if fv.Kind() == reflect.Bool {
-			ptr := fv.Addr().Interface().(*bool)
-			fs.BoolVar(ptr, f.name, f.rv.Bool(), f.description)
-			if f.short != "" {
-				fs.BoolVar(ptr, f.short, f.rv.Bool(), f.description)
-			}
-			return
-		}
-		fs.Var(f, f.name, f.description)
-		if f.short != "" {
-			fs.Var(f, f.short, f.description)
-		}
-	}
-
-	tidyFieldValue := func(ft reflect.StructField, fv reflect.Value, cliTag string) (reflect.Value, bool) {
-		if ft.PkgPath != "" || isIgnoreTag(cliTag) {
-			return fv, false
-		}
-		if fv.IsValid() && fv.Kind() == reflect.Interface {
-			fv = fv.Elem()
-		}
-		if fv.IsValid() && fv.Kind() == reflect.Ptr &&
-			!fv.IsNil() && fv.Elem().Kind() == reflect.Struct {
-			fv = fv.Elem()
-		}
-		if !fv.IsValid() {
-			return fv, false
-		}
-		return fv, true
-	}
-
-	parseField := func(ft reflect.StructField, fv reflect.Value,
-		isGlobalFlag bool,
-		cliTag, defaultValue, envTag string) {
-
-		fv, ok := tidyFieldValue(ft, fv, cliTag)
-		if !ok {
-			return
-		}
-
-		// Got a struct field, parse it recursively.
-		if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) && !isTextValueImpl(fv) {
-			subFlags, subNonflags, subErr := parseTags(isGlobalFlag, fs, fv, flagMap)
-			if subErr != nil {
-				err = subErr
-				return
-			}
-			for _, f := range subFlags {
-				appendFlag(f)
-			}
-			nonflags = append(nonflags, subNonflags...)
-			return
-		}
-		if cliTag == "" {
-			return
-		}
-
-		// Parse the flag.
-		var f *_flag
-		f, err = parseFlag(isGlobalFlag, cliTag, defaultValue, envTag, fv)
-		if err != nil {
-			return
-		}
-		if f == nil || f.name == "" {
-			return
-		}
-		if f.nonflag {
-			nonflags = append(nonflags, f)
-			return
-		}
-		appendFlag(f)
-		addToFlagSet(f, fv)
-	}
-
 	rt := rv.Type()
 	for i := 0; i < rt.NumField(); i++ {
 		ft := rt.Field(i)
@@ -531,18 +454,131 @@ func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[st
 			isGlobalFlag = true
 		}
 
-		parseField(ft, fv, isGlobalFlag, cliTag, defaultValue, envTag)
+		err = p.parseField(ft, fv, isGlobalFlag, cliTag, defaultValue, envTag)
 		if err != nil {
 			return nil, nil, err
 		}
 	}
-	if err = validateNonflags(nonflags); err != nil {
+	if err = p.validateNonflags(); err != nil {
 		return nil, nil, err
 	}
-	sort.Slice(flags, func(i, j int) bool {
-		return strings.ToLower(flags[i].name) < strings.ToLower(flags[j].name)
+	p.sortFlags()
+	return p.flags, p.nonflags, nil
+}
+
+type flagParser struct {
+	fs      *flag.FlagSet
+	flagMap map[string]*_flag
+
+	flags    []*_flag
+	nonflags []*_flag
+}
+
+func (p *flagParser) appendFlag(f *_flag) {
+	if f.name != "" {
+		p.flagMap[f.name] = f
+	}
+	if f.short != "" {
+		p.flagMap[f.short] = f
+	}
+	p.flags = append(p.flags, f)
+}
+
+func (p *flagParser) addToFlagSet(f *_flag, fv reflect.Value) {
+	fs := p.fs
+	if fv.Kind() == reflect.Bool {
+		ptr := fv.Addr().Interface().(*bool)
+		fs.BoolVar(ptr, f.name, f.rv.Bool(), f.description)
+		if f.short != "" {
+			fs.BoolVar(ptr, f.short, f.rv.Bool(), f.description)
+		}
+		return
+	}
+	fs.Var(f, f.name, f.description)
+	if f.short != "" {
+		fs.Var(f, f.short, f.description)
+	}
+}
+
+func (p *flagParser) tidyFieldValue(ft reflect.StructField, fv reflect.Value, cliTag string) (reflect.Value, bool) {
+	if ft.PkgPath != "" || isIgnoreTag(cliTag) {
+		return fv, false
+	}
+	if fv.IsValid() && fv.Kind() == reflect.Interface {
+		fv = fv.Elem()
+	}
+	if fv.IsValid() && fv.Kind() == reflect.Ptr &&
+		!fv.IsNil() && fv.Elem().Kind() == reflect.Struct {
+		fv = fv.Elem()
+	}
+	if !fv.IsValid() {
+		return fv, false
+	}
+	return fv, true
+}
+
+func (p *flagParser) parseField(
+	ft reflect.StructField, fv reflect.Value,
+	isGlobalFlag bool,
+	cliTag, defaultValue, envTag string) error {
+
+	fv, ok := p.tidyFieldValue(ft, fv, cliTag)
+	if !ok {
+		return nil
+	}
+
+	// Got a struct field, parse it recursively.
+	if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) && !isTextValueImpl(fv) {
+		subFlags, subNonflags, subErr := parseTags(isGlobalFlag, p.fs, fv, p.flagMap)
+		if subErr != nil {
+			return subErr
+		}
+		for _, f := range subFlags {
+			p.appendFlag(f)
+		}
+		p.nonflags = append(p.nonflags, subNonflags...)
+		return nil
+	}
+	if cliTag == "" {
+		return nil
+	}
+
+	// Parse the flag.
+	var f *_flag
+	f, err := parseFlag(isGlobalFlag, cliTag, defaultValue, envTag, fv)
+	if err != nil {
+		return err
+	}
+	if f == nil || f.name == "" {
+		return nil
+	}
+	if f.nonflag {
+		p.nonflags = append(p.nonflags, f)
+		return nil
+	}
+
+	p.appendFlag(f)
+	p.addToFlagSet(f, fv)
+	return nil
+}
+
+func (p *flagParser) validateNonflags() error {
+	var compositeTypeArg *_flag
+	for _, f := range p.nonflags {
+		if compositeTypeArg != nil {
+			return newProgramingError("%s after composite type %s will never get a value, you may define it as a flag", f.helpName(), compositeTypeArg.helpName())
+		}
+		if isCompositeType(f.rv.Kind()) {
+			compositeTypeArg = f
+		}
+	}
+	return nil
+}
+
+func (p *flagParser) sortFlags() {
+	sort.Slice(p.flags, func(i, j int) bool {
+		return strings.ToLower(p.flags[i].name) < strings.ToLower(p.flags[j].name)
 	})
-	return
 }
 
 func isIgnoreTag(tag string) bool {
