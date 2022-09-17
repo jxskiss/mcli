@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unsafe"
 )
 
 // Modifier represents an option to a flag, it sets the flag to be
@@ -19,9 +18,10 @@ import (
 // the first segment, starting with a `#` character.
 //
 // Fow now the following modifiers are available:
-//   D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help
-//   R - marks a flag or argument as required, "REQUIRED" will be showed in help
-//   H - marks a flag as hidden, see below for more about hidden flags
+//
+//	D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help
+//	R - marks a flag or argument as required, "REQUIRED" will be showed in help
+//	H - marks a flag as hidden, see below for more about hidden flags
 //
 // Hidden flags won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
@@ -31,10 +31,10 @@ import (
 // correctly.
 //
 // Some modifiers cannot be used together, else it panics, e.g.
-//   H & R - a required flag must appear in help to tell user to set it
-//   D & R - a required flag must not be deprecated, it does not make sense,
-//           but makes user confused
 //
+//	H & R - a required flag must appear in help to tell user to set it
+//	D & R - a required flag must not be deprecated, it does not make sense,
+//	        but makes user confused
 type Modifier byte
 
 func (m Modifier) apply(f *_flag) {
@@ -119,6 +119,10 @@ func formatValue(rv reflect.Value) string {
 		b, _ := rv.Addr().Interface().(textValue).MarshalText()
 		return string(b)
 	}
+	return formatValueOfBasicType(rv)
+}
+
+func formatValueOfBasicType(rv reflect.Value) string {
 	switch rv.Kind() {
 	case reflect.Bool:
 		return strconv.FormatBool(rv.Bool())
@@ -167,6 +171,11 @@ func applyValue(rv reflect.Value, s string) error {
 	if rv.CanAddr() && rv.Addr().Type().Implements(textValueTyp) {
 		return rv.Addr().Interface().(textValue).UnmarshalText([]byte(s))
 	}
+
+	return applyValueOfBasicType(rv, s)
+}
+
+func applyValueOfBasicType(rv reflect.Value, s string) error {
 	switch rv.Kind() {
 	case reflect.Bool:
 		b, err := strconv.ParseBool(s)
@@ -431,10 +440,85 @@ func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[st
 		flags = append(flags, f)
 	}
 
+	addToFlagSet := func(f *_flag, fv reflect.Value) {
+		if fv.Kind() == reflect.Bool {
+			ptr := fv.Addr().Interface().(*bool)
+			fs.BoolVar(ptr, f.name, f.rv.Bool(), f.description)
+			if f.short != "" {
+				fs.BoolVar(ptr, f.short, f.rv.Bool(), f.description)
+			}
+			return
+		}
+		fs.Var(f, f.name, f.description)
+		if f.short != "" {
+			fs.Var(f, f.short, f.description)
+		}
+	}
+
+	tidyFieldValue := func(ft reflect.StructField, fv reflect.Value, cliTag string) (reflect.Value, bool) {
+		if ft.PkgPath != "" || isIgnoreTag(cliTag) {
+			return fv, false
+		}
+		if fv.IsValid() && fv.Kind() == reflect.Interface {
+			fv = fv.Elem()
+		}
+		if fv.IsValid() && fv.Kind() == reflect.Ptr &&
+			!fv.IsNil() && fv.Elem().Kind() == reflect.Struct {
+			fv = fv.Elem()
+		}
+		if !fv.IsValid() {
+			return fv, false
+		}
+		return fv, true
+	}
+
+	parseField := func(ft reflect.StructField, fv reflect.Value,
+		isGlobalFlag bool,
+		cliTag, defaultValue, envTag string) {
+
+		fv, ok := tidyFieldValue(ft, fv, cliTag)
+		if !ok {
+			return
+		}
+
+		// Got a struct field, parse it recursively.
+		if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) && !isTextValueImpl(fv) {
+			subFlags, subNonflags, subErr := parseTags(isGlobalFlag, fs, fv, flagMap)
+			if subErr != nil {
+				err = subErr
+				return
+			}
+			for _, f := range subFlags {
+				appendFlag(f)
+			}
+			nonflags = append(nonflags, subNonflags...)
+			return
+		}
+		if cliTag == "" {
+			return
+		}
+
+		// Parse the flag.
+		var f *_flag
+		f, err = parseFlag(isGlobalFlag, cliTag, defaultValue, envTag, fv)
+		if err != nil {
+			return
+		}
+		if f == nil || f.name == "" {
+			return
+		}
+		if f.nonflag {
+			nonflags = append(nonflags, f)
+			return
+		}
+		appendFlag(f)
+		addToFlagSet(f, fv)
+	}
+
 	rt := rv.Type()
 	for i := 0; i < rt.NumField(); i++ {
-		fv := rv.Field(i)
 		ft := rt.Field(i)
+		fv := rv.Field(i)
 		cliTag := strings.TrimSpace(ft.Tag.Get("cli"))
 		if cliTag == "" {
 			cliTag = strings.TrimSpace(ft.Tag.Get("mcli"))
@@ -446,61 +530,10 @@ func parseTags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[st
 		if ft.Name == "GlobalFlags" && rt == reflect.TypeOf(withGlobalFlagArgs{}) {
 			isGlobalFlag = true
 		}
-		if fv.IsValid() && fv.Kind() == reflect.Interface {
-			fv = fv.Elem()
-		}
-		if fv.IsValid() && fv.Kind() == reflect.Ptr &&
-			!fv.IsNil() && fv.Elem().Kind() == reflect.Struct {
-			fv = fv.Elem()
-		}
-		if !fv.IsValid() {
-			continue
-		}
 
-		if isIgnoreTag(cliTag) {
-			continue
-		}
-		if ft.PkgPath != "" { // unexported fields
-			continue
-		}
-		if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) && !isTextValueImpl(fv) {
-			subFlags, subNonflags, subErr := parseTags(isGlobalFlag, fs, fv, flagMap)
-			if subErr != nil {
-				return nil, nil, subErr
-			}
-			for _, f := range subFlags {
-				appendFlag(f)
-			}
-			nonflags = append(nonflags, subNonflags...)
-			continue
-		}
-		if cliTag == "" {
-			continue
-		}
-		var f *_flag
-		f, err = parseFlag(isGlobalFlag, cliTag, defaultValue, envTag, fv)
+		parseField(ft, fv, isGlobalFlag, cliTag, defaultValue, envTag)
 		if err != nil {
 			return nil, nil, err
-		}
-		if f == nil || f.name == "" {
-			continue
-		}
-		if f.nonflag {
-			nonflags = append(nonflags, f)
-			continue
-		}
-		appendFlag(f)
-		if fv.Kind() == reflect.Bool {
-			ptr := fv.Addr().Interface().(*bool)
-			fs.BoolVar(ptr, f.name, f.rv.Bool(), f.description)
-			if f.short != "" {
-				fs.BoolVar(ptr, f.short, f.rv.Bool(), f.description)
-			}
-			continue
-		}
-		fs.Var(f, f.name, f.description)
-		if f.short != "" {
-			fs.Var(f, f.short, f.description)
 		}
 	}
 	if err = validateNonflags(nonflags); err != nil {
@@ -575,6 +608,32 @@ func parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Va
 	f.defaultValueTag = defaultValue
 	f.envTag = envTag
 
+	_parseCliTag(f, cliTag)
+
+	if f.name == "" {
+		f.name = f.short
+	}
+	if f.short == f.name {
+		f.short = ""
+	}
+	if err := f.validate(); err != nil {
+		return nil, err
+	}
+	if defaultValue != "" {
+		err := f.Set(defaultValue)
+		if err != nil {
+			return nil, newProgramingError("invalid default value %q for %s: %v", defaultValue, f.helpName(), err)
+		}
+		f.defValue = defaultValue
+		f.hasDefault = !f.isZero()
+	}
+	if envTag != "" {
+		f.envNames = splitByComma(envTag)
+	}
+	return f, nil
+}
+
+func _parseCliTag(f *_flag, cliTag string) {
 	const (
 		modifier = iota
 		short
@@ -630,27 +689,6 @@ func parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Va
 			f.description = p
 		}
 	}
-	if f.name == "" {
-		f.name = f.short
-	}
-	if f.short == f.name {
-		f.short = ""
-	}
-	if err := f.validate(); err != nil {
-		return nil, err
-	}
-	if defaultValue != "" {
-		err := f.Set(defaultValue)
-		if err != nil {
-			return nil, newProgramingError("invalid default value %q for %s: %v", defaultValue, f.helpName(), err)
-		}
-		f.defValue = defaultValue
-		f.hasDefault = !f.isZero()
-	}
-	if envTag != "" {
-		f.envNames = splitByComma(envTag)
-	}
-	return f, nil
 }
 
 func splitByComma(value string) []string {
@@ -678,78 +716,4 @@ func hasBoolFlag(name string, args []string) bool {
 		}
 	}
 	return false
-}
-
-func tidyFlagSet(fs *flag.FlagSet, flags []*_flag, nonflagArgs []string) {
-	m := make(map[string]*_flag)
-	for _, f := range flags {
-		m[f.name] = f
-		if f.short != "" {
-			m[f.short] = f
-		}
-	}
-
-	// This is awkward, but we can not simply call flag.Value's Set
-	// method, the Set operation may be not idempotent.
-	// Thus, we unsafely modify FlagSet's unexported internal data,
-	// this may break in a future Go release.
-
-	actual := _flagSet_getActual(fs)
-	formal := _flagSet_getFormal(fs)
-	fs.Visit(func(ff *flag.Flag) {
-		f := m[ff.Name]
-		if f == nil {
-			return
-		}
-		if f.name != ff.Name {
-			formal[f.name].Value = ff.Value
-			actual[f.name] = formal[f.name]
-		}
-		if f.short != "" && f.short != ff.Name {
-			formal[f.short].Value = ff.Value
-			actual[f.short] = formal[f.short]
-		}
-	})
-
-	if len(nonflagArgs) > 0 {
-		_flagSet_setArgs(fs, nonflagArgs)
-	}
-}
-
-var (
-	_flagSet_actual_offset uintptr
-	_flagSet_formal_offset uintptr
-	_flagSet_args_offset   uintptr
-	_flagSetMapType        = reflect.TypeOf(map[string]*flag.Flag{})
-)
-
-func init() {
-	typ := reflect.TypeOf(flag.FlagSet{})
-	actualField, ok1 := typ.FieldByName("actual")
-	formalField, ok2 := typ.FieldByName("formal")
-	if !ok1 || !ok2 {
-		panic("cannot find flag.FlagSet fields actual/formal")
-	}
-	argsField, ok3 := typ.FieldByName("args")
-	if !ok3 {
-		panic("cannot find flag.FlagSet field args")
-	}
-	if actualField.Type != _flagSetMapType || formalField.Type != _flagSetMapType {
-		panic("type of flag.FlagSet fields actual/formal is not map[string]*flag.Flag")
-	}
-	_flagSet_actual_offset = actualField.Offset
-	_flagSet_formal_offset = formalField.Offset
-	_flagSet_args_offset = argsField.Offset
-}
-
-func _flagSet_getActual(fs *flag.FlagSet) map[string]*flag.Flag {
-	return *(*map[string]*flag.Flag)(unsafe.Pointer(uintptr(unsafe.Pointer(fs)) + _flagSet_actual_offset))
-}
-
-func _flagSet_getFormal(fs *flag.FlagSet) map[string]*flag.Flag {
-	return *(*map[string]*flag.Flag)(unsafe.Pointer(uintptr(unsafe.Pointer(fs)) + _flagSet_formal_offset))
-}
-
-func _flagSet_setArgs(fs *flag.FlagSet, args []string) {
-	*(*[]string)(unsafe.Pointer(uintptr(unsafe.Pointer(fs)) + _flagSet_args_offset)) = args
 }

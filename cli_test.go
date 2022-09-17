@@ -286,9 +286,9 @@ func TestParsing_TagSyntax(t *testing.T) {
 		M2 string `cli:"#H, --m2     modifier 2"` // hidden
 		M3 string `cli:"#D, --m3"`                // deprecated
 
-		// comma seperated
-		A int `cli:"-a, -a-flag       description can be seperated by spaces"`
-		B int `cli:"-b, --b-flag      description can be seperated by spaces"`
+		// comma separated
+		A int `cli:"-a, -a-flag       description can be separated by spaces"`
+		B int `cli:"-b, --b-flag      description can be separated by spaces"`
 		C int `cli:"#D, -c, --c-flag, description of 'DVALUE' flag"`
 
 		SomeCommonFlags
