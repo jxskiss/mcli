@@ -272,11 +272,11 @@ func (f *_flag) isZero() bool {
 	typ := f.rv.Type()
 	if isFlagValueImpl(f.rv) {
 		zero := zeroFlagValueStr(f.rv)
-		return f.defValue == zero
+		return f.String() == zero
 	}
 	if isTextValueImpl(f.rv) {
 		zero := zeroTextValueStr(f.rv)
-		return f.defValue == zero
+		return f.String() == zero
 	}
 	// Check comparable values.
 	if typ.Comparable() {
@@ -558,12 +558,14 @@ var spaceRE = regexp.MustCompile(`\s+`)
 
 func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Value) (*_flag, error) {
 	f := &_flag{
+		_tags: _tags{
+			cliTag:          cliTag,
+			defaultValueTag: defaultValue,
+			envTag:          envTag,
+		},
 		_value:   _value{rv},
 		isGlobal: isGlobal,
 	}
-	f.cliTag = cliTag
-	f.defaultValueTag = defaultValue
-	f.envTag = envTag
 
 	p.parseCliTag(f, cliTag)
 

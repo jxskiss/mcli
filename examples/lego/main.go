@@ -151,7 +151,7 @@ OPTIONS:
 
 func cmdRevoke(ctx *mcli.Context) {
 	var args struct {
-		Keep   bool `cli:"-k, --keep, Keep the certificates after the revocation instead of archiving them."`
+		Keep   bool `cli:"--keep, Keep the certificates after the revocation instead of archiving them."`
 		Reason int  `cli:"--reason, Identifies the reason for the certificate revocation. See https://www.rfc-editor.org/rfc/rfc5280.html#section-5.3.1. 0(unspecified),1(keyCompromise),2(cACompromise),3(affiliationChanged),4(superseded),5(cessationOfOperation),6(certificateHold),8(removeFromCRL),9(privilegeWithdrawn),10(aACompromise)"`
 	}
 	ctx.Parse(&args)
@@ -247,6 +247,6 @@ func cmdList(ctx *mcli.Context) {
 		Accounts bool `cli:"-a, --accounts, Display accounts."`
 		Names    bool `cli:"-n, --names, Display certificate common names only."`
 	}
-	ctx.Parse(&args)
+	ctx.Parse(&args, mcli.DisableGlobalFlags())
 	ctx.PrintHelp()
 }

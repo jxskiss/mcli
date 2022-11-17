@@ -162,3 +162,30 @@ func Test_flag_isZero(t *testing.T) {
 	assert.Equal(t, "1.2.3.4", fs.Lookup("a1").DefValue)
 	assert.Equal(t, "1.2.3.4", args.A1.String())
 }
+
+func Test_flag_isZero_2(t *testing.T) {
+	var args struct {
+		A1 net.IP      `cli:"#R, -a1" default:"1.2.3.4"`
+		A2 stringArray `cli:"-a2"`
+	}
+
+	app := NewApp()
+	fs, err := app.parseArgs(&args, WithErrorHandling(flag.ContinueOnError), WithArgs([]string{}))
+	assert.Nil(t, err)
+	assert.NotNil(t, fs.Lookup("a1"))
+	assert.NotNil(t, fs.Lookup("a2"))
+	assert.Equal(t, "1.2.3.4", fs.Lookup("a1").DefValue)
+	assert.Equal(t, "1.2.3.4", fs.Lookup("a1").Value.String())
+	assert.Equal(t, "1.2.3.4", args.A1.String())
+
+	var args1 struct {
+		A1 net.IP      `cli:"#R, -a1"`
+		A2 stringArray `cli:"-a2"`
+	}
+	app.resetParsingContext()
+	fs, err = app.parseArgs(&args1, WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"-a1", ""}))
+	_ = fs
+	assert.NotNil(t, err)
+	assert.Contains(t, err.Error(), "flag is required but not set: -a1")
+}
