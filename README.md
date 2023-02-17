@@ -155,6 +155,7 @@ Also, there are some sophisticated examples:
 
 - `SetGlobalFlags` sets global flags, global flags are available to all commands.
 - `Add` adds a command.
+- `AddRoot` adds a root command. A root command is executed when no sub command is specified.
 - `AddAlias` adds an alias name for a command.
 - `AddHidden` adds a hidden command.
 - `AddGroup` adds a group explicitly. A group is a common prefix for some commands.

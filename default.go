@@ -21,6 +21,12 @@ func Add(name string, f interface{}, description string) {
 	defaultApp.Add(name, f, description)
 }
 
+// AddRoot adds a root command processor.
+// When no sub command specified, a root command will be executed.
+func AddRoot(f interface{}) {
+	defaultApp.AddRoot(f)
+}
+
 // AddAlias adds an alias name for a command.
 func AddAlias(aliasName, target string) {
 	defaultApp.AddAlias(aliasName, target)
