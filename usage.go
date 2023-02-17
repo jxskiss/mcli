@@ -123,7 +123,7 @@ func (p *usagePrinter) printSubCommands() {
 	if len(p.subCmds) > 0 {
 		subCmds := p.subCmds
 		showHidden := ctx.showHidden
-		keepCmdOrder := p.app.opts.KeepCommandOrder
+		keepCmdOrder := p.app.Options.KeepCommandOrder
 		printSubCommands(out, subCmds, showHidden, keepCmdOrder)
 		fmt.Fprint(out, "\n")
 	}

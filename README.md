@@ -153,7 +153,6 @@ Also, there are some sophisticated examples:
 
 ## API
 
-- `SetOptions` sets optional options for App.
 - `SetGlobalFlags` sets global flags, global flags are available to all commands.
 - `Add` adds a command.
 - `AddAlias` adds an alias name for a command.

@@ -34,7 +34,10 @@ func NewApp() *App {
 
 // App holds the state of a cli application.
 type App struct {
-	opts Options
+
+	// Options specifies optional options to custom the behavior
+	// of an App.
+	Options
 
 	cmdMap      map[string]*Command
 	cmds        commands
@@ -42,11 +45,6 @@ type App struct {
 	globalFlags interface{}
 
 	ctx *parsingContext
-}
-
-// SetOptions sets optional options for App.
-func (p *App) SetOptions(opts Options) {
-	p.opts = opts
 }
 
 func (p *App) addCommand(cmd *Command) {
@@ -528,7 +526,7 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 	}
 
 	// Expand the posix-style single-token-multiple-values flags.
-	if p.opts.AllowPosixSTMO {
+	if p.Options.AllowPosixSTMO {
 		cmdArgs = expandSTMOFlags(ctx.flagMap, cmdArgs)
 	}
 
