@@ -35,6 +35,9 @@ func NewApp() *App {
 // App holds the state of a cli application.
 type App struct {
 
+	// Description optionally provides a description of the program.
+	Description string
+
 	// Options specifies optional options to custom the behavior
 	// of an App.
 	Options

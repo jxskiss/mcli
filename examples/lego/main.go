@@ -61,7 +61,14 @@ GLOBAL OPTIONS:
 var globalFlags GlobalFlags
 
 func main() {
-	app := mcli.NewApp()
+	app := &mcli.App{
+		Description: `hugo is the main command, used to build your Hugo site.
+
+Hugo is a Fast and Flexible Static Site Generator
+built with love by spf13 and friends in Go.
+
+Complete documentation is available at http://gohugo.io/.`,
+	}
 	app.SetGlobalFlags(&globalFlags)
 	app.Add("run", cmdRun, "Register an account, then create and install a certificate")
 	app.Add("revoke", cmdRevoke, "Revoke a certificate")

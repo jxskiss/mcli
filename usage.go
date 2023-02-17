@@ -81,9 +81,11 @@ func (p *usagePrinter) printUsageLine() {
 		if cmd.Description != "" {
 			usage += cmd.Description + "\n"
 		}
-		if usage != "" {
-			usage += "\n"
-		}
+	} else if p.app.Description != "" {
+		usage += p.app.Description + "\n"
+	}
+	if usage != "" {
+		usage += "\n"
 	}
 	usage += "USAGE:\n  " + progName
 	if cmdName != "" {
