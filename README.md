@@ -165,6 +165,7 @@ Also, there are some sophisticated examples:
 - `Parse` parses the command line for flags and arguments.
 - `Run` runs the program, it will parse the command line, search for a registered command and run it.
 - `PrintHelp` prints usage doc of the current command to stderr.
+- `NewApp` creates a new cli applcation instance.
 
 ### Custom parsing options
 
@@ -175,6 +176,7 @@ Also, there are some sophisticated examples:
 - `DisableGlobalFlags` tells `Parse` to don't parse and print global flags in help.
 - `ReplaceUsage` tells `Parse` to use a custom usage function instead of the default.
 - `WithFooter` adds a footer message after the default help.
+- `App.Options` specifies optional options for an application.
 
 ## Tag syntax
 
