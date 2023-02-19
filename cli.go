@@ -34,7 +34,15 @@ func NewApp() *App {
 
 // App holds the state of a cli application.
 type App struct {
-	opts Options
+
+	// Description optionally provides a description of the program.
+	Description string
+
+	// Options specifies optional options to custom the behavior
+	// of an App.
+	Options
+
+	rootCmd *Command
 
 	cmdMap      map[string]*Command
 	cmds        commands
@@ -42,11 +50,6 @@ type App struct {
 	globalFlags interface{}
 
 	ctx *parsingContext
-}
-
-// SetOptions sets optional options for App.
-func (p *App) SetOptions(opts Options) {
-	p.opts = opts
 }
 
 func (p *App) addCommand(cmd *Command) {
@@ -303,6 +306,16 @@ func (p *App) Add(name string, f interface{}, description string) {
 	})
 }
 
+// AddRoot adds a root command.
+// When no sub command specified, a root command will be executed.
+func (p *App) AddRoot(f interface{}) {
+	ff := p.validateFunc(f)
+	p.rootCmd = &Command{
+		f:      ff,
+		isRoot: true,
+	}
+}
+
 func (p *App) validateFunc(f interface{}) func() {
 	switch ff := f.(type) {
 	case func():
@@ -422,8 +435,8 @@ func (p *App) Run(args ...string) {
 	p.runWithArgs(args, true)
 }
 
-func (p *App) runWithArgs(args []string, exitOnInvalidCmd bool) {
-	invalidCmdName, found := p.searchCmd(args)
+func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
+	invalidCmdName, found := p.searchCmd(cmdArgs)
 	ctx := p.getParsingContext()
 	if found && ctx.cmd != nil {
 		ctx.cmd.f()
@@ -436,13 +449,13 @@ func (p *App) runWithArgs(args []string, exitOnInvalidCmd bool) {
 			os.Exit(2)
 		}
 	} else {
-		ctx.showHidden = hasBoolFlag(showHiddenFlag, args)
+		ctx.showHidden = hasBoolFlag(showHiddenFlag, cmdArgs)
 		p.printUsage()
 	}
 }
 
 // searchCmd helps to do testing.
-func (p *App) searchCmd(osArgs []string) (invalidCmdName string, found bool) {
+func (p *App) searchCmd(cmdArgs []string) (invalidCmdName string, found bool) {
 	cmds := p.cmds
 	cmds.sort()
 
@@ -451,7 +464,20 @@ func (p *App) searchCmd(osArgs []string) (invalidCmdName string, found bool) {
 	}
 
 	ctx := p.getParsingContext()
-	hasSub := cmds.search(ctx, osArgs)
+
+	// Check root command.
+	if p.rootCmd != nil {
+		if len(cmdArgs) == 0 ||
+			strings.HasPrefix(cmdArgs[0], "-") ||
+			!p.cmds.isValid(cmdArgs[0]) {
+
+			ctx.cmd = p.rootCmd
+			ctx.args = &cmdArgs
+			return "", true
+		}
+	}
+
+	hasSub := cmds.search(ctx, cmdArgs)
 
 	// A command is matched exactly or is parent of the requested command.
 	if ctx.cmd != nil {
@@ -528,7 +554,7 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 	}
 
 	// Expand the posix-style single-token-multiple-values flags.
-	if p.opts.AllowPosixSTMO {
+	if p.Options.AllowPosixSTMO {
 		cmdArgs = expandSTMOFlags(ctx.flagMap, cmdArgs)
 	}
 

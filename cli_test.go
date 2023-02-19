@@ -681,7 +681,7 @@ func TestApp_AllowPosixSTMO(t *testing.T) {
 	}
 
 	resetDefaultApp()
-	SetOptions(Options{AllowPosixSTMO: true})
+	defaultApp.AllowPosixSTMO = true
 	fs, err := Parse(&args1, WithArgs([]string{"-abce"}))
 	assert.Nil(t, err)
 	assert.Equal(t, "true", fs.Lookup("ebool").Value.String())
@@ -755,4 +755,50 @@ func TestApp_printSuggestion(t *testing.T) {
 	got = buf.String()
 	assert.Contains(t, got, "Did you mean this?\n")
 	assert.Contains(t, got, "group-two cmd-three")
+}
+
+func TestAppDescription(t *testing.T) {
+
+	newTestApp := func() *App {
+		app := NewApp()
+		app.Description = `Test app description.
+
+Line 3 in Description.`
+		app.Add("group-one cmd-one", dummyCmdWithContext, "group one command one")
+		app.getFlagSet().Init("", flag.ContinueOnError)
+		return app
+	}
+
+	var buf bytes.Buffer
+
+	// Test without root command.
+	app1 := newTestApp()
+	app1.getFlagSet().SetOutput(&buf)
+	app1.runWithArgs([]string{}, false)
+	got1 := buf.String()
+	assert.Contains(t, got1, app1.Description)
+
+	buf.Reset()
+	app2 := newTestApp()
+	app2.getFlagSet().SetOutput(&buf)
+	app2.runWithArgs([]string{"group-one", "cmd-one"}, false)
+	got2 := buf.String()
+	assert.NotContains(t, got2, app2.Description)
+
+	// Test root command.
+	buf.Reset()
+	app3 := newTestApp()
+	app3.AddRoot(dummyCmdWithContext)
+	app3.getFlagSet().SetOutput(&buf)
+	app3.runWithArgs([]string{}, false)
+	got3 := buf.String()
+	assert.Contains(t, got3, app3.Description)
+
+	buf.Reset()
+	app4 := newTestApp()
+	app4.AddRoot(dummyCmdWithContext)
+	app4.getFlagSet().SetOutput(&buf)
+	app4.runWithArgs([]string{"group-one", "cmd-one"}, false)
+	got4 := buf.String()
+	assert.NotContains(t, got4, app4.Description)
 }

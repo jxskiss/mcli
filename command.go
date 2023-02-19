@@ -17,6 +17,8 @@ type Command struct {
 
 	idx   int
 	level int
+
+	isRoot bool
 }
 
 func normalizeCmdName(name string) string {
@@ -42,6 +44,15 @@ func (p *commands) add(cmd *Command) {
 	cmd.idx = len(*p) + 1
 	cmd.level = len(strings.Fields(cmd.Name))
 	*p = append(*p, cmd)
+}
+
+func (p commands) isValid(cmd string) bool {
+	for _, c := range p {
+		if c.Name == cmd || isSubCommand(cmd, c.Name) {
+			return true
+		}
+	}
+	return false
 }
 
 func (p commands) sort() {

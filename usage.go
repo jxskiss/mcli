@@ -72,27 +72,51 @@ func (p *usagePrinter) printUsageLine() {
 	cmd := ctx.cmd
 	cmdName := ctx.name
 	progName := getProgramName()
+	appDesc := strings.TrimSpace(p.app.Description)
+
 	if cmd != nil {
-		if cmd.AliasOf != "" {
-			usage += cmd.Description + "\n"
-			cmd = p.app.cmdMap[cmd.AliasOf]
-			cmdName = cmd.Name
+		if cmd.isRoot {
+			if appDesc != "" {
+				usage += appDesc + "\n"
+			}
+		} else {
+			if cmd.AliasOf != "" {
+				usage += cmd.Description + "\n"
+				cmd = p.app.cmdMap[cmd.AliasOf]
+				cmdName = cmd.Name
+			}
+			if cmd.Description != "" {
+				usage += cmd.Description + "\n"
+			}
 		}
-		if cmd.Description != "" {
-			usage += cmd.Description + "\n"
-		}
-		if usage != "" {
-			usage += "\n"
-		}
+	} else if appDesc != "" {
+		usage += appDesc + "\n"
+	}
+	if usage != "" {
+		usage += "\n"
 	}
 	usage += "USAGE:\n  " + progName
-	if cmdName != "" {
-		usage += " " + cmdName
+	if cmd != nil && cmd.isRoot {
+		usage += p.commandLineFlagAndSubCmdInfo("")
+		if len(p.app.cmds) > 0 {
+			usage += "\n  " + progName + " <command> [flags] ..."
+		}
+	} else {
+		usage += p.commandLineFlagAndSubCmdInfo(cmdName)
 	}
+	fmt.Fprint(out, usage, "\n\n")
+}
 
+func (p *usagePrinter) commandLineFlagAndSubCmdInfo(cmdName string) string {
+	ctx := p.ctx
 	hasFlags := len(ctx.flags) > 0
 	hasNonflags := len(ctx.nonflags) > 0
 	hasSubCmds := len(p.subCmds) > 0
+
+	usage := ""
+	if cmdName != "" {
+		usage += " " + cmdName
+	}
 	if hasFlags {
 		usage += " [flags]"
 	}
@@ -114,7 +138,7 @@ func (p *usagePrinter) printUsageLine() {
 	if !hasFlags && !hasNonflags && hasSubCmds {
 		usage += " <command> ..."
 	}
-	fmt.Fprint(out, usage, "\n\n")
+	return usage
 }
 
 func (p *usagePrinter) printSubCommands() {
@@ -123,7 +147,7 @@ func (p *usagePrinter) printSubCommands() {
 	if len(p.subCmds) > 0 {
 		subCmds := p.subCmds
 		showHidden := ctx.showHidden
-		keepCmdOrder := p.app.opts.KeepCommandOrder
+		keepCmdOrder := p.app.Options.KeepCommandOrder
 		printSubCommands(out, subCmds, showHidden, keepCmdOrder)
 		fmt.Fprint(out, "\n")
 	}

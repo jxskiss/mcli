@@ -8,11 +8,6 @@ func init() {
 
 var defaultApp *App
 
-// SetOptions sets optional options for App.
-func SetOptions(opts Options) {
-	defaultApp.SetOptions(opts)
-}
-
 // SetGlobalFlags sets global flags, global flags are available to all commands.
 // DisableGlobalFlags may be used to disable global flags for a specific
 // command when calling Parse.
@@ -24,6 +19,12 @@ func SetGlobalFlags(v interface{}) {
 // f must be a function of signature `func()` or `func(*Context)`, else it panics.
 func Add(name string, f interface{}, description string) {
 	defaultApp.Add(name, f, description)
+}
+
+// AddRoot adds a root command processor.
+// When no sub command specified, a root command will be executed.
+func AddRoot(f interface{}) {
+	defaultApp.AddRoot(f)
 }
 
 // AddAlias adds an alias name for a command.
