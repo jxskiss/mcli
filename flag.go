@@ -357,14 +357,17 @@ func (f *_flag) getUsage(hasShortFlag bool) (prefix, usage string) {
 		prefix += fmt.Sprintf(" (%s)", strings.Join(modifiers, ", "))
 	}
 	if f.hasDefault {
+		var dftStr string
 		if f.isString() {
-			usage += fmt.Sprintf(" (default %q)", f.defValue)
+			dftStr = fmt.Sprintf("(default %q)", f.defValue)
 		} else {
-			usage += fmt.Sprintf(" (default %v)", f.defValue)
+			dftStr = fmt.Sprintf("(default %v)", f.defValue)
 		}
+		usage = spaceJoin(usage, dftStr)
 	}
 	if len(f.envNames) > 0 {
-		usage += fmt.Sprintf(" (env \"%s\")", strings.Join(f.envNames, `", "`))
+		envStr := fmt.Sprintf(`(env "%s")`, strings.Join(f.envNames, `", "`))
+		usage = spaceJoin(usage, envStr)
 	}
 	return
 }
@@ -767,4 +770,17 @@ func hasBoolFlag(name string, args []string) bool {
 		}
 	}
 	return false
+}
+
+func spaceJoin(strList ...string) string {
+	result := ""
+	for _, s := range strList {
+		s = strings.TrimSpace(s)
+		if result == "" {
+			result = s
+		} else {
+			result += " " + s
+		}
+	}
+	return result
 }
