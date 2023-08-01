@@ -44,7 +44,7 @@ which is licensed under the Apache License 2.0.
 * Automatic suggestions like git.
 * Automatic help generation for commands, flags and arguments.
 * Automatic help flag recognition of `-h`, `--help`, etc.
-* Automatic shell completion, it supports `bash`, `zsh`, `powershell` for now.
+* Automatic shell completion, it supports `bash`, `zsh`, `powershell`, `fish` for now.
 * Compatible with the standard library's flag.FlagSet.
 * Optional posix-style single token multiple options command line parsing.
 * Alias command, so you can reorganize commands without breaking them.
@@ -103,7 +103,7 @@ func main() {
     // This is a hidden command, it won't be showed in help,
     // except that when flag "--mcli-show-hidden" is given.
     mcli.AddHiden("secret-cmd", secretCmd, "An secret command won't be showed in help")
-	
+
 	// Enable shell auto-completion, see `program completion -h` for help.
 	mcli.AddCompletion()
 
