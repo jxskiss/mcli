@@ -374,19 +374,48 @@ func (f *_flag) getUsage(hasShortFlag bool) (prefix, usage string) {
 
 func unquoteUsage(f *_flag) (name, usage string) {
 	usage = f.description
-	for i := 0; i < len(usage); i++ {
-		if usage[i] == '`' {
-			c := usage[i]
-			for j := i + 1; j < len(usage); j++ {
-				if usage[j] == c {
-					name = usage[i+1 : j]
-					usage = usage[:i] + name + usage[j+1:]
+	runes := []rune(f.description)
+	const backQuote = '`'
+	for i := 0; i < len(runes); i++ {
+		if runes[i] == backQuote {
+			for j := i + 1; j < len(runes); j++ {
+				if runes[j] == backQuote {
+					name = string(runes[i+1 : j])
+					usage = string(runes[:i]) + name + string(runes[j+1:])
 					return name, usage
 				}
 			}
 			break // Only one back quote; use type name.
 		}
 	}
+	if name != "" {
+		return
+	}
+
+	// Try single quote.
+	const backSlash = '\\'
+	const singleQuote = '\''
+	builder := strings.Builder{}
+nextChar:
+	for i := 0; i < len(runes); i++ {
+		if name == "" && runes[i] == singleQuote && i > 0 && runes[i-1] != backSlash {
+			for j := i + 1; j < len(runes); j++ {
+				if runes[j] == singleQuote {
+					name = string(runes[i+1 : j])
+					builder.WriteString(name)
+					i = j
+					continue nextChar
+				}
+			}
+		}
+		if runes[i] == backSlash && i < len(runes)-1 && runes[i+1] == singleQuote {
+			builder.WriteRune(singleQuote)
+			i++
+			continue
+		}
+		builder.WriteRune(runes[i])
+	}
+	usage = builder.String()
 	if name == "" {
 		name = f.usageName()
 	}
