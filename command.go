@@ -18,7 +18,9 @@ type Command struct {
 	idx   int
 	level int
 
-	isRoot bool
+	isRoot       bool
+	isGroup      bool
+	noCompletion bool
 }
 
 func normalizeCmdName(name string) string {

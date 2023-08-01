@@ -137,6 +137,9 @@ func main() {
 	// Enable the "help" command.
 	mcli.AddHelp()
 
+	// Enable auto-completion.
+	mcli.AddCompletionWithName("auto-completion")
+
 	mcli.Run()
 }
 
@@ -395,5 +398,6 @@ func Example_githubCliCommandIssueEdit() {
 }
 
 func dummyCmd() {
+	mcli.Parse(nil)
 	mcli.PrintHelp()
 }
