@@ -106,8 +106,6 @@ func ExampleAdd_addCommands() {
 	Add("auth setup-git", dummyCmd, "Configure git to use GitHub CLI as a credential helper")
 	Add("auth status", dummyCmd, "View authentication status")
 
-	Add("completion", dummyCmd, "Generate shell completion scripts")
-
 	AddGroup("config", "Manage configuration for gh")
 	Add("config get", dummyCmd, "Print the value of a given configuration key")
 	Add("config list", dummyCmd, "Print a list of configuration keys and values")
@@ -135,6 +133,7 @@ func ExampleAdd_addCommands() {
 
 	// Enable the "help" command.
 	AddHelp()
+	AddCompletionWithName("completion")
 }
 
 func markExampleTest() func() {

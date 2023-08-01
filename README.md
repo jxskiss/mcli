@@ -33,18 +33,18 @@ which is licensed under the Apache License 2.0.
 * Easy to use, dead simple yet very powerful API to define commands, flags and arguments.
 * Add arbitrary nested sub-command with single line code.
 * Define command flags and arguments inside the command processor using struct tag.
-* Define global flags apply to all commands.
+* Define global flags apply to all commands, or share common flags between a group of commands.
 * Read environment variables for flags and arguments.
 * Set default value for flags and arguments.
-* Work with slice, map out of box, of course the basic types bool, string, integer,
-  unsigned integer, float, duration are also supported.
+* Work with time.Duration, slice, map out of box.
 * Mark commands, flags as hidden, hidden commands and flags won't be showed in help,
   except that when a special flag `--mcli-show-hidden` is provided.
-* Mark flags, arguments as required, it reports error when not given.
+* Mark flags, arguments as required, report error when a required flag is not given.
 * Mark flags as deprecated.
 * Automatic suggestions like git.
 * Automatic help generation for commands, flags and arguments.
 * Automatic help flag recognition of `-h`, `--help`, etc.
+* Automatic shell completion, it supports `bash`, `zsh`, `powershell` for now.
 * Compatible with the standard library's flag.FlagSet.
 * Optional posix-style single token multiple options command line parsing.
 * Alias command, so you can reorganize commands without breaking them.
@@ -79,7 +79,7 @@ FLAGS:
   -n, --name string    Who do you want to say to (default "tom")
 
 ARGUMENTS:
-  text string (REQUIRED)    The 'message' you want to send
+  text message (REQUIRED)    The message you want to send
 
 exit status 2
 
@@ -97,12 +97,15 @@ func main() {
     mcli.Add("cmd2 sub1", runCmd2Sub1, "Do something with cmd2 sub1")
     mcli.Add("cmd2 sub2", runCmd2Sub2, "Brief description about cmd2 sub2")
 
-    // A sub-command can also be registered without registering the group.
+    // A sub-command can also be added without registering the group.
     mcli.Add("group3 sub1 subsub1", runGroup3Sub1Subsub1, "Blah blah Blah")
 
     // This is a hidden command, it won't be showed in help,
     // except that when flag "--mcli-show-hidden" is given.
     mcli.AddHiden("secret-cmd", secretCmd, "An secret command won't be showed in help")
+	
+	// Enable shell auto-completion, see `program completion -h` for help.
+	mcli.AddCompletion()
 
     mcli.Run()
 }
@@ -162,6 +165,7 @@ Also, there are some sophisticated examples:
   It's not required to add group before adding sub commands, but user can use this function
   to add a description to a group, which will be showed in help.
 - `AddHelp` enables the "help" command.
+- `AddCompletion` enables the "completion" command to generate autocomplete scripts.
 - `Parse` parses the command line for flags and arguments.
 - `Run` runs the program, it will parse the command line, search for a registered command and run it.
 - `PrintHelp` prints usage doc of the current command to stderr.
@@ -258,6 +262,12 @@ even both before and after flags, in which case, the args will be reordered
 and all arguments can be accessed by calling flagSet.Args() and flagSet.Arg(i).
 
 If there is slice or map arguments, it will match all following arguments.
+
+## Shell completion
+
+`mcli` supports generating completion script for `bash`, `zsh`, and `powershell`.
+Use `AddCompletion` to enable the feature, run `program completion [bash|zsh|powershell]`
+for usage guide.
 
 ## Changelog
 

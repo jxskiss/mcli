@@ -16,8 +16,6 @@ func main() {
 		// This argument is required.
 		Text string `cli:"#R, text, The 'message' you want to send"`
 	}
-	fs, _ := mcli.Parse(&args)
-
+	mcli.Parse(&args)
 	fmt.Printf("Say to %s: %s\n", args.Name, args.Text)
-	fmt.Printf("fs.Args: %v\n", fs.Args())
 }

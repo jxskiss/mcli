@@ -55,6 +55,17 @@ func AddHelp() {
 	defaultApp.AddHelp()
 }
 
+// AddCompletion enables the "completion" command to generate auto-completion script.
+// If you want a different name other than "completion", use AddCompletionWithName.
+func AddCompletion() {
+	defaultApp.AddCompletion()
+}
+
+// AddCompletionWithName enables the completion command with custom command name.
+func AddCompletionWithName(name string) {
+	defaultApp.AddCompletionWithName(name)
+}
+
 // Run runs the program, it parses the command line and searches for a
 // registered command, it runs the command if a command is found,
 // else it will report an error and exit the program.

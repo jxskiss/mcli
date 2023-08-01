@@ -50,6 +50,17 @@ type App struct {
 	globalFlags interface{}
 
 	ctx *parsingContext
+
+	completionCmdName string
+	isCompletion      bool
+	completionCtx     struct {
+		out      io.Writer
+		isZsh    bool
+		userArgs []string
+		cmd      *cmdTree
+		flagName string
+		flags    []*_flag
+	}
 }
 
 func (p *App) addCommand(cmd *Command) {
@@ -371,6 +382,7 @@ func (p *App) AddGroup(name string, description string) {
 		Name:        name,
 		Description: description,
 		f:           p.groupCmd,
+		isGroup:     true,
 	})
 }
 
@@ -381,6 +393,17 @@ func (p *App) AddHelp() {
 		Description: "Help about any command",
 		f:           p.helpCmd,
 	})
+}
+
+// AddCompletion enables the "completion" command to generate auto-completion script.
+// If you want a different name other than "completion", use AddCompletionWithName.
+func (p *App) AddCompletion() {
+	p.AddCompletionWithName("completion")
+}
+
+// AddCompletionWithName enables the completion command with custom command name.
+func (p *App) AddCompletionWithName(name string) {
+	p.addCompletionCommands(name)
 }
 
 func (p *App) groupCmd() {
@@ -436,6 +459,17 @@ func (p *App) Run(args ...string) {
 }
 
 func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
+	if isComp, userArgs := hasCompletionFlag(cmdArgs); isComp {
+		p.isCompletion = true
+		if p.completionCtx.out == nil {
+			p.completionCtx.out = os.Stdout
+		}
+		p.completionCtx.isZsh = strings.HasSuffix(os.Getenv("SHELL"), "zsh")
+		p.completionCtx.userArgs = userArgs
+		p.doAutoCompletion(userArgs)
+		return
+	}
+
 	invalidCmdName, found := p.searchCmd(cmdArgs)
 	ctx := p.getParsingContext()
 	if found && ctx.cmd != nil {
@@ -514,10 +548,23 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 	}
 
 	fs = ctx.getFlagSet()
-	fs.Init("", options.errorHandling)
+	if !p.isCompletion {
+		fs.Init("", options.errorHandling)
+	}
 	if err = ctx.parseTags(reflect.ValueOf(wrapArgs).Elem()); err != nil {
 		return fs, err
 	}
+
+	// For flags completion, don't really run the command.
+	if p.isCompletion {
+		p.completionCtx.flags = ctx.flags
+		p.continueFlagCompletion()
+		if !isTesting { // help unit testing
+			os.Exit(0)
+		}
+		return
+	}
+
 	if options.cmdName != nil {
 		ctx.name = *options.cmdName
 	}
@@ -636,12 +683,6 @@ type withGlobalFlagArgs struct {
 	GlobalFlags interface{}
 	CmdArgs     interface{}
 }
-
-func clip(s []string) []string {
-	return s[:len(s):len(s)]
-}
-
-var isExampleTest bool
 
 // getFlagSetOutput helps to do testing.
 // When in example testing, it returns os.Stdout instead of fs.Output().
