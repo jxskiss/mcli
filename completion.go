@@ -297,12 +297,12 @@ func (p *App) completionCmd(shellType string) func() {
 		switch shellType {
 		case "bash":
 			tplName = "autocomplete/bash_autocomplete"
-		case "fish":
-			tplName = "autocomplete/fish_autocomplete"
 		case "zsh":
 			tplName = "autocomplete/zsh_autocomplete"
 		case "powershell":
 			tplName = "autocomplete/powershell_autocomplete.ps1"
+		case "fish":
+			tplName = "autocomplete/fish_autocomplete"
 		default:
 			panic("unreachable")
 		}

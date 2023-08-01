@@ -109,12 +109,12 @@ func (p *App) completionUsage(shellType string) func() string {
 		switch shellType {
 		case "bash":
 			tplContent = bashCompletionUsage
-		case "fish":
-			tplContent = fishCompletionUsage
 		case "zsh":
 			tplContent = zshCompletionUsage
 		case "powershell":
 			tplContent = powershellCompletionUsage
+		case "fish":
+			tplContent = fishCompletionUsage
 		}
 		tpl := template.Must(template.New("").Parse(tplContent))
 		builder := &strings.Builder{}
