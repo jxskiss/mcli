@@ -73,6 +73,32 @@ USAGE:
   {{ .ProgramName }} {{ .CompletionCmdName }} powershell
 `
 
+const fishCompletionUsage = `
+Generate the autocompletion script for the fish shell.
+
+To load completions in your current shell session:
+
+	{{ .ProgramName }} completion fish | source
+
+
+To load completions for every new session, execute once:
+
+#### Linux:
+
+	{{ .ProgramName }} completion fish > ~/.config/fish/completions/{{ .ProgramName }}.fish
+
+You will need to start a new shell for this setup to take effect.
+
+#### Debug:
+
+	To save debug output to file
+
+	set COMP_DEBUG_FILE debug.log
+
+USAGE:
+  {{ .ProgramName }} {{ .CompletionCmdName }} fish
+`
+
 func (p *App) completionUsage(shellType string) func() string {
 	return func() string {
 		data := map[string]any{
@@ -83,6 +109,8 @@ func (p *App) completionUsage(shellType string) func() string {
 		switch shellType {
 		case "bash":
 			tplContent = bashCompletionUsage
+		case "fish":
+			tplContent = fishCompletionUsage
 		case "zsh":
 			tplContent = zshCompletionUsage
 		case "powershell":

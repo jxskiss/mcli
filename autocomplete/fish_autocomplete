@@ -1,0 +1,23 @@
+#!/usr/bin/env fish
+
+# server cmd --mcli-generate-completion
+# server cmd ax - --mcli-generate-completion
+
+function __{{.ProgramName}}_debug
+    set -l file "$COMP_DEBUG_FILE"
+    if test -n "$file"
+        echo "$argv" >> $file
+    end
+end
+
+function __fish_{{.ProgramName}}_complete_command
+  __{{.ProgramName}}_debug "Starting __com_perform_completion"
+
+  set -l args (commandline -op)
+
+  __{{.ProgramName}}_debug "args: $args"
+
+  $args --mcli-generate-completion
+end
+
+complete -fc server -a "(__fish_{{.ProgramName}}_complete_command)"
