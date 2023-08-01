@@ -21,8 +21,13 @@ type Options struct {
 	KeepCommandOrder bool
 
 	// AllowPosixSTMO enables using the posix-style single token to specify
-	// multiple boolean options. e.g. ‘-abc’ is equivalent to ‘-a -b -c’.
+	// multiple boolean options. e.g. `-abc` is equivalent to `-a -b -c`.
 	AllowPosixSTMO bool
+
+	// HelpFooter optionally adds a footer message to help output.
+	// If Parse is called with option `WithFooter`, the option function's
+	// output overrides this setting.
+	HelpFooter string
 }
 
 // NewApp creates a new cli application instance.
@@ -308,21 +313,23 @@ func (p *App) printUsage() {
 
 // Add adds a command.
 // f must be a function of signature `func()` or `func(*Context)`, else it panics.
-func (p *App) Add(name string, f interface{}, description string) {
+func (p *App) Add(name string, f interface{}, description string, opts ...CmdOpt) {
 	ff := p.validateFunc(f)
 	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
 		f:           ff,
+		opts:        newCmdOptions(opts...),
 	})
 }
 
 // AddRoot adds a root command.
 // When no sub command specified, a root command will be executed.
-func (p *App) AddRoot(f interface{}) {
+func (p *App) AddRoot(f interface{}, opts ...CmdOpt) {
 	ff := p.validateFunc(f)
 	p.rootCmd = &Command{
 		f:      ff,
+		opts:   newCmdOptions(opts...),
 		isRoot: true,
 	}
 }
@@ -342,7 +349,7 @@ func (p *App) validateFunc(f interface{}) func() {
 }
 
 // AddAlias adds an alias name for a command.
-func (p *App) AddAlias(aliasName, target string) {
+func (p *App) AddAlias(aliasName, target string, opts ...CmdOpt) {
 	cmd := p.cmdMap[target]
 	if cmd == nil {
 		panic(fmt.Sprintf("alias command target %q does not exist", target))
@@ -354,6 +361,7 @@ func (p *App) AddAlias(aliasName, target string) {
 		Description: desc,
 		AliasOf:     target,
 		f:           cmd.f,
+		opts:        newCmdOptions(opts...),
 	})
 }
 
@@ -362,13 +370,14 @@ func (p *App) AddAlias(aliasName, target string) {
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
-func (p *App) AddHidden(name string, f interface{}, description string) {
+func (p *App) AddHidden(name string, f interface{}, description string, opts ...CmdOpt) {
 	ff := p.validateFunc(f)
 	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
 		Hidden:      true,
 		f:           ff,
+		opts:        newCmdOptions(opts...),
 	})
 }
 
@@ -377,11 +386,12 @@ func (p *App) AddHidden(name string, f interface{}, description string) {
 // It's not required to add group before adding sub commands, but user
 // can use this function to add a description to a group, which will be
 // showed in help.
-func (p *App) AddGroup(name string, description string) {
+func (p *App) AddGroup(name string, description string, opts ...CmdOpt) {
 	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
 		f:           p.groupCmd,
+		opts:        newCmdOptions(opts...),
 		isGroup:     true,
 	})
 }

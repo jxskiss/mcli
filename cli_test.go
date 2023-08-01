@@ -28,6 +28,11 @@ func dummyCmd() {
 	PrintHelp()
 }
 
+func (p *App) dummyCmd_flagContinueOnError() {
+	p.parseArgs(nil, WithErrorHandling(flag.ContinueOnError))
+	p.printUsage()
+}
+
 func dummyCmdWithContext(ctx *Context) {
 	ctx.Parse(nil)
 	ctx.PrintHelp()
@@ -813,4 +818,38 @@ Line 3 in Description.`
 	app4.runWithArgs([]string{"group-one", "cmd-one"}, false)
 	got4 := buf.String()
 	assert.NotContains(t, got4, app4.Description)
+}
+
+func TestAppOptions(t *testing.T) {
+	t.Run("HelpFooter", func(t *testing.T) {
+		app := NewApp()
+		app.HelpFooter = `
+LEARN MORE:
+  Use 'program help <command> <subcommand>' for more information of a command.
+`
+		cmd2 := func(ctx *Context) {
+			ctx.Parse(nil, WithErrorHandling(flag.ContinueOnError),
+				WithFooter(func() string {
+					return "Footer from parsing option."
+				}))
+			ctx.PrintHelp()
+		}
+		app.Add("cmd1", app.dummyCmd_flagContinueOnError, "test cmd1")
+		app.Add("cmd2", cmd2, "test cmd2")
+
+		var buf bytes.Buffer
+		app.Run("cmd1", "-h")
+		app.getFlagSet().SetOutput(&buf)
+		app.printUsage()
+		got1 := buf.String()
+		assert.Contains(t, got1, "LEARN MORE:\n  Use 'program help <command> <subcommand>' for more information of a command.\n\n")
+
+		buf.Reset()
+		app.Run("cmd2", "-h")
+		app.getFlagSet().SetOutput(&buf)
+		app.printUsage()
+		got2 := buf.String()
+		assert.NotContains(t, got2, "LEARN MORE")
+		assert.Contains(t, got2, "Footer from parsing option.\n\n")
+	})
 }

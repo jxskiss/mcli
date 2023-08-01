@@ -113,3 +113,41 @@ func TestWithFooter(t *testing.T) {
 	assert.Contains(t, got, "--args-b")
 	assert.Contains(t, got, "test with footer custom footer text\nanother line")
 }
+
+func TestWithLongDesc(t *testing.T) {
+	app := NewApp()
+	app.Add("cmd1", app.dummyCmd_flagContinueOnError, "test cmd1", WithLongDesc(`
+Adding an issue to projects requires authorization with the "project" scope.
+To authorize, run "gh auth refresh -s project".`))
+
+	app.Run("cmd1", "-h")
+
+	var buf bytes.Buffer
+	fs := app.getFlagSet()
+	fs.SetOutput(&buf)
+	fs.Usage()
+
+	got := buf.String()
+	assert.Contains(t, got, "test cmd1\n\nAdding an issue to projects requires authorization with the \"project\" scope.\nTo authorize, run \"gh auth refresh -s project\".\n\n")
+}
+
+func TestWithExamples(t *testing.T) {
+	app := NewApp()
+	app.Add("cmd1", app.dummyCmd_flagContinueOnError, "test cmd1", WithExamples(`
+$ gh issue create --title "I found a bug" --body "Nothing works"
+$ gh issue create --label "bug,help wanted"
+$ gh issue create --label bug --label "help wanted"
+$ gh issue create --assignee monalisa,hubot
+$ gh issue create --assignee "@me"
+$ gh issue create --project "Roadmap"`))
+
+	app.Run("cmd1", "-h")
+
+	var buf bytes.Buffer
+	fs := app.getFlagSet()
+	fs.SetOutput(&buf)
+	fs.Usage()
+
+	got := buf.String()
+	assert.Contains(t, got, "EXAMPLES:\n  $ gh issue create --title \"I found a bug\" --body \"Nothing works\"\n  $ gh issue create --label \"bug,help wanted\"\n  $ gh")
+}

@@ -104,8 +104,8 @@ func main() {
     // except that when flag "--mcli-show-hidden" is given.
     mcli.AddHiden("secret-cmd", secretCmd, "An secret command won't be showed in help")
 
-	// Enable shell auto-completion, see `program completion -h` for help.
-	mcli.AddCompletion()
+    // Enable shell auto-completion, see `program completion -h` for help.
+    mcli.AddCompletion()
 
     mcli.Run()
 }
@@ -156,6 +156,8 @@ Also, there are some sophisticated examples:
 
 ## API
 
+Use the default App:
+
 - `SetGlobalFlags` sets global flags, global flags are available to all commands.
 - `Add` adds a command.
 - `AddRoot` adds a root command. A root command is executed when no sub command is specified.
@@ -169,18 +171,32 @@ Also, there are some sophisticated examples:
 - `Parse` parses the command line for flags and arguments.
 - `Run` runs the program, it will parse the command line, search for a registered command and run it.
 - `PrintHelp` prints usage doc of the current command to stderr.
+
+Create a new App instance:
+
 - `NewApp` creates a new cli applcation instance.
 
-### Custom parsing options
+### Custom options
+
+App:
+
+- `App.Options` specifies optional options for an application.
+
+CmdOpt:
+
+- `WithLongDesc` specifies a long description of a command, which will be showed in the command's help.
+- `WithExamples` specifies examples for a command. Examples will be showed after flags in the command's help.
+
+ParseOpt:
 
 - `WithArgs` tells `Parse` to parse from the given args, instead of parsing from the command line arguments.
 - `WithErrorHandling` tells `Parse` to use the given ErrorHandling.
-  By default, it exits the program when an error happens.
+  By default, the program exits when an error happens.
 - `WithName` specifies the command name to use when printing usage doc.
 - `DisableGlobalFlags` tells `Parse` to don't parse and print global flags in help.
 - `ReplaceUsage` tells `Parse` to use a custom usage function instead of the default.
-- `WithFooter` adds a footer message after the default help.
-- `App.Options` specifies optional options for an application.
+- `WithFooter` adds a footer message after the default help,
+  this option overrides the App's setting `Options.HelpFooter` for this parsing call.
 
 ## Tag syntax
 
