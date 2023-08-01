@@ -107,8 +107,6 @@ func main() {
 	mcli.Add("auth setup-git", dummyCmd, "Configure git to use GitHub CLI as a credential helper")
 	mcli.Add("auth status", dummyCmd, "View authentication status")
 
-	mcli.Add("completion", dummyCmd, "Generate shell completion scripts")
-
 	mcli.AddGroup("config", "Manage configuration for gh")
 	mcli.Add("config get", dummyCmd, "Print the value of a given configuration key")
 	mcli.Add("config list", dummyCmd, "Print a list of configuration keys and values")
@@ -138,7 +136,7 @@ func main() {
 	mcli.AddHelp()
 
 	// Enable auto-completion.
-	mcli.AddCompletionWithName("auto-completion")
+	mcli.AddCompletion()
 
 	mcli.Run()
 }

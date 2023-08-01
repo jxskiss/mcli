@@ -264,6 +264,11 @@ func (f *_flag) isMap() bool {
 	return f.rv.Kind() == reflect.Map
 }
 
+func (f *_flag) isCompositeType() bool {
+	kind := f.rv.Kind()
+	return kind == reflect.Slice || kind == reflect.Map
+}
+
 func (f *_flag) isString() bool {
 	return f.rv.Kind() == reflect.String
 }
@@ -688,7 +693,7 @@ func (p *flagParser) validateNonflags() error {
 		if compositeTypeArg != nil {
 			return newProgramingError("%s after composite type %s will never get a value, you may define it as a flag", f.helpName(), compositeTypeArg.helpName())
 		}
-		if isCompositeType(f.rv.Kind()) {
+		if f.isCompositeType() {
 			compositeTypeArg = f
 		}
 	}
@@ -768,10 +773,6 @@ func isSupportedBasicType(kind reflect.Kind) bool {
 		return true
 	}
 	return false
-}
-
-func isCompositeType(kind reflect.Kind) bool {
-	return kind == reflect.Slice || kind == reflect.Map
 }
 
 func splitByComma(value string) []string {

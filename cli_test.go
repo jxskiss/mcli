@@ -11,6 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func init() {
+	isTesting = true
+}
+
 func resetDefaultApp() {
 	defaultApp = NewApp()
 	for _, env := range os.Environ() {
@@ -37,9 +41,15 @@ func TestAddCommands(t *testing.T) {
 	Add("group1 cmd1", dummyCmd, "A group1 cmd1 description")
 	Add("group1 cmd2", dummyCmd, "A group1 cmd2 description")
 	Add("group1 cmd3 sub1", dummyCmd, "A group1 cmd3 sub1 description")
+	AddHelp()
+	AddCompletion()
 
-	assert.Equal(t, 6, len(defaultApp.cmds))
+	assert.Equal(t, 11, len(defaultApp.cmds))
 	assert.Nil(t, defaultApp.ctx)
+	assert.True(t, defaultApp.cmds.isValid("help"))
+	assert.True(t, defaultApp.cmds.isValid("completion bash"))
+	assert.True(t, defaultApp.cmds.isValid("completion zsh"))
+	assert.True(t, defaultApp.cmds.isValid("completion powershell"))
 }
 
 func TestParsing_WithoutCallingRun(t *testing.T) {

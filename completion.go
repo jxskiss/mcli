@@ -4,7 +4,6 @@ import (
 	"embed"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 )
 
@@ -117,7 +116,7 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) {
 	}
 	result := make([]string, 0, 16)
 	for _, sub := range cur.SubCmds {
-		if sub.Cmd == nil || sub.Cmd.noCompletion || !matchFunc(sub) {
+		if sub.Cmd == nil || sub.Cmd.noCompletion || sub.Cmd.Hidden || !matchFunc(sub) {
 			continue
 		}
 		desc := ""
@@ -127,7 +126,7 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) {
 		suggestion := formatCompletion(sub.Name, desc)
 		result = append(result, suggestion)
 	}
-	printLines(os.Stdout, result)
+	printLines(app.completionCtx.out, result)
 }
 
 func (t *cmdTree) suggestFlags(app *App, userArgs []string, flagName string) {
@@ -175,7 +174,8 @@ func (p *App) continueFlagCompletion() {
 	}
 
 	seenFlags := make(map[string]bool)
-	for _, arg := range p.completionCtx.userArgs {
+	leadingArgs := subSlice(p.completionCtx.userArgs, 0, -1)
+	for _, arg := range leadingArgs {
 		if !strings.HasPrefix(arg, "-") {
 			continue
 		}
@@ -196,14 +196,16 @@ func (p *App) continueFlagCompletion() {
 	flags := p.completionCtx.flags
 
 	result := make([]string, 0, 16)
-	dashCount, flagName := countFlagPrefixDash(flagName)
-	if dashCount == 1 {
+	hyphenCount, flagName := countFlagPrefixHyphen(flagName)
+	if hyphenCount == 1 {
 		for _, flag := range flags {
-			if flag.short != "" && strings.HasPrefix(flag.short, flagName) && !isSeenFlag(flag) {
+			if flag.short != "" && strings.HasPrefix(flag.short, flagName) &&
+				(flag.isCompositeType() || !isSeenFlag(flag)) {
 				usage := getUsage(flag)
 				suggestion := formatCompletion("-"+flag.short, usage)
 				result = append(result, suggestion)
-			} else if flag.name != "" && strings.HasPrefix(flag.name, flagName) && !isSeenFlag(flag) {
+			} else if flag.name != "" && strings.HasPrefix(flag.name, flagName) &&
+				(flag.isCompositeType() || !isSeenFlag(flag)) {
 				usage := getUsage(flag)
 				hint := formatCompletion("--"+flag.name, usage)
 				result = append(result, hint)
@@ -211,16 +213,17 @@ func (p *App) continueFlagCompletion() {
 		}
 	} else {
 		for _, flag := range flags {
-			if flag.name != "" && strings.HasPrefix(flag.name, flagName) && !isSeenFlag(flag) {
+			if flag.name != "" && strings.HasPrefix(flag.name, flagName) &&
+				(flag.isCompositeType() || !isSeenFlag(flag)) {
 				suggestion := formatCompletion("--"+flag.name, getUsage(flag))
 				result = append(result, suggestion)
 			}
 		}
 	}
-	printLines(os.Stdout, result)
+	printLines(p.completionCtx.out, result)
 }
 
-func countFlagPrefixDash(flagName string) (int, string) {
+func countFlagPrefixHyphen(flagName string) (int, string) {
 	n := 0
 	for _, c := range flagName {
 		if c == '-' {
@@ -247,7 +250,12 @@ func formatCompletion(opt, desc string) string {
 
 func (p *App) addCompletionCommands(name string) {
 	p.completionCmdName = name
-	p.AddGroup(name, "Generate autocompletion script for the specified shell")
+	p.addCommand(&Command{
+		Name:         name,
+		Description:  "Generate autocompletion script for the specified shell",
+		f:            p.groupCmd,
+		noCompletion: true,
+	})
 	p.addCommand(&Command{
 		Name:         name + " bash",
 		Description:  "Generate the autocompletion script for bash",

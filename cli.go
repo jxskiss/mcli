@@ -54,6 +54,7 @@ type App struct {
 	completionCmdName string
 	isCompletion      bool
 	completionCtx     struct {
+		out      io.Writer
 		isZsh    bool
 		userArgs []string
 		cmd      *cmdTree
@@ -460,6 +461,9 @@ func (p *App) Run(args ...string) {
 func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 	if isComp, userArgs := hasCompletionFlag(cmdArgs); isComp {
 		p.isCompletion = true
+		if p.completionCtx.out == nil {
+			p.completionCtx.out = os.Stdout
+		}
 		p.completionCtx.isZsh = strings.HasSuffix(os.Getenv("SHELL"), "zsh")
 		p.completionCtx.userArgs = userArgs
 		p.doAutoCompletion(userArgs)
@@ -555,7 +559,9 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 	if p.isCompletion {
 		p.completionCtx.flags = ctx.flags
 		p.continueFlagCompletion()
-		os.Exit(0)
+		if !isTesting { // help unit testing
+			os.Exit(0)
+		}
 		return
 	}
 
@@ -677,12 +683,6 @@ type withGlobalFlagArgs struct {
 	GlobalFlags interface{}
 	CmdArgs     interface{}
 }
-
-func clip(s []string) []string {
-	return s[:len(s):len(s)]
-}
-
-var isExampleTest bool
 
 // getFlagSetOutput helps to do testing.
 // When in example testing, it returns os.Stdout instead of fs.Output().
