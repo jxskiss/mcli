@@ -373,16 +373,16 @@ func Example_githubCliCommandIssueEdit() {
 
 	// The description don't need to be aligned.
 	var args struct {
-		AddAssignee    bool   `cli:"--add-assignee      Add assigned users by their 'login'. Use \"@me\" to assign yourself."`
-		AddLabel       string `cli:"--add-label          Add labels by 'name'"`
-		AddProject     string `cli:"--add-project        Add the issue to projects by 'name'"`
-		Body           string `cli:"-b, --body             Set the new body."`
-		BodyFile       string `cli:"-F, --body-file          Read body text from 'file' (use \"-\" to read from standard input)"`
-		Milestone      string `cli:"-m, --milestone          Edit the milestone the issue belongs to by 'name'"`
-		RemoveAssignee string `cli:"--remove-assignee   Remove assigned users by their 'login'. Use \"@me\" to unassign yourself."`
-		RemoveLabel    string `cli:"--remove-label       Remove labels by 'name'"`
-		RemoveProject  string `cli:"--remove-project     Remove the issue from projects by 'name'"`
-		Title          string `cli:"-t, --title            Set the new title."`
+		AddAssignee    []string `cli:"--add-assignee      Add assigned users by their 'login'. Use \"@me\" to assign yourself."`
+		AddLabel       string   `cli:"--add-label          Add labels by 'name'"`
+		AddProject     string   `cli:"--add-project        Add the issue to projects by 'name'"`
+		Body           string   `cli:"-b, --body             Set the new body."`
+		BodyFile       string   `cli:"-F, --body-file          Read body text from 'file' (use \"-\" to read from standard input)"`
+		Milestone      string   `cli:"-m, --milestone          Edit the milestone the issue belongs to by 'name'"`
+		RemoveAssignee string   `cli:"--remove-assignee   Remove assigned users by their 'login'. Use \"@me\" to unassign yourself."`
+		RemoveLabel    string   `cli:"--remove-label       Remove labels by 'name'"`
+		RemoveProject  string   `cli:"--remove-project     Remove the issue from projects by 'name'"`
+		Title          string   `cli:"-t, --title            Set the new title."`
 		CommonIssueArgs
 	}
 

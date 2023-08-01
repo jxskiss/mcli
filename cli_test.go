@@ -20,6 +20,7 @@ func resetDefaultApp() {
 }
 
 func dummyCmd() {
+	Parse(nil)
 	PrintHelp()
 }
 

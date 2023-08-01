@@ -3,6 +3,7 @@ package mcli
 import (
 	"flag"
 	"os"
+	"time"
 )
 
 func ExampleAdd_addCommands() {
@@ -249,12 +250,12 @@ func ExampleRun_subCommandIssueCreate() {
 	//   gh issue create [flags]
 	//
 	// FLAGS:
-	//   -a, --assignee string           Assign people by their 'login'. Use "@me" to self-assign.
+	//   -a, --assignee login            Assign people by their login. Use "@me" to self-assign.
 	//   -b, --body string               Supply a body. Will prompt for one otherwise.
-	//   -F, --body-file string          Read body text from 'file' (use "-" to read from standard input)
-	//   -l, --label string              Add labels by 'name'
-	//   -m, --milestone string          Add the issue to a milestone by 'name'
-	//   -p, --project string            Add the issue to projects by 'name'
+	//   -F, --body-file file            Read body text from file (use "-" to read from standard input)
+	//   -l, --label name                Add labels by name
+	//   -m, --milestone name            Add the issue to a milestone by name
+	//   -p, --project name              Add the issue to projects by name
 	//       --recover string            Recover input from a failed run of create
 	//   -R, --repo [HOST/]OWNER/REPO    Select another repository using the [HOST/]OWNER/REPO format
 	//   -t, --title string              Supply a title. Will prompt for one otherwise.
@@ -311,12 +312,12 @@ func ExampleRun_helpIssueCreate() {
 	//   gh issue create [flags]
 	//
 	// FLAGS:
-	//   -a, --assignee string           Assign people by their 'login'. Use "@me" to self-assign.
+	//   -a, --assignee login            Assign people by their login. Use "@me" to self-assign.
 	//   -b, --body string               Supply a body. Will prompt for one otherwise.
-	//   -F, --body-file string          Read body text from 'file' (use "-" to read from standard input)
-	//   -l, --label string              Add labels by 'name'
-	//   -m, --milestone string          Add the issue to a milestone by 'name'
-	//   -p, --project string            Add the issue to projects by 'name'
+	//   -F, --body-file file            Read body text from file (use "-" to read from standard input)
+	//   -l, --label name                Add labels by name
+	//   -m, --milestone name            Add the issue to a milestone by name
+	//   -p, --project name              Add the issue to projects by name
 	//       --recover string            Recover input from a failed run of create
 	//   -R, --repo [HOST/]OWNER/REPO    Select another repository using the [HOST/]OWNER/REPO format
 	//   -t, --title string              Supply a title. Will prompt for one otherwise.
@@ -590,4 +591,31 @@ func ExampleAddAlias() {
 	//
 	// USAGE:
 	//   demo cmdb
+}
+
+func Example_quotaUsageName() {
+	resetDefaultApp()
+	defer markExampleTest()()
+
+	var args struct {
+		Arg1 string        `cli:"-a, this is escaped quoted words \\'not name\\' and this is the 'name' and more quoted words \\'actually no need to quote this\\'"`
+		Arg2 string        "cli:\"-b, using backtick to quote name `value` some more description\""
+		Arg3 time.Duration "cli:\"-c, only one backtick, `some thing, using type name\""
+	}
+	AddRoot(func() {
+		Parse(&args)
+		PrintHelp()
+	})
+
+	os.Args = []string{"run"}
+	Run()
+
+	// Output:
+	// USAGE:
+	//   run [flags]
+	//
+	// FLAGS:
+	//   -a name        this is escaped quoted words 'not name' and this is the name and more quoted words 'actually no need to quote this'
+	//   -b value       using backtick to quote name value some more description
+	//   -c duration    only one backtick, `some thing, using type name
 }
