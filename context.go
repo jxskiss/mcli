@@ -34,3 +34,7 @@ func (ctx *Context) Parse(v interface{}, opts ...ParseOpt) (*flag.FlagSet, error
 func (ctx *Context) PrintHelp() {
 	ctx.App.printUsage()
 }
+
+func (ctx *Context) getParsingContext() *parsingContext {
+	return ctx.App.getParsingContext()
+}
