@@ -92,7 +92,7 @@ func (p *App) completionUsage(shellType string) func() string {
 		builder := &strings.Builder{}
 		err := tpl.Execute(builder, data)
 		if err != nil {
-			panic(bugReportTip)
+			panic("unreachable")
 		}
 		return builder.String()
 	}

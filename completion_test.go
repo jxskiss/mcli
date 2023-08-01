@@ -50,18 +50,30 @@ func TestSuggestCommands(t *testing.T) {
 	defaultApp.completionCtx.out = &buf
 
 	Run("c", completionFlag)
-	got := buf.String()
-	assert.Contains(t, got, "cmd1\n")
-	assert.NotContains(t, got, "cmd2")
-	assert.NotContains(t, got, "completion")
+	got1 := buf.String()
+	assert.Contains(t, got1, "cmd1\n")
+	assert.NotContains(t, got1, "cmd2")
+	assert.NotContains(t, got1, "completion")
 
 	buf.Reset()
 	os.Setenv("SHELL", "/bin/zsh")
 	Run("c", completionFlag)
-	got = buf.String()
-	assert.Contains(t, got, "cmd1:A cmd1 description\n")
-	assert.NotContains(t, got, "cmd2")
-	assert.NotContains(t, got, "completion")
+	got2 := buf.String()
+	assert.Contains(t, got2, "cmd1:A cmd1 description\n")
+	assert.NotContains(t, got2, "cmd2")
+	assert.NotContains(t, got2, "completion")
+
+	buf.Reset()
+	Run("group1", "c", completionFlag)
+	got3 := buf.String()
+	assert.Contains(t, got3, "cmd1:")
+	assert.Contains(t, got3, "cmd2:")
+	assert.NotContains(t, got3, "cmd3")
+
+	buf.Reset()
+	Run("group1", "cme", completionFlag)
+	got4 := buf.String()
+	assert.Zero(t, got4)
 }
 
 func TestSuggestFlags(t *testing.T) {
@@ -135,4 +147,11 @@ func TestSuggestFlags(t *testing.T) {
 	assert.Contains(t, got6, "--a1-flag\n")
 	assert.NotContains(t, got6, "a2-flag")
 	assert.Contains(t, got6, "--j-flag:description j flag\n")
+
+	t.Run("noCompletion", func(t *testing.T) {
+		reset()
+		Run("completion", "-", completionFlag)
+		got := buf.String()
+		assert.Zero(t, got)
+	})
 }

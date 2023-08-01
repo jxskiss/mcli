@@ -252,25 +252,25 @@ func (p *App) addCompletionCommands(name string) {
 	p.completionCmdName = name
 	p.addCommand(&Command{
 		Name:         name,
-		Description:  "Generate autocompletion script for the specified shell",
+		Description:  "Generate shell completion scripts",
 		f:            p.groupCmd,
 		noCompletion: true,
 	})
 	p.addCommand(&Command{
 		Name:         name + " bash",
-		Description:  "Generate the autocompletion script for bash",
+		Description:  "Generate the completion script for bash",
 		f:            p.completionCmd("bash"),
 		noCompletion: true,
 	})
 	p.addCommand(&Command{
 		Name:         name + " zsh",
-		Description:  "Generate the autocompletion script for zsh",
+		Description:  "Generate the completion script for zsh",
 		f:            p.completionCmd("zsh"),
 		noCompletion: true,
 	})
 	p.addCommand(&Command{
 		Name:         name + " powershell",
-		Description:  "Generate the autocompletion script for powershell",
+		Description:  "Generate the completion script for powershell",
 		f:            p.completionCmd("powershell"),
 		noCompletion: true,
 	})
@@ -289,8 +289,8 @@ func (p *App) completionCmd(shellType string) func() {
 			tplName = "autocomplete/zsh_autocomplete"
 		case "powershell":
 			tplName = "autocomplete/powershell_autocomplete.ps1"
-		default: // shall never happen
-			panic(bugReportTip)
+		default:
+			panic("unreachable")
 		}
 		tplContent, err := autoCompleteTpl.ReadFile(tplName)
 		if err != nil { // shall never happen
@@ -304,5 +304,3 @@ func (p *App) completionCmd(shellType string) func() {
 //
 //go:embed autocomplete
 var autoCompleteTpl embed.FS
-
-const bugReportTip = "bug: please report to https://github.com/jxskiss/mcli"
