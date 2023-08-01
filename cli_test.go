@@ -44,12 +44,13 @@ func TestAddCommands(t *testing.T) {
 	AddHelp()
 	AddCompletion()
 
-	assert.Equal(t, 11, len(defaultApp.cmds))
+	assert.Equal(t, 12, len(defaultApp.cmds))
 	assert.Nil(t, defaultApp.ctx)
 	assert.True(t, defaultApp.cmds.isValid("help"))
 	assert.True(t, defaultApp.cmds.isValid("completion bash"))
 	assert.True(t, defaultApp.cmds.isValid("completion zsh"))
 	assert.True(t, defaultApp.cmds.isValid("completion powershell"))
+	assert.True(t, defaultApp.cmds.isValid("completion fish"))
 }
 
 func TestParsing_WithoutCallingRun(t *testing.T) {

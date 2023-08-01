@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"text/template"
 )
 
 const completionFlag = "--mcli-generate-completion"
@@ -263,6 +264,12 @@ func (p *App) addCompletionCommands(name string) {
 		noCompletion: true,
 	})
 	p.addCommand(&Command{
+		Name:         name + " fish",
+		Description:  "Generate the completion script for fish",
+		f:            p.completionCmd("fish"),
+		noCompletion: true,
+	})
+	p.addCommand(&Command{
 		Name:         name + " zsh",
 		Description:  "Generate the completion script for zsh",
 		f:            p.completionCmd("zsh"),
@@ -281,6 +288,11 @@ func (p *App) completionCmd(shellType string) func() {
 		customUsage := p.completionUsage(shellType)
 		p.parseArgs(nil, ReplaceUsage(customUsage))
 
+		data := map[string]any{
+			"ProgramName":       getProgramName(),
+			"CompletionCmdName": p.completionCmdName,
+		}
+
 		tplName := ""
 		switch shellType {
 		case "bash":
@@ -289,6 +301,8 @@ func (p *App) completionCmd(shellType string) func() {
 			tplName = "autocomplete/zsh_autocomplete"
 		case "powershell":
 			tplName = "autocomplete/powershell_autocomplete.ps1"
+		case "fish":
+			tplName = "autocomplete/fish_autocomplete"
 		default:
 			panic("unreachable")
 		}
@@ -296,7 +310,14 @@ func (p *App) completionCmd(shellType string) func() {
 		if err != nil { // shall never happen
 			panic(err)
 		}
-		fmt.Println(string(tplContent))
+
+		tpl := template.Must(template.New("").Parse(string(tplContent)))
+		builder := &strings.Builder{}
+		tpl.Execute(builder, data)
+		// if err != nil {
+		// 	panic("unreachable")
+		// }
+		fmt.Println(builder.String())
 	}
 }
 

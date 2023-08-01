@@ -26,6 +26,7 @@ func TestCompletionCommand(t *testing.T) {
 	Run("completion", "bash")
 	Run("completion", "zsh")
 	Run("completion", "powershell")
+	Run("completion", "fish")
 }
 
 func TestCompletionUsage(t *testing.T) {
@@ -40,6 +41,9 @@ func TestCompletionUsage(t *testing.T) {
 
 	powershellUsage := defaultApp.completionUsage("powershell")
 	assert.Contains(t, powershellUsage(), "USAGE:\n  mcli.test completion powershell")
+
+	fishUsage := defaultApp.completionUsage("fish")()
+	assert.Contains(t, fishUsage, "USAGE:\n  mcli.test completion fish")
 }
 
 func TestSuggestCommands(t *testing.T) {
