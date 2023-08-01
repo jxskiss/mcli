@@ -222,7 +222,7 @@ The syntax is
  * - `cli:"--an-obvious-flag-dont-need-description"`
  */
 CliTag       <-  ( Modifiers ',' Space? )? Name ( ( ',' | Space ) Description )?
-Modifiers    <-  '#' [DHR]+
+Modifiers    <-  '#' [DFHR]+
 Name         <-  ( ShortName LongName? ) | LongName
 Description  <-  ( ![\r\n] . )*
 
@@ -252,8 +252,9 @@ the first segment, starting with a `#` character.
 Fow now the following modifiers are available:
 
 * D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help
-* R - marks a flag or argument as required, "REQUIRED" will be showed in help
+* F - indicates a flag or argument to accept a file path, which must exist
 * H - marks a flag as hidden, see below for more about hidden flags
+* R - marks a flag or argument as required, "REQUIRED" will be showed in help
 
 Hidden flags won't be showed in help, except that when a special flag
 "--mcli-show-hidden" is provided.

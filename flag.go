@@ -20,8 +20,9 @@ import (
 // Fow now the following modifiers are available:
 //
 //	D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help
-//	R - marks a flag or argument as required, "REQUIRED" will be showed in help
+//	F - indicates a flag or argument to accept a filename, which must exist
 //	H - marks a flag as hidden, see below for more about hidden flags
+//	R - marks a flag or argument as required, "REQUIRED" will be showed in help
 //
 // Hidden flags won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
@@ -41,6 +42,8 @@ func (m Modifier) apply(f *_flag) {
 	switch byte(m) {
 	case 'D':
 		f.deprecated = true
+	case 'F':
+		f.isFilename = true
 	case 'H':
 		f.hidden = true
 	case 'R':
@@ -72,6 +75,7 @@ type _flag struct {
 	isGlobal   bool
 	hasDefault bool
 	deprecated bool
+	isFilename bool
 	hidden     bool
 	required   bool
 	nonflag    bool
@@ -302,6 +306,9 @@ func (f *_flag) usageName() string {
 	if f.rv.Kind() == reflect.Bool {
 		return ""
 	}
+	if f.isFilename {
+		return "filename"
+	}
 	if isFlagValueImpl(f.rv) {
 		return "value"
 	}
@@ -430,6 +437,9 @@ nextChar:
 func (f *_flag) validate() error {
 	if f.name == "" {
 		return newProgramingError("cannot parse name from cli tag %q", f.cliTag)
+	}
+	if f.isFilename && !f.isString() {
+		return newProgramingError("modifier F requires value type to be string, %s", f.name)
 	}
 	if f.hidden && f.nonflag {
 		return newProgramingError("shall not set an argument to be hidden, %s", f.name)
