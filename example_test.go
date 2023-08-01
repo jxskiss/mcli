@@ -249,12 +249,12 @@ func ExampleRun_subCommandIssueCreate() {
 	//   gh issue create [flags]
 	//
 	// FLAGS:
-	//   -a, --assignee string           Assign people by their 'login'. Use "@me" to self-assign.
+	//   -a, --assignee login            Assign people by their login. Use "@me" to self-assign.
 	//   -b, --body string               Supply a body. Will prompt for one otherwise.
-	//   -F, --body-file string          Read body text from 'file' (use "-" to read from standard input)
-	//   -l, --label string              Add labels by 'name'
-	//   -m, --milestone string          Add the issue to a milestone by 'name'
-	//   -p, --project string            Add the issue to projects by 'name'
+	//   -F, --body-file file            Read body text from file (use "-" to read from standard input)
+	//   -l, --label name                Add labels by name
+	//   -m, --milestone name            Add the issue to a milestone by name
+	//   -p, --project name              Add the issue to projects by name
 	//       --recover string            Recover input from a failed run of create
 	//   -R, --repo [HOST/]OWNER/REPO    Select another repository using the [HOST/]OWNER/REPO format
 	//   -t, --title string              Supply a title. Will prompt for one otherwise.
@@ -311,12 +311,12 @@ func ExampleRun_helpIssueCreate() {
 	//   gh issue create [flags]
 	//
 	// FLAGS:
-	//   -a, --assignee string           Assign people by their 'login'. Use "@me" to self-assign.
+	//   -a, --assignee login            Assign people by their login. Use "@me" to self-assign.
 	//   -b, --body string               Supply a body. Will prompt for one otherwise.
-	//   -F, --body-file string          Read body text from 'file' (use "-" to read from standard input)
-	//   -l, --label string              Add labels by 'name'
-	//   -m, --milestone string          Add the issue to a milestone by 'name'
-	//   -p, --project string            Add the issue to projects by 'name'
+	//   -F, --body-file file            Read body text from file (use "-" to read from standard input)
+	//   -l, --label name                Add labels by name
+	//   -m, --milestone name            Add the issue to a milestone by name
+	//   -p, --project name              Add the issue to projects by name
 	//       --recover string            Recover input from a failed run of create
 	//   -R, --repo [HOST/]OWNER/REPO    Select another repository using the [HOST/]OWNER/REPO format
 	//   -t, --title string              Supply a title. Will prompt for one otherwise.
