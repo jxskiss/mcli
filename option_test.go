@@ -60,7 +60,7 @@ func TestDisableGlobalFlags(t *testing.T) {
 
 func TestReplaceUsage(t *testing.T) {
 	app := NewApp()
-	app.Add("dummy1", dummyCmd, "dummy cmd 1")
+	app.Add("dummy1", dummyCmdWithContext, "dummy cmd 1")
 
 	var args struct {
 		A string `cli:"-a, --args-a"`
@@ -88,7 +88,7 @@ func TestReplaceUsage(t *testing.T) {
 
 func TestWithFooter(t *testing.T) {
 	app := NewApp()
-	app.Add("dummy1", dummyCmd, "dummy cmd 1")
+	app.Add("dummy1", dummyCmdWithContext, "dummy cmd 1")
 
 	var args struct {
 		A string `cli:"-a, --args-a"`
@@ -116,7 +116,7 @@ func TestWithFooter(t *testing.T) {
 
 func TestWithLongDesc(t *testing.T) {
 	app := NewApp()
-	app.Add("cmd1", app.dummyCmd_flagContinueOnError, "test cmd1", WithLongDesc(`
+	app.Add("cmd1", dummyCmdWithContext, "test cmd1", WithLongDesc(`
 Adding an issue to projects requires authorization with the "project" scope.
 To authorize, run "gh auth refresh -s project".`))
 
@@ -133,7 +133,7 @@ To authorize, run "gh auth refresh -s project".`))
 
 func TestWithExamples(t *testing.T) {
 	app := NewApp()
-	app.Add("cmd1", app.dummyCmd_flagContinueOnError, "test cmd1", WithExamples(`
+	app.Add("cmd1", dummyCmdWithContext, "test cmd1", WithExamples(`
 $ gh issue create --title "I found a bug" --body "Nothing works"
 $ gh issue create --label "bug,help wanted"
 $ gh issue create --label bug --label "help wanted"

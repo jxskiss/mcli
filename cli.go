@@ -33,6 +33,10 @@ type Options struct {
 // NewApp creates a new cli application instance.
 // Typically, there is no need to manually create an application, using
 // the package-level functions with the default application is preferred.
+//
+// Note: with a new application instance (not the default App),
+// user should not call `mcli.Parse` and `mcli.PrintHelp` inside command
+// functions, that two functions always execute with the default App.
 func NewApp() *App {
 	return &App{}
 }
@@ -59,7 +63,8 @@ type App struct {
 	completionCmdName string
 	isCompletion      bool
 	completionCtx     struct {
-		out      io.Writer
+		out      io.Writer // help in testing to inspect completion output
+		postFunc func()    // help in testing to not exit the program
 		isZsh    bool
 		userArgs []string
 		cmd      *cmdTree
@@ -312,8 +317,11 @@ func (p *App) printUsage() {
 }
 
 // Add adds a command.
-// f must be a function of signature `func()` or `func(*Context)`, else it panics.
-func (p *App) Add(name string, f interface{}, description string, opts ...CmdOpt) {
+func (p *App) Add(name string, f CommandFunc, description string, opts ...CmdOpt) {
+	p._add(name, f, description, opts...)
+}
+
+func (p *App) _add(name string, f interface{}, description string, opts ...CmdOpt) {
 	ff := p.validateFunc(f)
 	p.addCommand(&Command{
 		Name:        name,
@@ -325,7 +333,11 @@ func (p *App) Add(name string, f interface{}, description string, opts ...CmdOpt
 
 // AddRoot adds a root command.
 // When no sub command specified, a root command will be executed.
-func (p *App) AddRoot(f interface{}, opts ...CmdOpt) {
+func (p *App) AddRoot(f CommandFunc, opts ...CmdOpt) {
+	p._addRoot(f, opts...)
+}
+
+func (p *App) _addRoot(f interface{}, opts ...CmdOpt) {
 	ff := p.validateFunc(f)
 	p.rootCmd = &Command{
 		f:      ff,
@@ -366,11 +378,14 @@ func (p *App) AddAlias(aliasName, target string, opts ...CmdOpt) {
 }
 
 // AddHidden adds a hidden command.
-// f must be a function of signature `func()` or `func(*Context)`, else it panics.
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
-func (p *App) AddHidden(name string, f interface{}, description string, opts ...CmdOpt) {
+func (p *App) AddHidden(name string, f CommandFunc, description string, opts ...CmdOpt) {
+	p._addHidden(name, f, description, opts...)
+}
+
+func (p *App) _addHidden(name string, f interface{}, description string, opts ...CmdOpt) {
 	ff := p.validateFunc(f)
 	p.addCommand(&Command{
 		Name:        name,
@@ -462,6 +477,7 @@ func (p *App) validateHelpCommand(name string) bool {
 // Optionally you may specify args to parse, by default it parses the
 // command line arguments os.Args[1:].
 func (p *App) Run(args ...string) {
+	defer setRunningApp(p)()
 	if len(args) == 0 {
 		args = os.Args[1:]
 	}
@@ -470,12 +486,7 @@ func (p *App) Run(args ...string) {
 
 func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 	if isComp, userArgs := hasCompletionFlag(cmdArgs); isComp {
-		p.isCompletion = true
-		if p.completionCtx.out == nil {
-			p.completionCtx.out = os.Stdout
-		}
-		p.completionCtx.isZsh = strings.HasSuffix(os.Getenv("SHELL"), "zsh")
-		p.completionCtx.userArgs = userArgs
+		p.setupCompletionCtx(userArgs)
 		p.doAutoCompletion(userArgs)
 		return
 	}
@@ -496,6 +507,20 @@ func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 		ctx.showHidden = hasBoolFlag(showHiddenFlag, cmdArgs)
 		p.printUsage()
 	}
+}
+
+func (p *App) setupCompletionCtx(userArgs []string) {
+	p.isCompletion = true
+	if p.completionCtx.out == nil {
+		p.completionCtx.out = os.Stdout
+	}
+	if p.completionCtx.postFunc == nil {
+		p.completionCtx.postFunc = func() {
+			os.Exit(0)
+		}
+	}
+	p.completionCtx.isZsh = strings.HasSuffix(os.Getenv("SHELL"), "zsh")
+	p.completionCtx.userArgs = userArgs
 }
 
 // searchCmd helps to do testing.
@@ -569,9 +594,7 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 	if p.isCompletion {
 		p.completionCtx.flags = ctx.flags
 		p.continueFlagCompletion()
-		if !isTesting { // help unit testing
-			os.Exit(0)
-		}
+		p.completionCtx.postFunc()
 		return
 	}
 
