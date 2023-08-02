@@ -24,6 +24,8 @@ type Command struct {
 	noCompletion bool
 }
 
+type CommandFunc = func(ctx *Context)
+
 func normalizeCmdName(name string) string {
 	name = strings.TrimSpace(name)
 	return strings.Join(strings.Fields(name), " ")

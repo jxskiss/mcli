@@ -2,11 +2,14 @@ package mcli
 
 import "flag"
 
-func init() {
-	defaultApp = NewApp()
-}
+var defaultApp = NewApp()
+var runningApp = defaultApp
 
-var defaultApp *App
+func setRunningApp(app *App) func() {
+	old := runningApp
+	runningApp = app
+	return func() { runningApp = old }
+}
 
 // SetGlobalFlags sets global flags, global flags are available to all commands.
 // DisableGlobalFlags may be used to disable global flags for a specific
@@ -18,13 +21,13 @@ func SetGlobalFlags(v interface{}) {
 // Add adds a command.
 // f must be a function of signature `func()` or `func(*Context)`, else it panics.
 func Add(name string, f interface{}, description string, opts ...CmdOpt) {
-	defaultApp.Add(name, f, description, opts...)
+	defaultApp._add(name, f, description, opts...)
 }
 
 // AddRoot adds a root command processor.
 // When no sub command specified, a root command will be executed.
 func AddRoot(f interface{}, opts ...CmdOpt) {
-	defaultApp.AddRoot(f, opts...)
+	defaultApp._addRoot(f, opts...)
 }
 
 // AddAlias adds an alias name for a command.
@@ -38,7 +41,7 @@ func AddAlias(aliasName, target string, opts ...CmdOpt) {
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
 func AddHidden(name string, f interface{}, description string, opts ...CmdOpt) {
-	defaultApp.AddHidden(name, f, description, opts...)
+	defaultApp._addHidden(name, f, description, opts...)
 }
 
 // AddGroup adds a group explicitly.
@@ -79,10 +82,16 @@ func Run(args ...string) {
 // Parse parses the command line for flags and arguments.
 // v must be a pointer to a struct, else it panics.
 func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
-	return defaultApp.parseArgs(v, opts...)
+
+	// Check running App to work correctly in case of misuse of calling
+	// `mcli.Parse` inside command function not with the default App.
+	return runningApp.parseArgs(v, opts...)
 }
 
 // PrintHelp prints usage doc of the current command to stderr.
 func PrintHelp() {
-	defaultApp.printUsage()
+
+	// Check running App to work correctly in case of misuse of calling
+	// `mcli.PrintHelp` inside command function not with the default App.
+	runningApp.printUsage()
 }

@@ -11,12 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func init() {
-	isTesting = true
-}
-
 func resetDefaultApp() {
-	defaultApp = NewApp()
+	*defaultApp = *NewApp()
+	defaultApp.completionCtx.postFunc = func() {}
 	for _, env := range os.Environ() {
 		key := strings.SplitN(env, "=", 2)[0]
 		os.Unsetenv(key)
@@ -28,13 +25,8 @@ func dummyCmd() {
 	PrintHelp()
 }
 
-func (p *App) dummyCmd_flagContinueOnError() {
-	p.parseArgs(nil, WithErrorHandling(flag.ContinueOnError))
-	p.printUsage()
-}
-
 func dummyCmdWithContext(ctx *Context) {
-	ctx.Parse(nil)
+	ctx.Parse(nil, WithErrorHandling(flag.ContinueOnError))
 	ctx.PrintHelp()
 }
 
@@ -834,7 +826,7 @@ LEARN MORE:
 				}))
 			ctx.PrintHelp()
 		}
-		app.Add("cmd1", app.dummyCmd_flagContinueOnError, "test cmd1")
+		app.Add("cmd1", dummyCmdWithContext, "test cmd1")
 		app.Add("cmd2", cmd2, "test cmd2")
 
 		var buf bytes.Buffer
@@ -851,5 +843,14 @@ LEARN MORE:
 		got2 := buf.String()
 		assert.NotContains(t, got2, "LEARN MORE")
 		assert.Contains(t, got2, "Footer from parsing option.\n\n")
+	})
+}
+
+func TestCoverage(t *testing.T) {
+	t.Run("setupCompletionCtx", func(t *testing.T) {
+		app := NewApp()
+		app.Add("cmd1", dummyCmdWithContext, "cmd1")
+		app.AddHidden("cmd2-hidden", dummyCmdWithContext, "cmd2 hidden")
+		app.setupCompletionCtx(nil)
 	})
 }
