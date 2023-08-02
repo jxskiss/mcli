@@ -1,6 +1,9 @@
 package mcli
 
-import "flag"
+import (
+	"flag"
+	"strings"
+)
 
 func newParseOptions(opts ...ParseOpt) *parseOptions {
 	out := &parseOptions{
@@ -72,8 +75,47 @@ func ReplaceUsage(f func() string) ParseOpt {
 
 // WithFooter specifies a function to generate extra help text to print
 // after the default help.
+// If this option is provided, the option function's output overrides
+// the App's optional help-footer setting.
 func WithFooter(f func() string) ParseOpt {
 	return ParseOpt{f: func(options *parseOptions) {
 		options.helpFooter = f
+	}}
+}
+
+func newCmdOptions(opts ...CmdOpt) cmdOptions {
+	return *(new(cmdOptions).apply(opts...))
+}
+
+type cmdOptions struct {
+	longDesc string
+	examples string
+}
+
+func (p *cmdOptions) apply(opts ...CmdOpt) *cmdOptions {
+	for _, o := range opts {
+		o.f(p)
+	}
+	return p
+}
+
+// CmdOpt specifies options to customize the behavior of a Command.
+type CmdOpt struct {
+	f func(*cmdOptions)
+}
+
+// WithLongDesc specifies a long description of a command,
+// which will be showed in the command's help.
+func WithLongDesc(long string) CmdOpt {
+	return CmdOpt{f: func(options *cmdOptions) {
+		options.longDesc = strings.TrimSpace(long)
+	}}
+}
+
+// WithExamples specifies examples for a command.
+// Examples will be showed after flags in the command's help.
+func WithExamples(examples string) CmdOpt {
+	return CmdOpt{f: func(options *cmdOptions) {
+		options.examples = strings.TrimSpace(examples)
 	}}
 }

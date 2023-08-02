@@ -13,7 +13,8 @@ type Command struct {
 
 	AliasOf string
 
-	f func()
+	f    func()
+	opts cmdOptions
 
 	idx   int
 	level int

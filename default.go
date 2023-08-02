@@ -17,19 +17,19 @@ func SetGlobalFlags(v interface{}) {
 
 // Add adds a command.
 // f must be a function of signature `func()` or `func(*Context)`, else it panics.
-func Add(name string, f interface{}, description string) {
-	defaultApp.Add(name, f, description)
+func Add(name string, f interface{}, description string, opts ...CmdOpt) {
+	defaultApp.Add(name, f, description, opts...)
 }
 
 // AddRoot adds a root command processor.
 // When no sub command specified, a root command will be executed.
-func AddRoot(f interface{}) {
-	defaultApp.AddRoot(f)
+func AddRoot(f interface{}, opts ...CmdOpt) {
+	defaultApp.AddRoot(f, opts...)
 }
 
 // AddAlias adds an alias name for a command.
-func AddAlias(aliasName, target string) {
-	defaultApp.AddAlias(aliasName, target)
+func AddAlias(aliasName, target string, opts ...CmdOpt) {
+	defaultApp.AddAlias(aliasName, target, opts...)
 }
 
 // AddHidden adds a hidden command.
@@ -37,8 +37,8 @@ func AddAlias(aliasName, target string) {
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
-func AddHidden(name string, f interface{}, description string) {
-	defaultApp.AddHidden(name, f, description)
+func AddHidden(name string, f interface{}, description string, opts ...CmdOpt) {
+	defaultApp.AddHidden(name, f, description, opts...)
 }
 
 // AddGroup adds a group explicitly.
@@ -46,8 +46,8 @@ func AddHidden(name string, f interface{}, description string) {
 // It's not required to add group before adding sub commands, but user
 // can use this function to add a description to a group, which will be
 // showed in help.
-func AddGroup(name string, description string) {
-	defaultApp.AddGroup(name, description)
+func AddGroup(name string, description string, opts ...CmdOpt) {
+	defaultApp.AddGroup(name, description, opts...)
 }
 
 // AddHelp enables the "help" command to print help about any command.
