@@ -75,6 +75,7 @@ func (t *cmdTree) add(cmd *Command) {
 		if subNode == nil {
 			subNode = newCmdTree(name, nil)
 			cur.SubTree[name] = subNode
+			cur.SubCmds = append(cur.SubCmds, subNode)
 		}
 		cur = subNode
 	}
@@ -117,11 +118,17 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) {
 	}
 	result := make([]string, 0, 16)
 	for _, sub := range cur.SubCmds {
-		if sub.Cmd == nil || sub.Cmd.noCompletion || sub.Cmd.Hidden || !matchFunc(sub) {
+		if sub.Cmd == nil && len(sub.SubCmds) == 0 {
+			continue
+		}
+		if sub.Cmd != nil && (sub.Cmd.noCompletion || sub.Cmd.Hidden) {
+			continue
+		}
+		if !matchFunc(sub) {
 			continue
 		}
 		desc := ""
-		if app.completionCtx.isZsh {
+		if sub.Cmd != nil && app.completionCtx.isZsh {
 			desc = sub.Cmd.Description
 		}
 		suggestion := formatCompletion(sub.Name, desc)
