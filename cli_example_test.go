@@ -29,36 +29,13 @@ LEARN MORE
   Read the manual at https://cli.github.com/manual
 `
 
-	Add("browse", exampleGithubCliBrowse, "Open the repository in the browser",
-		WithExamples(`
-  $ gh browse
-  #=> Open the home page of the current repository
-
-  $ gh browse 217
-  #=> Open issue or pull request 217
-
-  $ gh browse --settings
-  #=> Open repository settings
-
-  $ gh browse main.go:312
-  #=> Open main.go at line 312
-
-  $ gh browse main.go --branch main
-  #=> Open main.go in the main branch
-`))
+	Add("browse", exampleGithubCliBrowse, "Open the repository in the browser")
 	Add("actions", dummyCmd, "Learn about working with GitHub Actions")
 
 	AddGroup("issue", "Manage issues")
 	Add("issue close", dummyCmd, "Close issue")
 	Add("issue comment", dummyCmd, "Create a new issue comment")
-	Add("issue create", exampleGithubCliIssueCreate, "Create a new issue",
-		WithExamples(`
-  $ gh issue create --title "I found a bug" --body "Nothing works"
-  $ gh issue create --label "bug,help wanted"
-  $ gh issue create --label bug --label "help wanted"
-  $ gh issue create --assignee monalisa,hubot
-  $ gh issue create --assignee "@me"
-  $ gh issue create --project "Roadmap"`))
+	Add("issue create", exampleGithubCliIssueCreate, "Create a new issue")
 	Add("issue delete", dummyCmd, "Delete issue")
 	Add("issue edit", dummyCmd, "Edit an issue")
 	Add("issue list", dummyCmd, "List and filter issues in this repository")
@@ -316,7 +293,22 @@ func exampleGithubCliBrowse() {
 
 		Location string `cli:"location, A browser location can be specified using arguments in the following format:\n- by number for issue or pull request, e.g. \"123\"; or\n- by path for opening folders and files, e.g. \"cmd/gh/main.go\""`
 	}{}
-	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError))
+	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+		WithExamples(`
+		  $ gh browse
+		  #=> Open the home page of the current repository
+		
+		  $ gh browse 217
+		  #=> Open issue or pull request 217
+		
+		  $ gh browse --settings
+		  #=> Open repository settings
+		
+		  $ gh browse main.go:312
+		  #=> Open main.go at line 312
+		
+		  $ gh browse main.go --branch main
+		  #=> Open main.go in the main branch`))
 	if err != nil && err != flag.ErrHelp {
 		panic(err)
 	}
@@ -419,7 +411,15 @@ func exampleGithubCliIssueCreate() {
 		Web       bool   `cli:"-w, --web         Open the browser to create an issue"`
 		CommonIssueArgs
 	}
-	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError))
+	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+		WithExamples(`
+  $ gh issue create --title "I found a bug" --body "Nothing works"
+  $ gh issue create --label "bug,help wanted"
+  $ gh issue create --label bug --label "help wanted"
+  $ gh issue create --assignee monalisa,hubot
+  $ gh issue create --assignee "@me"
+  $ gh issue create --project "Roadmap"
+`))
 	if err != nil && err != flag.ErrHelp {
 		panic(err)
 	}

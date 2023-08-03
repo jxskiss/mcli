@@ -132,15 +132,23 @@ To authorize, run "gh auth refresh -s project".`))
 }
 
 func TestWithExamples(t *testing.T) {
-	app := NewApp()
-	app.Add("cmd1", dummyCmdWithContext, "test cmd1", WithExamples(`
+
+	cmdWithExamples := func(ctx *Context) {
+		examples := `
 $ gh issue create --title "I found a bug" --body "Nothing works"
 $ gh issue create --label "bug,help wanted"
 $ gh issue create --label bug --label "help wanted"
 $ gh issue create --assignee monalisa,hubot
 $ gh issue create --assignee "@me"
-$ gh issue create --project "Roadmap"`))
+$ gh issue create --project "Roadmap"
+`
+		ctx.Parse(nil, WithErrorHandling(flag.ContinueOnError),
+			WithExamples(examples))
+		ctx.PrintHelp()
+	}
 
+	app := NewApp()
+	app.Add("cmd1", cmdWithExamples, "test cmd1")
 	app.Run("cmd1", "-h")
 
 	var buf bytes.Buffer

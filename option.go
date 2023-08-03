@@ -18,6 +18,7 @@ type parseOptions struct {
 	cmdName       *string
 	args          *[]string
 	errorHandling flag.ErrorHandling
+	examples      string
 
 	customUsage func() string
 	helpFooter  func() string
@@ -75,6 +76,14 @@ func ReplaceUsage(f func() string) ParseOpt {
 	}}
 }
 
+// WithExamples specifies examples for a command.
+// Examples will be showed after flags in the command's help.
+func WithExamples(examples string) ParseOpt {
+	return ParseOpt{f: func(options *parseOptions) {
+		options.examples = strings.TrimSpace(heredoc.Doc(examples))
+	}}
+}
+
 // WithFooter specifies a function to generate extra help text to print
 // after the default help.
 // If this option is provided, the option function's output overrides
@@ -91,7 +100,6 @@ func newCmdOptions(opts ...CmdOpt) cmdOptions {
 
 type cmdOptions struct {
 	longDesc string
-	examples string
 }
 
 func (p *cmdOptions) apply(opts ...CmdOpt) *cmdOptions {
@@ -111,13 +119,5 @@ type CmdOpt struct {
 func WithLongDesc(long string) CmdOpt {
 	return CmdOpt{f: func(options *cmdOptions) {
 		options.longDesc = strings.TrimSpace(heredoc.Doc(long))
-	}}
-}
-
-// WithExamples specifies examples for a command.
-// Examples will be showed after flags in the command's help.
-func WithExamples(examples string) CmdOpt {
-	return CmdOpt{f: func(options *cmdOptions) {
-		options.examples = strings.TrimSpace(heredoc.Doc(examples))
 	}}
 }
