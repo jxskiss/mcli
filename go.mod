@@ -2,7 +2,10 @@ module github.com/jxskiss/mcli
 
 go 1.18
 
-require github.com/stretchr/testify v1.7.2
+require (
+	github.com/MakeNowJust/heredoc/v2 v2.0.1
+	github.com/stretchr/testify v1.7.2
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect

@@ -3,6 +3,8 @@ package mcli
 import (
 	"flag"
 	"strings"
+
+	"github.com/MakeNowJust/heredoc/v2"
 )
 
 func newParseOptions(opts ...ParseOpt) *parseOptions {
@@ -108,7 +110,7 @@ type CmdOpt struct {
 // which will be showed in the command's help.
 func WithLongDesc(long string) CmdOpt {
 	return CmdOpt{f: func(options *cmdOptions) {
-		options.longDesc = strings.TrimSpace(long)
+		options.longDesc = strings.TrimSpace(heredoc.Doc(long))
 	}}
 }
 
@@ -116,6 +118,6 @@ func WithLongDesc(long string) CmdOpt {
 // Examples will be showed after flags in the command's help.
 func WithExamples(examples string) CmdOpt {
 	return CmdOpt{f: func(options *cmdOptions) {
-		options.examples = strings.TrimSpace(examples)
+		options.examples = strings.TrimSpace(heredoc.Doc(examples))
 	}}
 }
