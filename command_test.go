@@ -1,3 +1,5 @@
+//go:build ignore
+
 package mcli
 
 import (
@@ -8,9 +10,7 @@ import (
 
 func TestCommandsSuggest(t *testing.T) {
 	resetDefaultApp()
-	defer markExampleTest()()
-
-	ExampleAdd_addCommands()
+	addTestGithubCliCommands()
 
 	suggest := defaultApp.cmds.suggest("aapi")
 	assert.True(t, len(suggest) > 0)

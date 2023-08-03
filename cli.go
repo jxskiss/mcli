@@ -100,13 +100,18 @@ func (p *App) getGlobalFlags() interface{} {
 
 func (p *App) getParsingContext() *parsingContext {
 	if p.ctx == nil {
-		p.resetParsingContext()
+		p.ctx = &parsingContext{app: p, opts: newParseOptions()}
 	}
 	return p.ctx
 }
 
 func (p *App) resetParsingContext() {
+	var fsOut io.Writer
+	if p.ctx != nil && p.ctx.fs != nil {
+		fsOut = p.ctx.fs.Output()
+	}
 	p.ctx = &parsingContext{app: p, opts: newParseOptions()}
+	p.getFlagSet().SetOutput(fsOut)
 }
 
 func (p *App) getFlagSet() *flag.FlagSet {
@@ -279,7 +284,7 @@ func (ctx *parsingContext) failf(errp *error, format string, a ...interface{}) {
 
 func (ctx *parsingContext) failError(err error) {
 	fs := ctx.getFlagSet()
-	out := getFlagSetOutput(fs)
+	out := fs.Output()
 	fmt.Fprintln(out, err.Error())
 	if _, ok := err.(*invalidCmdError); ok {
 		ctx.app.printSuggestions(ctx.getInvalidCmdName())
@@ -300,7 +305,7 @@ func (ctx *parsingContext) failError(err error) {
 func (p *App) printSuggestions(invalidCmdName string) {
 	cmds := p.cmds
 	ctx := p.getParsingContext()
-	out := getFlagSetOutput(ctx.getFlagSet())
+	out := ctx.getFlagSet().Output()
 	if invalidCmdName != "" {
 		sugg := cmds.suggest(invalidCmdName)
 		if len(sugg) > 0 {
@@ -715,15 +720,6 @@ func (p *App) SetGlobalFlags(v interface{}) {
 type withGlobalFlagArgs struct {
 	GlobalFlags interface{}
 	CmdArgs     interface{}
-}
-
-// getFlagSetOutput helps to do testing.
-// When in example testing, it returns os.Stdout instead of fs.Output().
-func getFlagSetOutput(fs *flag.FlagSet) io.Writer {
-	if isExampleTest {
-		return os.Stdout
-	}
-	return fs.Output()
 }
 
 func getProgramName() string {

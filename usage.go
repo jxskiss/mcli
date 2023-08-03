@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 )
 
 func newUsagePrinter(app *App) *usagePrinter {
 	ctx := app.getParsingContext()
-	out := getFlagSetOutput(ctx.getFlagSet())
+	out := ctx.getFlagSet().Output()
 	return &usagePrinter{
 		app: app,
 		ctx: ctx,
@@ -228,11 +229,15 @@ func (p *usagePrinter) printGlobalFlags() {
 	}
 }
 
+var blankLineRE = regexp.MustCompile(`\n\s+\n`)
+
 func (p *usagePrinter) printExamples() {
-	cmd := p.ctx.cmd
+	ctx := p.ctx
 	out := p.out
-	if cmd != nil && cmd.opts.examples != "" {
-		examples := strings.ReplaceAll(cmd.opts.examples, "\n", "\n  ")
+
+	if ctx.opts.examples != "" {
+		examples := strings.ReplaceAll(ctx.opts.examples, "\n", "\n  ")
+		examples = blankLineRE.ReplaceAllString(examples, "\n\n")
 		fmt.Fprint(out, "EXAMPLES:\n  ")
 		fmt.Fprintf(out, "%s\n\n", examples)
 	}
