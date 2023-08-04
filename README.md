@@ -185,7 +185,6 @@ App:
 CmdOpt:
 
 - `WithLongDesc` specifies a long description of a command, which will be showed in the command's help.
-- `WithExamples` specifies examples for a command. Examples will be showed after flags in the command's help.
 
 ParseOpt:
 
@@ -195,6 +194,7 @@ ParseOpt:
 - `WithName` specifies the command name to use when printing usage doc.
 - `DisableGlobalFlags` tells `Parse` to don't parse and print global flags in help.
 - `ReplaceUsage` tells `Parse` to use a custom usage function instead of the default.
+- `WithExamples` specifies examples for a command. Examples will be showed after flags in the help.
 - `WithFooter` adds a footer message after the default help,
   this option overrides the App's setting `Options.HelpFooter` for this parsing call.
 
