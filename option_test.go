@@ -60,7 +60,7 @@ func TestDisableGlobalFlags(t *testing.T) {
 
 func TestReplaceUsage(t *testing.T) {
 	app := NewApp()
-	app.Add("dummy1", dummyCmd, "dummy cmd 1")
+	app.Add("dummy1", dummyCmdWithContext, "dummy cmd 1")
 
 	var args struct {
 		A string `cli:"-a, --args-a"`
@@ -88,7 +88,7 @@ func TestReplaceUsage(t *testing.T) {
 
 func TestWithFooter(t *testing.T) {
 	app := NewApp()
-	app.Add("dummy1", dummyCmd, "dummy cmd 1")
+	app.Add("dummy1", dummyCmdWithContext, "dummy cmd 1")
 
 	var args struct {
 		A string `cli:"-a, --args-a"`
@@ -112,4 +112,50 @@ func TestWithFooter(t *testing.T) {
 	assert.Contains(t, got, "--args-a")
 	assert.Contains(t, got, "--args-b")
 	assert.Contains(t, got, "test with footer custom footer text\nanother line")
+}
+
+func TestWithLongDesc(t *testing.T) {
+	app := NewApp()
+	app.Add("cmd1", dummyCmdWithContext, "test cmd1", WithLongDesc(`
+Adding an issue to projects requires authorization with the "project" scope.
+To authorize, run "gh auth refresh -s project".`))
+
+	app.Run("cmd1", "-h")
+
+	var buf bytes.Buffer
+	fs := app.getFlagSet()
+	fs.SetOutput(&buf)
+	fs.Usage()
+
+	got := buf.String()
+	assert.Contains(t, got, "test cmd1\n\nAdding an issue to projects requires authorization with the \"project\" scope.\nTo authorize, run \"gh auth refresh -s project\".\n\n")
+}
+
+func TestWithExamples(t *testing.T) {
+
+	cmdWithExamples := func(ctx *Context) {
+		examples := `
+$ gh issue create --title "I found a bug" --body "Nothing works"
+$ gh issue create --label "bug,help wanted"
+$ gh issue create --label bug --label "help wanted"
+$ gh issue create --assignee monalisa,hubot
+$ gh issue create --assignee "@me"
+$ gh issue create --project "Roadmap"
+`
+		ctx.Parse(nil, WithErrorHandling(flag.ContinueOnError),
+			WithExamples(examples))
+		ctx.PrintHelp()
+	}
+
+	app := NewApp()
+	app.Add("cmd1", cmdWithExamples, "test cmd1")
+	app.Run("cmd1", "-h")
+
+	var buf bytes.Buffer
+	fs := app.getFlagSet()
+	fs.SetOutput(&buf)
+	fs.Usage()
+
+	got := buf.String()
+	assert.Contains(t, got, "EXAMPLES:\n  $ gh issue create --title \"I found a bug\" --body \"Nothing works\"\n  $ gh issue create --label \"bug,help wanted\"\n  $ gh")
 }

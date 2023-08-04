@@ -1,8 +1,5 @@
 package mcli
 
-var isExampleTest = false
-var isTesting = false
-
 func clip[S ~[]E, E any](s S) S {
 	return s[:len(s):len(s)]
 }

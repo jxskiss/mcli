@@ -72,12 +72,44 @@ func TestSuggestCommands(t *testing.T) {
 	got3 := buf.String()
 	assert.Contains(t, got3, "cmd1:")
 	assert.Contains(t, got3, "cmd2:")
-	assert.NotContains(t, got3, "cmd3")
+	assert.Contains(t, got3, "cmd3\n")
 
 	buf.Reset()
 	Run("group1", "cme", completionFlag)
 	got4 := buf.String()
 	assert.Zero(t, got4)
+}
+
+func TestSuggestCommandWithoutAddingGroup(t *testing.T) {
+	resetDefaultApp()
+	Add("s", dummyCmd, "Serve with port and dir")
+	AddGroup("cmd", "CMD")
+	Add("cmd ox", dummyCmd, "Second serve")
+	Add("cmd ax", dummyCmd, "Second serve")
+	Add("ot ix", dummyCmd, "Second serve")
+	Add("group3 sub1 subsub1", dummyCmd, "Group3 sub1 subsub1")
+
+	var buf bytes.Buffer
+	defaultApp.completionCtx.out = &buf
+
+	Run("o", completionFlag)
+	got1 := buf.String()
+	assert.Contains(t, got1, "ot\n")
+
+	buf.Reset()
+	Run("ot", completionFlag)
+	got2 := buf.String()
+	assert.Contains(t, got2, "ix\n")
+
+	buf.Reset()
+	Run("group3", "s", completionFlag)
+	got3 := buf.String()
+	assert.Contains(t, got3, "sub1\n")
+
+	buf.Reset()
+	Run("group3", "sub1", completionFlag)
+	got4 := buf.String()
+	assert.Contains(t, got4, "subsub1\n")
 }
 
 func TestSuggestFlags(t *testing.T) {

@@ -13,7 +13,8 @@ type Command struct {
 
 	AliasOf string
 
-	f func()
+	f    func()
+	opts cmdOptions
 
 	idx   int
 	level int
@@ -22,6 +23,8 @@ type Command struct {
 	isGroup      bool
 	noCompletion bool
 }
+
+type CommandFunc = func(ctx *Context)
 
 func normalizeCmdName(name string) string {
 	name = strings.TrimSpace(name)

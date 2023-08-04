@@ -21,13 +21,22 @@ type Options struct {
 	KeepCommandOrder bool
 
 	// AllowPosixSTMO enables using the posix-style single token to specify
-	// multiple boolean options. e.g. ‘-abc’ is equivalent to ‘-a -b -c’.
+	// multiple boolean options. e.g. `-abc` is equivalent to `-a -b -c`.
 	AllowPosixSTMO bool
+
+	// HelpFooter optionally adds a footer message to help output.
+	// If Parse is called with option `WithFooter`, the option function's
+	// output overrides this setting.
+	HelpFooter string
 }
 
 // NewApp creates a new cli application instance.
 // Typically, there is no need to manually create an application, using
 // the package-level functions with the default application is preferred.
+//
+// Note: with a new application instance (not the default App),
+// user should not call `mcli.Parse` and `mcli.PrintHelp` inside command
+// functions, that two functions always execute with the default App.
 func NewApp() *App {
 	return &App{}
 }
@@ -54,7 +63,8 @@ type App struct {
 	completionCmdName string
 	isCompletion      bool
 	completionCtx     struct {
-		out      io.Writer
+		out      io.Writer // help in testing to inspect completion output
+		postFunc func()    // help in testing to not exit the program
 		isZsh    bool
 		userArgs []string
 		cmd      *cmdTree
@@ -90,13 +100,18 @@ func (p *App) getGlobalFlags() interface{} {
 
 func (p *App) getParsingContext() *parsingContext {
 	if p.ctx == nil {
-		p.resetParsingContext()
+		p.ctx = &parsingContext{app: p, opts: newParseOptions()}
 	}
 	return p.ctx
 }
 
 func (p *App) resetParsingContext() {
+	var fsOut io.Writer
+	if p.ctx != nil && p.ctx.fs != nil {
+		fsOut = p.ctx.fs.Output()
+	}
 	p.ctx = &parsingContext{app: p, opts: newParseOptions()}
+	p.getFlagSet().SetOutput(fsOut)
 }
 
 func (p *App) getFlagSet() *flag.FlagSet {
@@ -269,7 +284,7 @@ func (ctx *parsingContext) failf(errp *error, format string, a ...interface{}) {
 
 func (ctx *parsingContext) failError(err error) {
 	fs := ctx.getFlagSet()
-	out := getFlagSetOutput(fs)
+	out := fs.Output()
 	fmt.Fprintln(out, err.Error())
 	if _, ok := err.(*invalidCmdError); ok {
 		ctx.app.printSuggestions(ctx.getInvalidCmdName())
@@ -290,7 +305,7 @@ func (ctx *parsingContext) failError(err error) {
 func (p *App) printSuggestions(invalidCmdName string) {
 	cmds := p.cmds
 	ctx := p.getParsingContext()
-	out := getFlagSetOutput(ctx.getFlagSet())
+	out := ctx.getFlagSet().Output()
 	if invalidCmdName != "" {
 		sugg := cmds.suggest(invalidCmdName)
 		if len(sugg) > 0 {
@@ -307,22 +322,31 @@ func (p *App) printUsage() {
 }
 
 // Add adds a command.
-// f must be a function of signature `func()` or `func(*Context)`, else it panics.
-func (p *App) Add(name string, f interface{}, description string) {
+func (p *App) Add(name string, f CommandFunc, description string, opts ...CmdOpt) {
+	p._add(name, f, description, opts...)
+}
+
+func (p *App) _add(name string, f interface{}, description string, opts ...CmdOpt) {
 	ff := p.validateFunc(f)
 	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
 		f:           ff,
+		opts:        newCmdOptions(opts...),
 	})
 }
 
 // AddRoot adds a root command.
 // When no sub command specified, a root command will be executed.
-func (p *App) AddRoot(f interface{}) {
+func (p *App) AddRoot(f CommandFunc, opts ...CmdOpt) {
+	p._addRoot(f, opts...)
+}
+
+func (p *App) _addRoot(f interface{}, opts ...CmdOpt) {
 	ff := p.validateFunc(f)
 	p.rootCmd = &Command{
 		f:      ff,
+		opts:   newCmdOptions(opts...),
 		isRoot: true,
 	}
 }
@@ -342,7 +366,7 @@ func (p *App) validateFunc(f interface{}) func() {
 }
 
 // AddAlias adds an alias name for a command.
-func (p *App) AddAlias(aliasName, target string) {
+func (p *App) AddAlias(aliasName, target string, opts ...CmdOpt) {
 	cmd := p.cmdMap[target]
 	if cmd == nil {
 		panic(fmt.Sprintf("alias command target %q does not exist", target))
@@ -354,21 +378,26 @@ func (p *App) AddAlias(aliasName, target string) {
 		Description: desc,
 		AliasOf:     target,
 		f:           cmd.f,
+		opts:        newCmdOptions(opts...),
 	})
 }
 
 // AddHidden adds a hidden command.
-// f must be a function of signature `func()` or `func(*Context)`, else it panics.
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
-func (p *App) AddHidden(name string, f interface{}, description string) {
+func (p *App) AddHidden(name string, f CommandFunc, description string, opts ...CmdOpt) {
+	p._addHidden(name, f, description, opts...)
+}
+
+func (p *App) _addHidden(name string, f interface{}, description string, opts ...CmdOpt) {
 	ff := p.validateFunc(f)
 	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
 		Hidden:      true,
 		f:           ff,
+		opts:        newCmdOptions(opts...),
 	})
 }
 
@@ -377,11 +406,12 @@ func (p *App) AddHidden(name string, f interface{}, description string) {
 // It's not required to add group before adding sub commands, but user
 // can use this function to add a description to a group, which will be
 // showed in help.
-func (p *App) AddGroup(name string, description string) {
+func (p *App) AddGroup(name string, description string, opts ...CmdOpt) {
 	p.addCommand(&Command{
 		Name:        name,
 		Description: description,
 		f:           p.groupCmd,
+		opts:        newCmdOptions(opts...),
 		isGroup:     true,
 	})
 }
@@ -452,6 +482,7 @@ func (p *App) validateHelpCommand(name string) bool {
 // Optionally you may specify args to parse, by default it parses the
 // command line arguments os.Args[1:].
 func (p *App) Run(args ...string) {
+	defer setRunningApp(p)()
 	if len(args) == 0 {
 		args = os.Args[1:]
 	}
@@ -460,12 +491,7 @@ func (p *App) Run(args ...string) {
 
 func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 	if isComp, userArgs := hasCompletionFlag(cmdArgs); isComp {
-		p.isCompletion = true
-		if p.completionCtx.out == nil {
-			p.completionCtx.out = os.Stdout
-		}
-		p.completionCtx.isZsh = strings.HasSuffix(os.Getenv("SHELL"), "zsh")
-		p.completionCtx.userArgs = userArgs
+		p.setupCompletionCtx(userArgs)
 		p.doAutoCompletion(userArgs)
 		return
 	}
@@ -486,6 +512,20 @@ func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 		ctx.showHidden = hasBoolFlag(showHiddenFlag, cmdArgs)
 		p.printUsage()
 	}
+}
+
+func (p *App) setupCompletionCtx(userArgs []string) {
+	p.isCompletion = true
+	if p.completionCtx.out == nil {
+		p.completionCtx.out = os.Stdout
+	}
+	if p.completionCtx.postFunc == nil {
+		p.completionCtx.postFunc = func() {
+			os.Exit(0)
+		}
+	}
+	p.completionCtx.isZsh = strings.HasSuffix(os.Getenv("SHELL"), "zsh")
+	p.completionCtx.userArgs = userArgs
 }
 
 // searchCmd helps to do testing.
@@ -559,9 +599,7 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 	if p.isCompletion {
 		p.completionCtx.flags = ctx.flags
 		p.continueFlagCompletion()
-		if !isTesting { // help unit testing
-			os.Exit(0)
-		}
+		p.completionCtx.postFunc()
 		return
 	}
 
@@ -682,15 +720,6 @@ func (p *App) SetGlobalFlags(v interface{}) {
 type withGlobalFlagArgs struct {
 	GlobalFlags interface{}
 	CmdArgs     interface{}
-}
-
-// getFlagSetOutput helps to do testing.
-// When in example testing, it returns os.Stdout instead of fs.Output().
-func getFlagSetOutput(fs *flag.FlagSet) io.Writer {
-	if isExampleTest {
-		return os.Stdout
-	}
-	return fs.Output()
 }
 
 func getProgramName() string {

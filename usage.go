@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 )
 
 func newUsagePrinter(app *App) *usagePrinter {
 	ctx := app.getParsingContext()
-	out := getFlagSetOutput(ctx.getFlagSet())
+	out := ctx.getFlagSet().Output()
 	return &usagePrinter{
 		app: app,
 		ctx: ctx,
@@ -62,6 +63,7 @@ func (p *usagePrinter) Do() {
 	p.printCmdFlags()
 	p.printArguments()
 	p.printGlobalFlags()
+	p.printExamples()
 	p.printFooter()
 }
 
@@ -88,6 +90,12 @@ func (p *usagePrinter) printUsageLine() {
 			if cmd.Description != "" {
 				usage += cmd.Description + "\n"
 			}
+		}
+		if cmd.opts.longDesc != "" {
+			if usage != "" {
+				usage += "\n"
+			}
+			usage += cmd.opts.longDesc + "\n"
 		}
 	} else if appDesc != "" {
 		usage += appDesc + "\n"
@@ -221,11 +229,28 @@ func (p *usagePrinter) printGlobalFlags() {
 	}
 }
 
+var blankLineRE = regexp.MustCompile(`\n\s+\n`)
+
+func (p *usagePrinter) printExamples() {
+	ctx := p.ctx
+	out := p.out
+
+	if ctx.opts.examples != "" {
+		examples := strings.ReplaceAll(ctx.opts.examples, "\n", "\n  ")
+		examples = blankLineRE.ReplaceAllString(examples, "\n\n")
+		fmt.Fprint(out, "EXAMPLES:\n  ")
+		fmt.Fprintf(out, "%s\n\n", examples)
+	}
+}
+
 func (p *usagePrinter) printFooter() {
 	ctx := p.ctx
 	out := p.out
 	if ctx.opts.helpFooter != nil {
 		footer := strings.TrimSpace(ctx.opts.helpFooter())
+		fmt.Fprintf(out, "%s\n\n", footer)
+	} else if p.app.HelpFooter != "" {
+		footer := strings.TrimSpace(p.app.HelpFooter)
 		fmt.Fprintf(out, "%s\n\n", footer)
 	}
 }
