@@ -1,13 +1,13 @@
-#compdef $PROG
+#compdef {{.ProgramName}}
 
-_cli_zsh_autocomplete() {
+__{{.ProgramName}}_zsh_autocomplete() {
   local -a opts
   local cur
   cur=${words[-1]}
   if [[ "$cur" == "-"* ]]; then
-    opts=("${(@f)$(${words[@]:0:#words[@]-1} ${cur} --mcli-generate-completion)}")
+    opts=("${(@f)$(${words[@]:0:#words[@]-1} ${cur} --mcli-generate-completion zsh)}")
   else
-    opts=("${(@f)$(${words[@]:0:#words[@]-1} --mcli-generate-completion)}")
+    opts=("${(@f)$(${words[@]:0:#words[@]-1} --mcli-generate-completion zsh)}")
   fi
 
   if [[ "${opts[1]}" != "" ]]; then
@@ -17,4 +17,4 @@ _cli_zsh_autocomplete() {
   fi
 }
 
-compdef _cli_zsh_autocomplete $PROG
+compdef __{{.ProgramName}}_zsh_autocomplete {{.ProgramName}}

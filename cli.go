@@ -65,7 +65,7 @@ type App struct {
 	completionCtx     struct {
 		out      io.Writer // help in testing to inspect completion output
 		postFunc func()    // help in testing to not exit the program
-		isZsh    bool
+		shell    string
 		userArgs []string
 		cmd      *cmdTree
 		flagName string
@@ -490,8 +490,8 @@ func (p *App) Run(args ...string) {
 }
 
 func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
-	if isComp, userArgs := hasCompletionFlag(cmdArgs); isComp {
-		p.setupCompletionCtx(userArgs)
+	if isComp, userArgs, completionShell := hasCompletionFlag(cmdArgs); isComp {
+		p.setupCompletionCtx(userArgs, completionShell)
 		p.doAutoCompletion(userArgs)
 		return
 	}
@@ -514,7 +514,7 @@ func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 	}
 }
 
-func (p *App) setupCompletionCtx(userArgs []string) {
+func (p *App) setupCompletionCtx(userArgs []string, completionShell string) {
 	p.isCompletion = true
 	if p.completionCtx.out == nil {
 		p.completionCtx.out = os.Stdout
@@ -524,7 +524,7 @@ func (p *App) setupCompletionCtx(userArgs []string) {
 			os.Exit(0)
 		}
 	}
-	p.completionCtx.isZsh = strings.HasSuffix(os.Getenv("SHELL"), "zsh")
+	p.completionCtx.shell = completionShell
 	p.completionCtx.userArgs = userArgs
 }
 

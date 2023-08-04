@@ -13,17 +13,17 @@ If it is not installed already, you can install it via your OS's package manager
 
 To load completions in your current shell session:
 
-	PROG={{ .ProgramName }}; source <({{ .ProgramName }} {{ .CompletionCmdName }} bash)
+	source <({{ .ProgramName }} {{ .CompletionCmdName }} bash)
 
 To load completions for every new session, execute once:
 
 #### Linux:
 
-	PROG={{ .ProgramName }}; {{ .ProgramName }} {{ .CompletionCmdName }} bash > /etc/bash_completion.d/{{ .ProgramName }}
+	{{ .ProgramName }} {{ .CompletionCmdName }} bash > /etc/bash_completion.d/{{ .ProgramName }}
 
 #### macOS:
 
-	PROG={{ .ProgramName }}; {{ .ProgramName }} {{ .CompletionCmdName }} bash > $(brew --prefix)/etc/bash_completion.d/{{ .ProgramName }}
+	{{ .ProgramName }} {{ .CompletionCmdName }} bash > $(brew --prefix)/etc/bash_completion.d/{{ .ProgramName }}
 
 You will need to start a new shell for this setup to take effect.
 
@@ -41,17 +41,17 @@ to enable it.  You can execute the following once:
 
 To load completions in your current shell session:
 
-	PROG={{ .ProgramName }}; source <({{ .ProgramName }} {{ .CompletionCmdName }} zsh)
+	source <({{ .ProgramName }} {{ .CompletionCmdName }} zsh)
 
 To load completions for every new session, execute once:
 
 #### Linux:
 
-	PROG={{ .ProgramName }}; {{ .ProgramName }} {{ .CompletionCmdName }} zsh > "${fpath[1]}/_{{ .ProgramName }}"
+	{{ .ProgramName }} {{ .CompletionCmdName }} zsh > "${fpath[1]}/_{{ .ProgramName }}"
 
 #### macOS:
 
-	PROG={{ .ProgramName }}; {{ .ProgramName }} {{ .CompletionCmdName }} zsh > $(brew --prefix)/share/zsh/site-functions/_{{ .ProgramName }}
+	{{ .ProgramName }} {{ .CompletionCmdName }} zsh > $(brew --prefix)/share/zsh/site-functions/_{{ .ProgramName }}
 
 You will need to start a new shell for this setup to take effect.
 

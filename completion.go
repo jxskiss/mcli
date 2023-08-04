@@ -10,15 +10,17 @@ import (
 
 const completionFlag = "--mcli-generate-completion"
 
-func hasCompletionFlag(args []string) (bool, []string) {
+func hasCompletionFlag(args []string) (bool, []string, string) {
 	var lastArg string
-	if len(args) > 0 {
-		lastArg = args[len(args)-1]
+	lastArgValue := "sh"
+	if len(args) >= 2 {
+		lastArg = args[len(args)-2]
+		lastArgValue = args[len(args)-1]
 	}
 	if lastArg == completionFlag {
-		return true, args[:len(args)-1]
+		return true, args[:len(args)-2], lastArgValue
 	}
-	return false, args
+	return false, args, lastArgValue
 }
 
 func isFlagCompletion(args []string) (isFlag bool, flagName string, userArgs []string) {
@@ -128,12 +130,17 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) {
 			continue
 		}
 		desc := ""
-		if sub.Cmd != nil && app.completionCtx.isZsh {
+		if sub.Cmd != nil && app.completionCtx.shell != "powershell" {
 			desc = sub.Cmd.Description
 		}
-		suggestion := formatCompletion(sub.Name, desc)
+		suggestion := formatCompletion(app, sub.Name, desc)
 		result = append(result, suggestion)
 	}
+
+	// if app.completionCtx.shell == "bash" {
+	// 	result = append(result, ":4")
+	// 	result = append(result, "Completion ended with directive: ShellCompDirectiveNoFileComp")
+	// }
 	printLines(app.completionCtx.out, result)
 }
 
@@ -169,7 +176,7 @@ func (t *cmdTree) suggestFlags(app *App, userArgs []string, flagName string) {
 
 func (p *App) continueFlagCompletion() {
 	getUsage := func(f *_flag) string {
-		if !p.completionCtx.isZsh {
+		if p.completionCtx.shell == "powershell" {
 			return ""
 		}
 		_, usage := f.getUsage(false)
@@ -210,12 +217,12 @@ func (p *App) continueFlagCompletion() {
 			if flag.short != "" && strings.HasPrefix(flag.short, flagName) &&
 				(flag.isCompositeType() || !isSeenFlag(flag)) {
 				usage := getUsage(flag)
-				suggestion := formatCompletion("-"+flag.short, usage)
+				suggestion := formatCompletion(p, "-"+flag.short, usage)
 				result = append(result, suggestion)
 			} else if flag.name != "" && strings.HasPrefix(flag.name, flagName) &&
 				(flag.isCompositeType() || !isSeenFlag(flag)) {
 				usage := getUsage(flag)
-				hint := formatCompletion("--"+flag.name, usage)
+				hint := formatCompletion(p, "--"+flag.name, usage)
 				result = append(result, hint)
 			}
 		}
@@ -223,7 +230,7 @@ func (p *App) continueFlagCompletion() {
 		for _, flag := range flags {
 			if flag.name != "" && strings.HasPrefix(flag.name, flagName) &&
 				(flag.isCompositeType() || !isSeenFlag(flag)) {
-				suggestion := formatCompletion("--"+flag.name, getUsage(flag))
+				suggestion := formatCompletion(p, "--"+flag.name, getUsage(flag))
 				result = append(result, suggestion)
 			}
 		}
@@ -249,11 +256,21 @@ func printLines(w io.Writer, lines []string) {
 	}
 }
 
-func formatCompletion(opt, desc string) string {
+func formatCompletion(app *App, opt string, desc string) string {
 	if desc == "" {
 		return opt
 	}
-	return fmt.Sprintf("%s:%s", opt, desc)
+
+	switch app.completionCtx.shell {
+	case "bash":
+		return fmt.Sprintf("%s\t%s", opt, desc)
+	case "zsh":
+		return fmt.Sprintf("%s:%s", opt, desc)
+	case "fish":
+		return fmt.Sprintf("%s\t%s", opt, desc)
+	default:
+		return fmt.Sprintf("%s:%s", opt, desc)
+	}
 }
 
 func (p *App) addCompletionCommands(name string) {
