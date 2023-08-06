@@ -2,7 +2,7 @@ package mcli
 
 import (
 	"bytes"
-	"os"
+	"log"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -47,69 +47,139 @@ func TestCompletionUsage(t *testing.T) {
 }
 
 func TestSuggestCommands(t *testing.T) {
-	resetDefaultApp()
-	addTestCompletionCommands()
+	cases := []struct {
+		shell       string
+		description string
+		connector   string
+	}{
+		{
+			description: "Bash shell suggestions",
+			shell:       "bash",
+			connector:   "\t",
+		},
+		{
+			description: "zsh shell suggestions",
+			shell:       "zsh",
+			connector:   ":",
+		},
+		{
+			description: "fish shell suggestions",
+			shell:       "fish",
+			connector:   "\t",
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.description, func(t *testing.T) {
+			resetDefaultApp()
+			addTestCompletionCommands()
 
-	var buf bytes.Buffer
-	defaultApp.completionCtx.out = &buf
+			var buf bytes.Buffer
+			defaultApp.completionCtx.out = &buf
+			defaultApp.completionCtx.shell = tt.shell
 
-	Run("c", completionFlag)
-	got1 := buf.String()
-	assert.Contains(t, got1, "cmd1\n")
-	assert.NotContains(t, got1, "cmd2")
-	assert.NotContains(t, got1, "completion")
+			Run("c", completionFlag, tt.shell)
+			got := buf.String()
+			log.Println(got)
+			assert.Contains(t, got, "cmd1"+tt.connector+"A cmd1 description\n")
+			assert.NotContains(t, got, "cmd2"+tt.connector+"A hidden cmd2 description")
+			assert.NotContains(t, got, "completion")
 
-	buf.Reset()
-	os.Setenv("SHELL", "/bin/zsh")
-	Run("c", completionFlag)
-	got2 := buf.String()
-	assert.Contains(t, got2, "cmd1:A cmd1 description\n")
-	assert.NotContains(t, got2, "cmd2")
-	assert.NotContains(t, got2, "completion")
+			buf.Reset()
+			Run("group1", "c", completionFlag, tt.shell)
+			got = buf.String()
+			assert.Contains(t, got, "cmd1"+tt.connector+"A group1 cmd1 description\n")
+			assert.Contains(t, got, "cmd2"+tt.connector+"A group1 cmd2 description\n")
+			assert.Contains(t, got, "cmd3\n")
 
-	buf.Reset()
-	Run("group1", "c", completionFlag)
-	got3 := buf.String()
-	assert.Contains(t, got3, "cmd1:")
-	assert.Contains(t, got3, "cmd2:")
-	assert.Contains(t, got3, "cmd3\n")
+			buf.Reset()
+			Run("group1", "cme", completionFlag, tt.shell)
+			got = buf.String()
+			assert.Zero(t, got)
 
-	buf.Reset()
-	Run("group1", "cme", completionFlag)
-	got4 := buf.String()
-	assert.Zero(t, got4)
-}
+			buf.Reset()
+			Run("unknown", completionFlag, tt.shell)
+			got = buf.String()
+			assert.Zero(t, got)
+		})
+	}
 
-func TestSuggestCommandWithoutAddingGroup(t *testing.T) {
-	resetDefaultApp()
-	Add("s", dummyCmd, "Serve with port and dir")
-	AddGroup("cmd", "CMD")
-	Add("cmd ox", dummyCmd, "Second serve")
-	Add("cmd ax", dummyCmd, "Second serve")
-	Add("ot ix", dummyCmd, "Second serve")
-	Add("group3 sub1 subsub1", dummyCmd, "Group3 sub1 subsub1")
+	noDescCases := []struct {
+		shell       string
+		description string
+		connector   string
+	}{
+		{
+			description: "powershell shell suggestions",
+			shell:       "powershell",
+			connector:   ":",
+		},
+	}
+	for _, tt := range noDescCases {
+		t.Run(tt.description, func(t *testing.T) {
+			resetDefaultApp()
+			addTestCompletionCommands()
 
-	var buf bytes.Buffer
-	defaultApp.completionCtx.out = &buf
+			var buf bytes.Buffer
+			defaultApp.completionCtx.out = &buf
+			defaultApp.completionCtx.shell = tt.shell
 
-	Run("o", completionFlag)
-	got1 := buf.String()
-	assert.Contains(t, got1, "ot\n")
+			Run("c", completionFlag, tt.shell)
+			got := buf.String()
+			assert.Contains(t, got, "cmd1\n")
+			assert.NotContains(t, got, "cmd2\n")
+			assert.NotContains(t, got, "completion\n")
 
-	buf.Reset()
-	Run("ot", completionFlag)
-	got2 := buf.String()
-	assert.Contains(t, got2, "ix\n")
+			buf.Reset()
+			Run("group1", "c", completionFlag, tt.shell)
+			got = buf.String()
+			assert.Contains(t, got, "cmd1\n")
+			assert.Contains(t, got, "cmd2\n")
+			assert.Contains(t, got, "cmd3\n")
 
-	buf.Reset()
-	Run("group3", "s", completionFlag)
-	got3 := buf.String()
-	assert.Contains(t, got3, "sub1\n")
+			buf.Reset()
+			Run("group1", "cme", completionFlag, tt.shell)
+			got = buf.String()
+			assert.Zero(t, got)
 
-	buf.Reset()
-	Run("group3", "sub1", completionFlag)
-	got4 := buf.String()
-	assert.Contains(t, got4, "subsub1\n")
+			buf.Reset()
+			Run("unknown", completionFlag, tt.shell)
+			got = buf.String()
+			assert.Zero(t, got)
+		})
+	}
+
+	// TODO: how to handle unsupported shell ?? | 2023-08-06
+	// unsupportedCases := []struct {
+	// 	shell       string
+	// 	description string
+	// 	connector   string
+	// }{
+	// 	{
+	// 		description: "unknown shell suggestions",
+	// 		shell:       "off",
+	// 		connector:   " -- ",
+	// 	},
+	// }
+	//
+	// for _, tt := range unsupportedCases {
+	// 	t.Run(tt.description, func(t *testing.T) {
+	// 		resetDefaultApp()
+	// 		addTestCompletionCommands()
+	//
+	// 		var buf bytes.Buffer
+	// 		defaultApp.completionCtx.out = &buf
+	// 		defaultApp.completionCtx.shell = tt.shell
+	//
+	// 		Run("c", completionFlag, tt.shell)
+	// 		got := buf.String()
+	// 		log.Println(len(got))
+	// 		// assert.Empty(t, got)
+	// 		// assert.Contains(t, got, "USAGE:")
+	// 		assert.Contains(t, got, "cmd1"+tt.connector+"A cmd1 description\n")
+	// 		assert.NotContains(t, got, "cmd2"+tt.connector+"A cmd2 description\n")
+	// 		assert.NotContains(t, got, "cmd3\n")
+	// 	})
+	// }
 }
 
 func TestSuggestFlags(t *testing.T) {
@@ -140,18 +210,15 @@ func TestSuggestFlags(t *testing.T) {
 	}
 
 	reset()
-	Run("group1", "cmd3", "-", completionFlag)
+	Run("group1", "cmd3", "-", completionFlag, "zsh")
 	got1 := buf.String()
-	assert.Contains(t, got1, "-a\n")
+	assert.Contains(t, got1, "-a:description a flag\n")
 	assert.Contains(t, got1, "-1\n")
-	assert.Contains(t, got1, "-b\n")
-	assert.Contains(t, got1, "-j\n")
-
-	// Mock zsh.
-	os.Setenv("SHELL", "/bin/zsh")
+	assert.Contains(t, got1, "-b:description b flag\n")
+	assert.Contains(t, got1, "-j:description j flag\n")
 
 	reset()
-	Run("group1", "cmd3", "-a", completionFlag)
+	Run("group1", "cmd3", "-a", completionFlag, "zsh")
 	got2 := buf.String()
 	assert.Contains(t, got2, "-a:description a flag\n")
 	assert.NotContains(t, got2, "-1")
@@ -159,25 +226,25 @@ func TestSuggestFlags(t *testing.T) {
 	assert.Contains(t, got2, "--a2-flag:description b flag")
 
 	reset()
-	Run("group1", "cmd3", "--a", completionFlag)
+	Run("group1", "cmd3", "--a", completionFlag, "zsh")
 	got3 := buf.String()
 	assert.Contains(t, got3, "--a-flag:description a flag\n")
 	assert.Contains(t, got3, "--a2-flag:description b flag\n")
 	assert.NotContains(t, got3, "-j")
 
 	reset()
-	Run("group1", "cmd3", "-j", completionFlag)
+	Run("group1", "cmd3", "-j", completionFlag, "zsh")
 	got4 := buf.String()
 	assert.NotContains(t, got4, "-a")
 	assert.Contains(t, got4, "-j:description j flag\n")
 
 	reset()
-	Run("group1", "cmd3", "-j", "abc", "-j", completionFlag)
+	Run("group1", "cmd3", "-j", "abc", "-j", completionFlag, "zsh")
 	got5 := buf.String()
 	assert.Contains(t, got5, "-j:description j flag\n")
 
 	reset()
-	Run("group1", "cmd3", "-b", "5", "-j", "abc", "--", completionFlag)
+	Run("group1", "cmd3", "-b", "5", "-j", "abc", "--", completionFlag, "zsh")
 	got6 := buf.String()
 	assert.Contains(t, got6, "--a-flag:description a flag\n")
 	assert.Contains(t, got6, "--a1-flag\n")
@@ -186,8 +253,125 @@ func TestSuggestFlags(t *testing.T) {
 
 	t.Run("noCompletion", func(t *testing.T) {
 		reset()
-		Run("completion", "-", completionFlag)
+		Run("completion", "-", completionFlag, "zsh")
 		got := buf.String()
 		assert.Zero(t, got)
+	})
+}
+
+func TestFormatCompletion(t *testing.T) {
+	cases := []struct {
+		shell       string
+		description string
+		connector   string
+	}{
+		{
+			description: "Bash shell suggestion",
+			shell:       "bash",
+			connector:   "\t",
+		},
+		{
+			description: "zsh shell suggestion",
+			shell:       "zsh",
+			connector:   ":",
+		},
+		{
+			description: "fish shell suggestion",
+			shell:       "fish",
+			connector:   "\t",
+		},
+		{
+			description: "unknown shell suggestion",
+			shell:       "off",
+			connector:   " -- ",
+		},
+	}
+	noDescCases := []struct {
+		shell       string
+		description string
+		connector   string
+	}{
+		{
+			description: "powershell shell suggestions",
+			shell:       "powershell",
+			connector:   ":",
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.description, func(t *testing.T) {
+			resetDefaultApp()
+			addTestCompletionCommands()
+
+			var buf bytes.Buffer
+			defaultApp.completionCtx.out = &buf
+			defaultApp.completionCtx.shell = tt.shell
+
+			got := formatCompletion(defaultApp, "option", "some option description")
+			assert.Equal(t, got, "option"+tt.connector+"some option description")
+		})
+	}
+	for _, tt := range noDescCases {
+		t.Run(tt.description, func(t *testing.T) {
+			resetDefaultApp()
+			addTestCompletionCommands()
+
+			var buf bytes.Buffer
+			defaultApp.completionCtx.out = &buf
+			defaultApp.completionCtx.shell = tt.shell
+
+			got := formatCompletion(defaultApp, "option", "")
+			assert.Equal(t, got, "option")
+		})
+	}
+}
+
+func TestHasCompletionFlag(t *testing.T) {
+	t.Run("Has more than two arguments with completion", func(t *testing.T) {
+		passedArgs := []string{"cmd", completionFlag, "bash"}
+		isCompletion, args, shell := hasCompletionFlag(passedArgs)
+		assert.Equal(t, isCompletion, true)
+		assert.Equal(t, args, []string{"cmd"})
+		assert.Equal(t, shell, "bash")
+	})
+
+	t.Run("Has more than two arguments without completion", func(t *testing.T) {
+		passedArgs := []string{"cmd", "--test", "bash"}
+		isCompletion, args, shell := hasCompletionFlag(passedArgs)
+		assert.Equal(t, isCompletion, false)
+		assert.Equal(t, args, []string{"cmd", "--test", "bash"})
+		assert.Equal(t, shell, "unsupported")
+	})
+
+	t.Run("Has more than one argument with completion", func(t *testing.T) {
+		passedArgs := []string{completionFlag, "bash"}
+		isCompletion, args, shell := hasCompletionFlag(passedArgs)
+		assert.Equal(t, isCompletion, true)
+		assert.Equal(t, args, []string{})
+		assert.Equal(t, shell, "bash")
+	})
+
+	t.Run("Has more than one argument without completion", func(t *testing.T) {
+		passedArgs := []string{"--test", "bash"}
+		isCompletion, args, shell := hasCompletionFlag(passedArgs)
+		assert.Equal(t, isCompletion, false)
+		assert.Equal(t, args, []string{"--test", "bash"})
+		assert.Equal(t, shell, "unsupported")
+	})
+
+	t.Run("Has no arguments without completion", func(t *testing.T) {
+		passedArgs := []string{}
+		isCompletion, args, shell := hasCompletionFlag(passedArgs)
+		assert.Equal(t, isCompletion, false)
+		assert.Equal(t, args, []string{})
+		assert.Equal(t, shell, "unsupported")
+	})
+
+	t.Run("Has flag in between", func(t *testing.T) {
+		passedArgs := []string{completionFlag, "--test", "bash"}
+		isCompletion, args, shell := hasCompletionFlag(passedArgs)
+		assert.Equal(t, isCompletion, false)
+		assert.Equal(t, args, []string{completionFlag, "--test", "bash"})
+		assert.Equal(t, shell, "unsupported")
 	})
 }

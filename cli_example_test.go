@@ -297,16 +297,16 @@ func exampleGithubCliBrowse() {
 		WithExamples(`
 		  $ gh browse
 		  #=> Open the home page of the current repository
-		
+
 		  $ gh browse 217
 		  #=> Open issue or pull request 217
-		
+
 		  $ gh browse --settings
 		  #=> Open repository settings
-		
+
 		  $ gh browse main.go:312
 		  #=> Open main.go at line 312
-		
+
 		  $ gh browse main.go --branch main
 		  #=> Open main.go in the main branch`))
 	if err != nil && err != flag.ErrHelp {

@@ -10,17 +10,23 @@ import (
 
 const completionFlag = "--mcli-generate-completion"
 
+func getAllowedShells() []string {
+	return []string{"bash", "zsh", "fish", "powershell"}
+}
+
 func hasCompletionFlag(args []string) (bool, []string, string) {
-	var lastArg string
-	lastArgValue := "sh"
-	if len(args) >= 2 {
-		lastArg = args[len(args)-2]
-		lastArgValue = args[len(args)-1]
+	shell := "unsupported"
+	foundIndex := find(args, completionFlag)
+	if len(args) >= 2 && foundIndex >= 0 {
+		proposedShell := args[foundIndex+1]
+		if contains(getAllowedShells(), proposedShell) {
+			shell = proposedShell
+			args = remove(args, completionFlag)
+			args = remove(args, shell)
+			return true, args, shell
+		}
 	}
-	if lastArg == completionFlag {
-		return true, args[:len(args)-2], lastArgValue
-	}
-	return false, args, lastArgValue
+	return false, args, shell
 }
 
 func isFlagCompletion(args []string) (isFlag bool, flagName string, userArgs []string) {
@@ -269,7 +275,7 @@ func formatCompletion(app *App, opt string, desc string) string {
 	case "fish":
 		return fmt.Sprintf("%s\t%s", opt, desc)
 	default:
-		return fmt.Sprintf("%s:%s", opt, desc)
+		return fmt.Sprintf("%s -- %s", opt, desc)
 	}
 }
 

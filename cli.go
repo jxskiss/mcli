@@ -491,6 +491,7 @@ func (p *App) Run(args ...string) {
 
 func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 	if isComp, userArgs, completionShell := hasCompletionFlag(cmdArgs); isComp {
+		// TODO: if unsupported error? | 2023-08-06
 		p.setupCompletionCtx(userArgs, completionShell)
 		p.doAutoCompletion(userArgs)
 		return
