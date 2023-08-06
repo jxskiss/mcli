@@ -143,11 +143,12 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) {
 		result = append(result, suggestion)
 	}
 
-	// if app.completionCtx.shell == "bash" {
-	// 	result = append(result, ":4")
-	// 	result = append(result, "Completion ended with directive: ShellCompDirectiveNoFileComp")
-	// }
-	printLines(app.completionCtx.out, result)
+	// INFO go to flags suggestion when there's no commands
+	if len(result) > 0 {
+		printLines(app.completionCtx.out, result)
+	} else {
+		t.suggestFlags(app, cmdNames, "")
+	}
 }
 
 func (t *cmdTree) suggestFlags(app *App, userArgs []string, flagName string) {
