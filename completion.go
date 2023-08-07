@@ -17,17 +17,22 @@ func getAllowedShells() []string {
 func hasCompletionFlag(args []string) (bool, []string, string) {
 	shell := "unsupported"
 	completionFlagIndex := find(args, completionFlag)
-	if len(args) >= 2 && completionFlagIndex >= 0 && len(args)-1 != completionFlagIndex {
-		proposedShell := args[completionFlagIndex+1]
-		if contains(getAllowedShells(), proposedShell) {
-			shell = proposedShell
+	if len(args) >= 2 && completionFlagIndex >= 0 {
+		if len(args)-1 != completionFlagIndex {
+			proposedShell := args[completionFlagIndex+1]
+			if contains(getAllowedShells(), proposedShell) {
+				shell = proposedShell
+			}
 		}
 		args = args[:completionFlagIndex]
 		return true, args, shell
 	}
+
 	if len(args) == 1 && args[0] == completionFlag {
+		args = args[:completionFlagIndex]
 		return true, args, shell
 	}
+
 	return false, args, shell
 }
 

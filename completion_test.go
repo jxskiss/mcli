@@ -375,8 +375,8 @@ func TestHasCompletionFlag(t *testing.T) {
 	t.Run("Should not panic when completion flag is last", func(t *testing.T) {
 		passedArgs := []string{"com", "command2", completionFlag}
 		isCompletion, args, shell := hasCompletionFlag(passedArgs)
-		assert.Equal(t, isCompletion, false)
-		assert.Equal(t, args, []string{"com", "command2", "--mcli-generate-completion"})
+		assert.Equal(t, isCompletion, true)
+		assert.Equal(t, args, []string{"com", "command2"})
 		assert.Equal(t, shell, "unsupported")
 	})
 
@@ -384,7 +384,15 @@ func TestHasCompletionFlag(t *testing.T) {
 		passedArgs := []string{completionFlag}
 		isCompletion, args, shell := hasCompletionFlag(passedArgs)
 		assert.Equal(t, isCompletion, true)
-		assert.Equal(t, args, []string{completionFlag})
+		assert.Equal(t, args, []string{})
+		assert.Equal(t, shell, "unsupported")
+	})
+
+	t.Run("Should handle missing shell value as unsupported", func(t *testing.T) {
+		passedArgs := []string{"c", completionFlag}
+		isCompletion, args, shell := hasCompletionFlag(passedArgs)
+		assert.Equal(t, isCompletion, true)
+		assert.Equal(t, args, []string{"c"})
 		assert.Equal(t, shell, "unsupported")
 	})
 }
