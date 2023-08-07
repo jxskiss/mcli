@@ -29,7 +29,7 @@ LEARN MORE
   Read the manual at https://cli.github.com/manual
 `
 
-	Add("browse", exampleGithubCliBrowse, "Open the repository in the browser")
+	Add("browse", githubCliBrowseCmd, "Open the repository in the browser")
 	Add("actions", dummyCmd, "Learn about working with GitHub Actions")
 
 	AddGroup("issue", "Manage issues")
@@ -281,35 +281,38 @@ LEARN MORE
 
 */
 
-func exampleGithubCliBrowse() {
-	args := struct {
-		Branch    string `cli:"-b, --branch, Select another branch by passing in the branch name"`
-		Commit    bool   `cli:"-c, --commit, Open the last commit"`
-		NoBrowser bool   `cli:"-n, --no-browser, Print destination URL instead of opening the browser"`
-		Projects  bool   `cli:"-p, --projects, Open repository projects"`
-		Repo      string `cli:"-R, --repo, Select another repository using the '[HOST/]OWNER/REPO' format"`
-		Settings  bool   `cli:"-s, --settings, Open repository settings"`
-		Wiki      bool   `cli:"-w, --wiki, Open repository wiki"`
+type githubCliBrowseArgs struct {
+	Branch    string `cli:"-b, --branch, Select another branch by passing in the branch name"`
+	Commit    bool   `cli:"-c, --commit, Open the last commit"`
+	NoBrowser bool   `cli:"-n, --no-browser, Print destination URL instead of opening the browser"`
+	Projects  bool   `cli:"-p, --projects, Open repository projects"`
+	Repo      string `cli:"-R, --repo, Select another repository using the '[HOST/]OWNER/REPO' format"`
+	Settings  bool   `cli:"-s, --settings, Open repository settings"`
+	Wiki      bool   `cli:"-w, --wiki, Open repository wiki"`
 
-		Location string `cli:"location, A browser location can be specified using arguments in the following format:\n- by number for issue or pull request, e.g. \"123\"; or\n- by path for opening folders and files, e.g. \"cmd/gh/main.go\""`
-	}{}
-	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
-		WithExamples(`
-		  $ gh browse
-		  #=> Open the home page of the current repository
+	Location string `cli:"location, A browser location can be specified using arguments in the following format:\n- by number for issue or pull request, e.g. \"123\"; or\n- by path for opening folders and files, e.g. \"cmd/gh/main.go\""`
+}
 
-		  $ gh browse 217
-		  #=> Open issue or pull request 217
+var githubCliBrowseCmd = NewCommand(exampleGithubCliBrowse,
+	WithErrorHandling(flag.ContinueOnError),
+	WithExamples(`
+		$ gh browse
+		#=> Open the home page of the current repository
 
-		  $ gh browse --settings
-		  #=> Open repository settings
+		$ gh browse 217
+		#=> Open issue or pull request 217
 
-		  $ gh browse main.go:312
-		  #=> Open main.go at line 312
+		$ gh browse --settings
+		#=> Open repository settings
 
-		  $ gh browse main.go --branch main
-		  #=> Open main.go in the main branch`))
-	if err != nil && err != flag.ErrHelp {
+		$ gh browse main.go:312
+		#=> Open main.go at line 312
+
+		$ gh browse main.go --branch main
+		#=> Open main.go in the main branch`))
+
+func exampleGithubCliBrowse(ctx *Context, args *githubCliBrowseArgs) {
+	if err := ctx.ArgsError(); err != nil && err != flag.ErrHelp {
 		panic(err)
 	}
 }

@@ -1,6 +1,7 @@
 package mcli
 
 import (
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -8,13 +9,15 @@ import (
 // Command holds the information of a command.
 type Command struct {
 	Name        string
+	AliasOf     string
 	Description string
 	Hidden      bool
 
-	AliasOf string
+	app *App
+	f   func()
 
-	f    func()
-	opts cmdOptions
+	cmdOpts   []CmdOpt
+	parseOpts []ParseOpt
 
 	idx   int
 	level int
@@ -24,7 +27,47 @@ type Command struct {
 	noCompletion bool
 }
 
-type CommandFunc = func(ctx *Context)
+// NewCommand accepts a typed function and returns a Command.
+// The type parameter T must be a struct, else it panics.
+// When the command is matched, mcli will parse "args" and pass it to f,
+// thus user must not call "Parse" again in f, else it panics.
+// If option WithErrorHandling is used, user can use Context.ArgsError
+// to check error that occurred during parsing flags and arguments.
+// In case you want to get the parsed flag.FlagSet, check Context.FlagSet.
+func NewCommand[T any](f func(ctx *Context, args *T), opts ...ParseOpt) *Command {
+	if reflect.TypeOf(*(new(T))).Kind() != reflect.Struct {
+		panic("mcli: NewCommand args type T must be a struct")
+	}
+	cmd := &Command{
+		cmdOpts:   []CmdOpt{EnableFlagCompletion()},
+		parseOpts: opts,
+	}
+	cmd.f = func() {
+		ctx := newContext(cmd.app)
+		args := new(T)
+		cmd.app.parseArgs(args, cmd.parseOpts...)
+		f(ctx, args)
+	}
+	return cmd
+}
+
+func newUntypedCommand(f func(), opts ...CmdOpt) *Command {
+	return &Command{
+		f:       f,
+		cmdOpts: opts,
+	}
+}
+
+func newUntypedCtxCommand(f func(*Context), opts ...CmdOpt) *Command {
+	cmd := &Command{
+		cmdOpts: opts,
+	}
+	cmd.f = func() {
+		ctx := newContext(cmd.app)
+		f(ctx)
+	}
+	return cmd
+}
 
 func normalizeCmdName(name string) string {
 	name = strings.TrimSpace(name)

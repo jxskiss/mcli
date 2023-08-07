@@ -24,6 +24,18 @@ type Options struct {
 	// multiple boolean options. e.g. `-abc` is equivalent to `-a -b -c`.
 	AllowPosixSTMO bool
 
+	// EnableFlagCompletionForAllCommands enables flag completion for
+	// all commands of an application.
+	// By default, flag completion is disabled to avoid unexpectedly running
+	// the user command when doing flag completion, in case that the
+	// command does not call `Parse`.
+	//
+	// Note that when flag completion is enabled, the command functions
+	// must call `Parse` to parse flags and arguments, either by creating
+	// Command by NewCommand or manually call `Parse` in functions
+	// with signature `func()` or `func(*mcli.Context)`.
+	EnableFlagCompletionForAllCommands bool
+
 	// HelpFooter optionally adds a footer message to help output.
 	// If Parse is called with option `WithFooter`, the option function's
 	// output overrides this setting.
@@ -33,10 +45,6 @@ type Options struct {
 // NewApp creates a new cli application instance.
 // Typically, there is no need to manually create an application, using
 // the package-level functions with the default application is preferred.
-//
-// Note: with a new application instance (not the default App),
-// user should not call `mcli.Parse` and `mcli.PrintHelp` inside command
-// functions, that two functions always execute with the default App.
 func NewApp() *App {
 	return &App{}
 }
@@ -81,6 +89,8 @@ func (p *App) addCommand(cmd *Command) {
 	if p.cmdMap[cmd.Name] != nil {
 		panic("mcli: command name must be unique")
 	}
+
+	cmd.app = p
 	if p.cmdMap == nil {
 		p.cmdMap = make(map[string]*Command)
 	}
@@ -119,8 +129,9 @@ func (p *App) getFlagSet() *flag.FlagSet {
 }
 
 type parsingContext struct {
-	app *App
-	fs  *flag.FlagSet
+	app     *App
+	fs      *flag.FlagSet
+	flagErr error
 
 	name string
 	args *[]string
@@ -322,47 +333,45 @@ func (p *App) printUsage() {
 }
 
 // Add adds a command.
-func (p *App) Add(name string, f CommandFunc, description string, opts ...CmdOpt) {
-	p._add(name, f, description, opts...)
+//
+// Param cmd must be type of one of the following:
+//   - `func()`, user should call `mcli.Parse` inside the function
+//   - `func(ctx *mcli.Context)`, user should call `ctx.Parse` inside the function
+//   - a Command created by NewCommand
+func (p *App) Add(name string, cmd any, description string, opts ...CmdOpt) {
+	p._add(name, cmd, description, opts...)
 }
 
-func (p *App) _add(name string, f interface{}, description string, opts ...CmdOpt) {
-	ff := p.validateFunc(f)
-	p.addCommand(&Command{
-		Name:        name,
-		Description: description,
-		f:           ff,
-		opts:        newCmdOptions(opts...),
-	})
+func (p *App) _add(name string, cmd any, description string, opts ...CmdOpt) *Command {
+	xCmd := p.validateCommand(cmd, opts...)
+	xCmd.Name = name
+	xCmd.Description = description
+	p.addCommand(xCmd)
+	return xCmd
 }
 
 // AddRoot adds a root command.
 // When no sub command specified, a root command will be executed.
-func (p *App) AddRoot(f CommandFunc, opts ...CmdOpt) {
-	p._addRoot(f, opts...)
+//
+// See App.Add for valid types of cmd.
+func (p *App) AddRoot(cmd any, opts ...CmdOpt) {
+	xCmd := p.validateCommand(cmd, opts...)
+	xCmd.app = p
+	xCmd.isRoot = true
+	p.rootCmd = xCmd
 }
 
-func (p *App) _addRoot(f interface{}, opts ...CmdOpt) {
-	ff := p.validateFunc(f)
-	p.rootCmd = &Command{
-		f:      ff,
-		opts:   newCmdOptions(opts...),
-		isRoot: true,
-	}
-}
-
-func (p *App) validateFunc(f interface{}) func() {
-	switch ff := f.(type) {
+func (p *App) validateCommand(cmd any, opts ...CmdOpt) *Command {
+	switch x := cmd.(type) {
+	case *Command:
+		x.cmdOpts = append(x.cmdOpts, opts...)
+		return x
 	case func():
-		return ff
+		return newUntypedCommand(x, opts...)
 	case func(*Context):
-		return func() {
-			cmd := p.getParsingContext().cmd
-			ctx := newContext(p, cmd)
-			ff(ctx)
-		}
+		return newUntypedCtxCommand(x, opts...)
 	}
-	panic(fmt.Sprintf("mcli: unsupported function type: %T", f))
+	panic(fmt.Sprintf("mcli: unsupported command type: %T", cmd))
 }
 
 // AddAlias adds an alias name for a command.
@@ -375,10 +384,10 @@ func (p *App) AddAlias(aliasName, target string, opts ...CmdOpt) {
 	desc := fmt.Sprintf("Alias of command %q", target)
 	p.addCommand(&Command{
 		Name:        aliasName,
-		Description: desc,
 		AliasOf:     target,
+		Description: desc,
 		f:           cmd.f,
-		opts:        newCmdOptions(opts...),
+		cmdOpts:     opts,
 	})
 }
 
@@ -386,19 +395,11 @@ func (p *App) AddAlias(aliasName, target string, opts ...CmdOpt) {
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
-func (p *App) AddHidden(name string, f CommandFunc, description string, opts ...CmdOpt) {
-	p._addHidden(name, f, description, opts...)
-}
-
-func (p *App) _addHidden(name string, f interface{}, description string, opts ...CmdOpt) {
-	ff := p.validateFunc(f)
-	p.addCommand(&Command{
-		Name:        name,
-		Description: description,
-		Hidden:      true,
-		f:           ff,
-		opts:        newCmdOptions(opts...),
-	})
+//
+// See App.Add for valid types of cmd.
+func (p *App) AddHidden(name string, cmd any, description string, opts ...CmdOpt) {
+	xCmd := p._add(name, cmd, description, opts...)
+	xCmd.Hidden = true
 }
 
 // AddGroup adds a group explicitly.
@@ -407,22 +408,14 @@ func (p *App) _addHidden(name string, f interface{}, description string, opts ..
 // can use this function to add a description to a group, which will be
 // showed in help.
 func (p *App) AddGroup(name string, description string, opts ...CmdOpt) {
-	p.addCommand(&Command{
-		Name:        name,
-		Description: description,
-		f:           p.groupCmd,
-		opts:        newCmdOptions(opts...),
-		isGroup:     true,
-	})
+	cmd := newUntypedCommand(p.groupCmd, opts...)
+	cmd.isGroup = true
+	p._add(name, cmd, description, opts...)
 }
 
 // AddHelp enables the "help" command to print help about any command.
 func (p *App) AddHelp() {
-	p.addCommand(&Command{
-		Name:        "help",
-		Description: "Help about any command",
-		f:           p.helpCmd,
-	})
+	p.Add("help", p.helpCmd, "Help about any command")
 }
 
 // AddCompletion enables the "completion" command to generate auto-completion script.
@@ -576,8 +569,13 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 	assertStructPointer(v)
 
 	ctx := p.getParsingContext()
+	if ctx.fs != nil && ctx.fs.Parsed() {
+		panic("mcli: Parse is called more than once")
+	}
+
 	ctx.opts = newParseOptions(opts...)
 	options := ctx.opts
+	defer func() { ctx.flagErr = err }()
 
 	wrapArgs := &withGlobalFlagArgs{
 		GlobalFlags: nil,
@@ -595,7 +593,8 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 		return fs, err
 	}
 
-	// For flags completion, don't really run the command.
+	// For flags completion, just parsing the args definition is enough,
+	// don't bother to parse the command arguments and really run the command.
 	if p.isCompletion {
 		p.completionCtx.flags = ctx.flags
 		p.continueFlagCompletion()

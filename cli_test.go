@@ -830,15 +830,17 @@ LEARN MORE:
 		app.Add("cmd2", cmd2, "test cmd2")
 
 		var buf bytes.Buffer
-		app.Run("cmd1", "-h")
+		app.resetParsingContext()
 		app.getFlagSet().SetOutput(&buf)
+		app.Run("cmd1", "-h")
 		app.printUsage()
 		got1 := buf.String()
 		assert.Contains(t, got1, "LEARN MORE:\n  Use 'program help <command> <subcommand>' for more information of a command.\n\n")
 
 		buf.Reset()
-		app.Run("cmd2", "-h")
+		app.resetParsingContext()
 		app.getFlagSet().SetOutput(&buf)
+		app.Run("cmd2", "-h")
 		app.printUsage()
 		got2 := buf.String()
 		assert.NotContains(t, got2, "LEARN MORE")

@@ -19,15 +19,21 @@ func SetGlobalFlags(v interface{}) {
 }
 
 // Add adds a command.
-// f must be a function of signature `func()` or `func(*Context)`, else it panics.
-func Add(name string, f interface{}, description string, opts ...CmdOpt) {
-	defaultApp._add(name, f, description, opts...)
+//
+// Param cmd must be type of one of the following:
+//   - `func()`, user should call `mcli.Parse` inside the function
+//   - `func(ctx *mcli.Context)`, user should call `ctx.Parse` inside the function
+//   - a Command created by NewCommand
+func Add(name string, cmd interface{}, description string, opts ...CmdOpt) {
+	defaultApp.Add(name, cmd, description, opts...)
 }
 
 // AddRoot adds a root command processor.
 // When no sub command specified, a root command will be executed.
-func AddRoot(f interface{}, opts ...CmdOpt) {
-	defaultApp._addRoot(f, opts...)
+//
+// See Add for valid types of cmd.
+func AddRoot(cmd interface{}, opts ...CmdOpt) {
+	defaultApp.AddRoot(cmd, opts...)
 }
 
 // AddAlias adds an alias name for a command.
@@ -40,8 +46,10 @@ func AddAlias(aliasName, target string, opts ...CmdOpt) {
 //
 // A hidden command won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
-func AddHidden(name string, f interface{}, description string, opts ...CmdOpt) {
-	defaultApp._addHidden(name, f, description, opts...)
+//
+// See Add for valid types of cmd.
+func AddHidden(name string, cmd interface{}, description string, opts ...CmdOpt) {
+	defaultApp.AddHidden(name, cmd, description, opts...)
 }
 
 // AddGroup adds a group explicitly.

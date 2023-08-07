@@ -99,7 +99,8 @@ func newCmdOptions(opts ...CmdOpt) cmdOptions {
 }
 
 type cmdOptions struct {
-	longDesc string
+	longDesc             string
+	enableFlagCompletion bool
 }
 
 func (p *cmdOptions) apply(opts ...CmdOpt) *cmdOptions {
@@ -119,5 +120,15 @@ type CmdOpt struct {
 func WithLongDesc(long string) CmdOpt {
 	return CmdOpt{f: func(options *cmdOptions) {
 		options.longDesc = strings.TrimSpace(heredoc.Doc(long))
+	}}
+}
+
+// EnableFlagCompletion enables flag completion for a command.
+// By default, flag completion is disabled to avoid unexpectedly running
+// the user command when doing flag completion, in case that
+// the user command does not call `Parse`.
+func EnableFlagCompletion() CmdOpt {
+	return CmdOpt{f: func(options *cmdOptions) {
+		options.enableFlagCompletion = true
 	}}
 }

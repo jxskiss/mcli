@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/MakeNowJust/heredoc/v2"
 )
 
 func newUsagePrinter(app *App) *usagePrinter {
@@ -36,7 +38,7 @@ func (p *usagePrinter) Do() {
 	ctx := p.ctx
 	out := p.out
 	if ctx.opts.customUsage != nil {
-		help := strings.TrimSpace(ctx.opts.customUsage())
+		help := strings.TrimSpace(heredoc.Doc(ctx.opts.customUsage()))
 		fmt.Fprintf(out, "%s\n\n", help)
 		return
 	}
@@ -77,6 +79,7 @@ func (p *usagePrinter) printUsageLine() {
 	appDesc := strings.TrimSpace(p.app.Description)
 
 	if cmd != nil {
+		cmdOpts := newCmdOptions(cmd.cmdOpts...)
 		if cmd.isRoot {
 			if appDesc != "" {
 				usage += appDesc + "\n"
@@ -91,11 +94,11 @@ func (p *usagePrinter) printUsageLine() {
 				usage += cmd.Description + "\n"
 			}
 		}
-		if cmd.opts.longDesc != "" {
+		if cmdOpts.longDesc != "" {
 			if usage != "" {
 				usage += "\n"
 			}
-			usage += cmd.opts.longDesc + "\n"
+			usage += cmdOpts.longDesc + "\n"
 		}
 	} else if appDesc != "" {
 		usage += appDesc + "\n"
