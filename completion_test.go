@@ -148,38 +148,35 @@ func TestSuggestCommands(t *testing.T) {
 		})
 	}
 
-	// TODO: how to handle unsupported shell ?? | 2023-08-06
-	// unsupportedCases := []struct {
-	// 	shell       string
-	// 	description string
-	// 	connector   string
-	// }{
-	// 	{
-	// 		description: "unknown shell suggestions",
-	// 		shell:       "off",
-	// 		connector:   " -- ",
-	// 	},
-	// }
-	//
-	// for _, tt := range unsupportedCases {
-	// 	t.Run(tt.description, func(t *testing.T) {
-	// 		resetDefaultApp()
-	// 		addTestCompletionCommands()
-	//
-	// 		var buf bytes.Buffer
-	// 		defaultApp.completionCtx.out = &buf
-	// 		defaultApp.completionCtx.shell = tt.shell
-	//
-	// 		Run("c", completionFlag, tt.shell)
-	// 		got := buf.String()
-	// 		log.Println(len(got))
-	// 		// assert.Empty(t, got)
-	// 		// assert.Contains(t, got, "USAGE:")
-	// 		assert.Contains(t, got, "cmd1"+tt.connector+"A cmd1 description\n")
-	// 		assert.NotContains(t, got, "cmd2"+tt.connector+"A cmd2 description\n")
-	// 		assert.NotContains(t, got, "cmd3\n")
-	// 	})
-	// }
+	unsupportedCases := []struct {
+		shell       string
+		description string
+		connector   string
+	}{
+		{
+			description: "unknown shell suggestions",
+			shell:       "off",
+			connector:   " -- ",
+		},
+	}
+
+	for _, tt := range unsupportedCases {
+		t.Run(tt.description, func(t *testing.T) {
+			resetDefaultApp()
+			addTestCompletionCommands()
+
+			var buf bytes.Buffer
+			defaultApp.completionCtx.out = &buf
+			defaultApp.completionCtx.shell = tt.shell
+
+			Run("c", completionFlag, tt.shell)
+			got := buf.String()
+			log.Println(len(got))
+			assert.Contains(t, got, "cmd1\n")
+			assert.NotContains(t, got, "cmd2\n")
+			assert.NotContains(t, got, "cmd3\n")
+		})
+	}
 }
 
 func TestSuggestFlags(t *testing.T) {
@@ -370,8 +367,24 @@ func TestHasCompletionFlag(t *testing.T) {
 	t.Run("Has flag in between", func(t *testing.T) {
 		passedArgs := []string{completionFlag, "--test", "bash"}
 		isCompletion, args, shell := hasCompletionFlag(passedArgs)
+		assert.Equal(t, isCompletion, true)
+		assert.Equal(t, args, []string{})
+		assert.Equal(t, shell, "unsupported")
+	})
+
+	t.Run("Should not panic when completion flag is last", func(t *testing.T) {
+		passedArgs := []string{"com", "command2", completionFlag}
+		isCompletion, args, shell := hasCompletionFlag(passedArgs)
 		assert.Equal(t, isCompletion, false)
-		assert.Equal(t, args, []string{completionFlag, "--test", "bash"})
+		assert.Equal(t, args, []string{"com", "command2", "--mcli-generate-completion"})
+		assert.Equal(t, shell, "unsupported")
+	})
+
+	t.Run("Should not panic with only completion flag", func(t *testing.T) {
+		passedArgs := []string{completionFlag}
+		isCompletion, args, shell := hasCompletionFlag(passedArgs)
+		assert.Equal(t, isCompletion, true)
+		assert.Equal(t, args, []string{completionFlag})
 		assert.Equal(t, shell, "unsupported")
 	})
 }

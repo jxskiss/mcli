@@ -21,9 +21,12 @@ func hasCompletionFlag(args []string) (bool, []string, string) {
 		proposedShell := args[completionFlagIndex+1]
 		if contains(getAllowedShells(), proposedShell) {
 			shell = proposedShell
-			args = args[:completionFlagIndex]
-			return true, args, shell
 		}
+		args = args[:completionFlagIndex]
+		return true, args, shell
+	}
+	if len(args) == 1 && args[0] == completionFlag {
+		return true, args, shell
 	}
 	return false, args, shell
 }
@@ -135,7 +138,7 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) {
 			continue
 		}
 		desc := ""
-		if sub.Cmd != nil && app.completionCtx.shell != "powershell" {
+		if sub.Cmd != nil && app.completionCtx.shell != "powershell" && app.completionCtx.shell != "unsupported" {
 			desc = sub.Cmd.Description
 		}
 		suggestion := formatCompletion(app, sub.Name, desc)
