@@ -54,14 +54,14 @@ func init() {
 	actualField, ok1 := typ.FieldByName("actual")
 	formalField, ok2 := typ.FieldByName("formal")
 	if !ok1 || !ok2 {
-		panic("cannot find flag.FlagSet fields actual/formal")
+		panic("mcli: cannot find flag.FlagSet fields actual/formal")
 	}
 	argsField, ok3 := typ.FieldByName("args")
 	if !ok3 {
-		panic("cannot find flag.FlagSet field args")
+		panic("mcli: cannot find flag.FlagSet field args")
 	}
 	if actualField.Type != _flagSetMapType || formalField.Type != _flagSetMapType {
-		panic("type of flag.FlagSet fields actual/formal is not map[string]*flag.Flag")
+		panic("mcli: type of flag.FlagSet fields actual/formal is not map[string]*flag.Flag")
 	}
 	_flagSet_actual_offset = actualField.Offset
 	_flagSet_formal_offset = formalField.Offset

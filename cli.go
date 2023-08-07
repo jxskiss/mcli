@@ -76,10 +76,10 @@ type App struct {
 func (p *App) addCommand(cmd *Command) {
 	cmd.Name = normalizeCmdName(cmd.Name)
 	if cmd.Name == "" {
-		panic("command name must not be empty")
+		panic("mcli: command name must not be empty")
 	}
 	if p.cmdMap[cmd.Name] != nil {
-		panic("command name must be unique")
+		panic("mcli: command name must be unique")
 	}
 	if p.cmdMap == nil {
 		p.cmdMap = make(map[string]*Command)
@@ -160,7 +160,7 @@ func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 	flags, nonflags, err := parseFlags(false, fs, rv, flagMap)
 	if err != nil {
 		if _, ok := err.(*programingError); ok {
-			panic(err)
+			panic(fmt.Sprintf("mcli: %v", err))
 		}
 		ctx.failError(err)
 		return err
@@ -362,14 +362,14 @@ func (p *App) validateFunc(f interface{}) func() {
 			ff(ctx)
 		}
 	}
-	panic(fmt.Sprintf("unsupported function type: %T", f))
+	panic(fmt.Sprintf("mcli: unsupported function type: %T", f))
 }
 
 // AddAlias adds an alias name for a command.
 func (p *App) AddAlias(aliasName, target string, opts ...CmdOpt) {
 	cmd := p.cmdMap[target]
 	if cmd == nil {
-		panic(fmt.Sprintf("alias command target %q does not exist", target))
+		panic(fmt.Sprintf("mcli: alias command target %q does not exist", target))
 	}
 
 	desc := fmt.Sprintf("Alias of command %q", target)
@@ -660,7 +660,7 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 func assertStructPointer(v interface{}) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
-		panic("argument must be a pointer to struct")
+		panic("mcli: argument must be a pointer to struct")
 	}
 }
 

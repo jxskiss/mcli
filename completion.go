@@ -345,16 +345,13 @@ func (p *App) completionCmd(shellType string) func() {
 			panic("unreachable")
 		}
 		tplContent, err := autoCompleteTpl.ReadFile(tplName)
-		if err != nil { // shall never happen
-			panic(err)
+		if err != nil {
+			panic("unreachable")
 		}
 
 		tpl := template.Must(template.New("").Parse(string(tplContent)))
 		builder := &strings.Builder{}
 		tpl.Execute(builder, data)
-		// if err != nil {
-		// 	panic("unreachable")
-		// }
 		fmt.Println(builder.String())
 	}
 }

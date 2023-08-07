@@ -144,7 +144,7 @@ func formatValueOfBasicType(rv reflect.Value) string {
 		b, _ := json.Marshal(rv.Interface())
 		return string(b)
 	default:
-		panic(fmt.Sprintf("unsupported value type: %v", rv.Type()))
+		panic(fmt.Sprintf("mcli: unsupported value type: %v", rv.Type()))
 	}
 }
 
@@ -456,7 +456,7 @@ func (f *_flag) validate() error {
 			return newProgramingError("env is unsupported for slice type, %s", f.helpName())
 		}
 		if f.isMap() {
-			return newProgramingError("env is unsupported for slice type, %s", f.helpName())
+			return newProgramingError("env is unsupported for map type, %s", f.helpName())
 		}
 	}
 	return nil
