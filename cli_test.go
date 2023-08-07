@@ -851,6 +851,6 @@ func TestCoverage(t *testing.T) {
 		app := NewApp()
 		app.Add("cmd1", dummyCmdWithContext, "cmd1")
 		app.AddHidden("cmd2-hidden", dummyCmdWithContext, "cmd2 hidden")
-		app.setupCompletionCtx(nil)
+		app.setupCompletionCtx([]string{}, "")
 	})
 }
