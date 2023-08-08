@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
-	github.com/stretchr/testify v1.7.2
+	github.com/stretchr/testify v1.8.4
 )
 
 require (
