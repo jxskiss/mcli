@@ -33,7 +33,7 @@ type Context struct {
 //  2. if the command is created by NewCommand, mcli automatically calls
 //     this to parse flags and arguments, then pass args to user command,
 //     you must not call this again, else it panics
-func (ctx *Context) Parse(args interface{}, opts ...ParseOpt) (*flag.FlagSet, error) {
+func (ctx *Context) Parse(args any, opts ...ParseOpt) (*flag.FlagSet, error) {
 	return ctx.app.parseArgs(args, opts...)
 }
 

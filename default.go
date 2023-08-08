@@ -19,7 +19,7 @@ func SetOptions(options Options) {
 // SetGlobalFlags sets global flags, global flags are available to all commands.
 // DisableGlobalFlags may be used to disable global flags for a specific
 // command when calling Parse.
-func SetGlobalFlags(v interface{}) {
+func SetGlobalFlags(v any) {
 	defaultApp.SetGlobalFlags(v)
 }
 
@@ -29,7 +29,7 @@ func SetGlobalFlags(v interface{}) {
 //   - `func()`, user should call `mcli.Parse` inside the function
 //   - `func(ctx *mcli.Context)`, user should call `ctx.Parse` inside the function
 //   - a Command created by NewCommand
-func Add(name string, cmd interface{}, description string, opts ...CmdOpt) {
+func Add(name string, cmd any, description string, opts ...CmdOpt) {
 	defaultApp.Add(name, cmd, description, opts...)
 }
 
@@ -37,7 +37,7 @@ func Add(name string, cmd interface{}, description string, opts ...CmdOpt) {
 // When no sub command specified, a root command will be executed.
 //
 // See Add for valid types of cmd.
-func AddRoot(cmd interface{}, opts ...CmdOpt) {
+func AddRoot(cmd any, opts ...CmdOpt) {
 	defaultApp.AddRoot(cmd, opts...)
 }
 
@@ -53,7 +53,7 @@ func AddAlias(aliasName, target string, opts ...CmdOpt) {
 // "--mcli-show-hidden" is provided.
 //
 // See Add for valid types of cmd.
-func AddHidden(name string, cmd interface{}, description string, opts ...CmdOpt) {
+func AddHidden(name string, cmd any, description string, opts ...CmdOpt) {
 	defaultApp.AddHidden(name, cmd, description, opts...)
 }
 
@@ -105,12 +105,12 @@ func Run(args ...string) {
 }
 
 // Parse parses the command line for flags and arguments.
-// v must be a pointer to a struct, else it panics.
-func Parse(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
+// args must be a pointer to a struct, else it panics.
+func Parse(args any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 
 	// Check running App to work correctly in case of misuse of calling
 	// `mcli.Parse` inside command function not with the default App.
-	return runningApp.parseArgs(v, opts...)
+	return runningApp.parseArgs(args, opts...)
 }
 
 // PrintHelp prints usage doc of the current command to stderr.

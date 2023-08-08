@@ -87,7 +87,7 @@ type _value struct {
 	rv reflect.Value
 }
 
-func (f *_flag) Get() interface{} {
+func (f *_flag) Get() any {
 	if f.rv.Type().Implements(flagGetterTyp) {
 		return f.rv.Interface().(flag.Getter).Get()
 	}

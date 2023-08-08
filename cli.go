@@ -64,7 +64,7 @@ type App struct {
 	cmdMap      map[string]*Command
 	cmds        commands
 	groups      map[string]bool
-	globalFlags interface{}
+	globalFlags any
 
 	ctx *parsingContext
 
@@ -104,7 +104,7 @@ func (p *App) addCommand(cmd *Command) {
 	}
 }
 
-func (p *App) getGlobalFlags() interface{} {
+func (p *App) getGlobalFlags() any {
 	return p.globalFlags
 }
 
@@ -285,7 +285,7 @@ func (ctx *parsingContext) checkRequired() (err error) {
 	return
 }
 
-func (ctx *parsingContext) failf(errp *error, format string, a ...interface{}) {
+func (ctx *parsingContext) failf(errp *error, format string, a ...any) {
 	err := fmt.Errorf(format, a...)
 	if *errp == nil {
 		*errp = err
@@ -574,7 +574,7 @@ func (p *App) searchCmd(cmdArgs []string) (invalidCmdName string, found bool) {
 
 // parseArgs parses the command line for flags and arguments.
 // v must be a pointer to a struct, else it panics.
-func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
+func (p *App) parseArgs(v any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	if v == nil {
 		v = &struct{}{}
 	}
@@ -668,7 +668,7 @@ func (p *App) parseArgs(v interface{}, opts ...ParseOpt) (fs *flag.FlagSet, err 
 	return fs, err
 }
 
-func assertStructPointer(v interface{}) {
+func assertStructPointer(v any) {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.Elem().Kind() != reflect.Struct {
 		panic("mcli: argument must be a pointer to struct")
@@ -721,7 +721,7 @@ func expandSTMOFlags(flagMap map[string]*_flag, args []string) []string {
 // SetGlobalFlags sets global flags, global flags are available to all commands.
 // DisableGlobalFlags may be used to disable global flags for a specific
 // command when calling Parse.
-func (p *App) SetGlobalFlags(v interface{}) {
+func (p *App) SetGlobalFlags(v any) {
 	if v != nil {
 		assertStructPointer(v)
 		p.globalFlags = v
@@ -729,15 +729,15 @@ func (p *App) SetGlobalFlags(v interface{}) {
 }
 
 type withGlobalFlagArgs struct {
-	GlobalFlags interface{}
-	CmdArgs     interface{}
+	GlobalFlags any
+	CmdArgs     any
 }
 
 func getProgramName() string {
 	return filepath.Base(os.Args[0])
 }
 
-func newProgramingError(format string, args ...interface{}) *programingError {
+func newProgramingError(format string, args ...any) *programingError {
 	msg := fmt.Sprintf(format, args...)
 	return &programingError{msg: msg}
 }

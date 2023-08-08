@@ -139,7 +139,7 @@ func TestParsing_CheckFlagSetValues(t *testing.T) {
 	for _, tt := range []struct {
 		flag  string
 		want  string
-		value interface{}
+		value any
 	}{
 		{"a", "true", true},
 		{"a-flag", "true", true},
@@ -559,7 +559,7 @@ type flagValueImpl2 struct {
 	Data []byte
 }
 
-func (f *flagValueImpl2) Get() interface{} {
+func (f *flagValueImpl2) Get() any {
 	return f.Data
 }
 
@@ -600,7 +600,7 @@ func TestParse_UnsupportedType(t *testing.T) {
 		C *SomeComplexType `cli:"-c"`
 	}
 
-	for _, args := range []interface{}{&args1, &args2, &args3} {
+	for _, args := range []any{&args1, &args2, &args3} {
 		assert.Panics(t, func() {
 			Parse(args)
 		})
