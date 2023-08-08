@@ -87,7 +87,7 @@ type _value struct {
 	rv reflect.Value
 }
 
-func (f *_flag) Get() interface{} {
+func (f *_flag) Get() any {
 	if f.rv.Type().Implements(flagGetterTyp) {
 		return f.rv.Interface().(flag.Getter).Get()
 	}
@@ -212,7 +212,7 @@ func applyValueOfBasicType(rv reflect.Value, s string) error {
 		}
 		rv.SetMapIndex(reflect.ValueOf(k), val)
 	default:
-		panic(fmt.Sprintf("unsupported value type: %v", rv.Type()))
+		panic(fmt.Sprintf("mcli: unsupported value type: %v", rv.Type()))
 	}
 	return nil
 }

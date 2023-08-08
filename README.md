@@ -44,7 +44,7 @@ which is licensed under the Apache License 2.0.
 * Automatic suggestions like git.
 * Automatic help generation for commands, flags and arguments.
 * Automatic help flag recognition of `-h`, `--help`, etc.
-* Automatic shell completion, it supports `bash`, `zsh`, `powershell`, `fish` for now.
+* Automatic shell completion, it supports `bash`, `zsh`, `fish`, `powershell` for now.
 * Compatible with the standard library's flag.FlagSet.
 * Optional posix-style single token multiple options command line parsing.
 * Alias command, so you can reorganize commands without breaking them.
@@ -158,6 +158,7 @@ Also, there are some sophisticated examples:
 
 Use the default App:
 
+- `SetOptions` updates options of the default application.
 - `SetGlobalFlags` sets global flags, global flags are available to all commands.
 - `Add` adds a command.
 - `AddRoot` adds a root command. A root command is executed when no sub command is specified.
@@ -185,6 +186,7 @@ App:
 CmdOpt:
 
 - `WithLongDesc` specifies a long description of a command, which will be showed in the command's help.
+- `EnableFlagCompletion` enables flag completion for a command.
 
 ParseOpt:
 
@@ -281,9 +283,12 @@ If there is slice or map arguments, it will match all following arguments.
 
 ## Shell completion
 
-`mcli` supports generating completion script for `bash`, `zsh`, and `powershell`.
-Use `AddCompletion` to enable the feature, run `program completion [bash|zsh|powershell]`
+`mcli` supports auto shell completion for `bash`, `zsh`, `fish`, and `powershell`.
+Use `AddCompletion` to enable the feature, run `program help completion [bash|zsh|fish|powershell]`
 for usage guide.
+
+Also check `AddCompletion`, `EnableFlagCompletion`, and
+`Options.EnableFlagCompletionForAllCommands` for detail docs about command flag completion.
 
 ## Changelog
 

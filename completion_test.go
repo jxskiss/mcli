@@ -9,6 +9,7 @@ import (
 )
 
 func addTestCompletionCommands() {
+	defaultApp.Options.EnableFlagCompletionForAllCommands = true
 	Add("cmd1", dummyCmd, "A cmd1 description")
 	AddHidden("cmd2", dummyCmd, "A hidden cmd2 description")
 	AddGroup("group1", "A group1 description")
@@ -23,9 +24,16 @@ func TestCompletionCommand(t *testing.T) {
 	resetDefaultApp()
 	addTestCompletionCommands()
 
+	defaultApp.resetParsingContext()
 	Run("completion", "bash")
+
+	defaultApp.resetParsingContext()
 	Run("completion", "zsh")
+
+	defaultApp.resetParsingContext()
 	Run("completion", "powershell")
+
+	defaultApp.resetParsingContext()
 	Run("completion", "fish")
 }
 
@@ -196,7 +204,10 @@ func TestSuggestFlags(t *testing.T) {
 		}{}
 		Parse(args)
 	}
-	Add("group1 cmd3", testCmd, "A group1 cmd3 description")
+	Add("group1 cmd3", testCmd, "A group1 cmd3 description",
+		EnableFlagCompletion())
+	Add("group1 cmd3 sub2", testCmd, "A group1 cmd3 sub2 description",
+		EnableFlagCompletion())
 
 	var buf bytes.Buffer
 	defaultApp.completionCtx.out = &buf
@@ -248,6 +259,25 @@ func TestSuggestFlags(t *testing.T) {
 	assert.NotContains(t, got6, "a2-flag")
 	assert.Contains(t, got6, "--j-flag:description j flag\n")
 
+	t.Run("without trailing hyphen", func(t *testing.T) {
+		reset()
+		Run("group1", "cmd3", "-b", "5", completionFlag, "zsh")
+		got := buf.String()
+		assert.Contains(t, got, "-a:description a flag\n")
+		assert.NotContains(t, got, "description b flag")
+		assert.Contains(t, got, "-j:description j flag\n")
+	})
+
+	t.Run("leaf command", func(t *testing.T) {
+		reset()
+		Run("group1", "cmd3", "sub2", completionFlag, "zsh")
+		got := buf.String()
+		assert.Contains(t, got, "-a:description a flag\n")
+		assert.Contains(t, got, "-1\n")
+		assert.Contains(t, got, "-b:description b flag\n")
+		assert.Contains(t, got, "-j:description j flag\n")
+	})
+
 	t.Run("noCompletion", func(t *testing.T) {
 		reset()
 		Run("completion", "-", completionFlag, "zsh")
@@ -277,11 +307,6 @@ func TestFormatCompletion(t *testing.T) {
 			shell:       "fish",
 			connector:   "\t",
 		},
-		{
-			description: "unknown shell suggestion",
-			shell:       "off",
-			connector:   " -- ",
-		},
 	}
 	noDescCases := []struct {
 		shell       string
@@ -292,6 +317,11 @@ func TestFormatCompletion(t *testing.T) {
 			description: "powershell shell suggestions",
 			shell:       "powershell",
 			connector:   ":",
+		},
+		{
+			description: "unknown shell suggestion",
+			shell:       "off",
+			connector:   " -- ",
 		},
 	}
 

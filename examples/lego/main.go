@@ -77,6 +77,7 @@ Complete documentation is available at http://gohugo.io/.`,
 	app.Add("dnshelp", cmdDnshelp, "Shows additional help for the '--dns' global option")
 	app.Add("list", cmdList, "Display certificates and accounts information")
 	app.AddCompletion()
+	app.Options.EnableFlagCompletionForAllCommands = true
 	app.Run()
 }
 

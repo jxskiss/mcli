@@ -139,7 +139,7 @@ func TestParsing_CheckFlagSetValues(t *testing.T) {
 	for _, tt := range []struct {
 		flag  string
 		want  string
-		value interface{}
+		value any
 	}{
 		{"a", "true", true},
 		{"a-flag", "true", true},
@@ -559,7 +559,7 @@ type flagValueImpl2 struct {
 	Data []byte
 }
 
-func (f *flagValueImpl2) Get() interface{} {
+func (f *flagValueImpl2) Get() any {
 	return f.Data
 }
 
@@ -600,7 +600,7 @@ func TestParse_UnsupportedType(t *testing.T) {
 		C *SomeComplexType `cli:"-c"`
 	}
 
-	for _, args := range []interface{}{&args1, &args2, &args3} {
+	for _, args := range []any{&args1, &args2, &args3} {
 		assert.Panics(t, func() {
 			Parse(args)
 		})
@@ -830,15 +830,17 @@ LEARN MORE:
 		app.Add("cmd2", cmd2, "test cmd2")
 
 		var buf bytes.Buffer
-		app.Run("cmd1", "-h")
+		app.resetParsingContext()
 		app.getFlagSet().SetOutput(&buf)
+		app.Run("cmd1", "-h")
 		app.printUsage()
 		got1 := buf.String()
 		assert.Contains(t, got1, "LEARN MORE:\n  Use 'program help <command> <subcommand>' for more information of a command.\n\n")
 
 		buf.Reset()
-		app.Run("cmd2", "-h")
+		app.resetParsingContext()
 		app.getFlagSet().SetOutput(&buf)
+		app.Run("cmd2", "-h")
 		app.printUsage()
 		got2 := buf.String()
 		assert.NotContains(t, got2, "LEARN MORE")

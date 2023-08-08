@@ -5,11 +5,11 @@ import (
 	"flag"
 )
 
-func newContext(app *App, cmd *Command) *Context {
+func newContext(app *App) *Context {
 	return &Context{
 		Context: context.Background(),
-		App:     app,
-		Command: cmd,
+		Command: app.getParsingContext().cmd,
+		app:     app,
 	}
 }
 
@@ -19,18 +19,38 @@ func newContext(app *App, cmd *Command) *Context {
 // take context.Context as parameter.
 type Context struct {
 	context.Context
-
-	App     *App
 	Command *Command
+
+	app *App
 }
 
 // Parse parses the command line for flags and arguments.
-// v must be a pointer to a struct, else it panics.
-func (ctx *Context) Parse(v interface{}, opts ...ParseOpt) (*flag.FlagSet, error) {
-	return ctx.App.parseArgs(v, opts...)
+// `args` must be a pointer to a struct, else it panics.
+//
+// Note:
+//  1. if you enable flag completion for a command, you must call this
+//     in the command function to make the completion work correctly
+//  2. if the command is created by NewCommand, mcli automatically calls
+//     this to parse flags and arguments, then pass args to user command,
+//     you must not call this again, else it panics
+func (ctx *Context) Parse(args any, opts ...ParseOpt) (*flag.FlagSet, error) {
+	return ctx.app.parseArgs(args, opts...)
+}
+
+// ArgsError returns the error of parsing arguments.
+// If no error occurs, it returns nil.
+func (ctx *Context) ArgsError() error {
+	return ctx.app.getParsingContext().flagErr
+}
+
+// FlagSet returns the flag.FlagSet parsed from arguments.
+// This is for compatibility to work with standard library, in most cases,
+// using the strongly-typed parsing result is more convenient.
+func (ctx *Context) FlagSet() *flag.FlagSet {
+	return ctx.app.getFlagSet()
 }
 
 // PrintHelp prints usage doc of the current command to stderr.
 func (ctx *Context) PrintHelp() {
-	ctx.App.printUsage()
+	ctx.app.printUsage()
 }

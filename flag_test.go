@@ -50,7 +50,7 @@ func Test_flag_DefaultValue(t *testing.T) {
 }
 
 func Test_flag_CompositeType(t *testing.T) {
-	table := [][]interface{}{
+	table := [][]any{
 		{&struct {
 			S1 []uint8 `cli:"s1"`
 		}{}, "s1 []uint"},

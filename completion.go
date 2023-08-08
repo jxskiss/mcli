@@ -17,23 +17,17 @@ func getAllowedShells() []string {
 func hasCompletionFlag(args []string) (bool, []string, string) {
 	shell := "unsupported"
 	completionFlagIndex := find(args, completionFlag)
-	if len(args) >= 2 && completionFlagIndex >= 0 {
-		if len(args)-1 != completionFlagIndex {
-			proposedShell := args[completionFlagIndex+1]
-			if contains(getAllowedShells(), proposedShell) {
-				shell = proposedShell
-			}
+	if completionFlagIndex < 0 {
+		return false, args, shell
+	}
+	if completionFlagIndex < len(args)-1 {
+		proposedShell := args[completionFlagIndex+1]
+		if contains(getAllowedShells(), proposedShell) {
+			shell = proposedShell
 		}
-		args = args[:completionFlagIndex]
-		return true, args, shell
 	}
-
-	if len(args) == 1 && args[0] == completionFlag {
-		args = args[:completionFlagIndex]
-		return true, args, shell
-	}
-
-	return false, args, shell
+	args = args[:completionFlagIndex]
+	return true, args, shell
 }
 
 func isFlagCompletion(args []string) (isFlag bool, flagName string, userArgs []string) {
@@ -44,7 +38,15 @@ func isFlagCompletion(args []string) (isFlag bool, flagName string, userArgs []s
 	if strings.HasPrefix(lastArg, "-") {
 		return true, lastArg, args[:len(args)-1]
 	}
-	return false, "", args
+
+	// User has provided other flags, this completion request is for another flag.
+	hasFlag := false
+	for _, arg := range args {
+		if strings.HasPrefix(arg, "-") {
+			hasFlag = true
+		}
+	}
+	return hasFlag, "", args
 }
 
 func (p *App) doAutoCompletion(args []string) {
@@ -53,7 +55,10 @@ func (p *App) doAutoCompletion(args []string) {
 	if isFlag {
 		tree.suggestFlags(p, userArgs, flagName)
 	} else {
-		tree.suggestCommands(p, userArgs)
+		checkFlag := tree.suggestCommands(p, userArgs)
+		if checkFlag {
+			tree.suggestFlags(p, userArgs, "")
+		}
 	}
 }
 
@@ -104,14 +109,14 @@ func (t *cmdTree) add(cmd *Command) {
 	}
 }
 
-func (t *cmdTree) suggestCommands(app *App, cmdNames []string) {
+func (t *cmdTree) suggestCommands(app *App, cmdNames []string) (checkFlag bool) {
 	cur := t
 	i := 0
 	for i < len(cmdNames)-1 {
 		name := cmdNames[i]
 		cur = cur.SubTree[name]
 		if cur == nil || (cur.Cmd != nil && cur.Cmd.noCompletion) {
-			return
+			return false
 		}
 		i++
 	}
@@ -125,6 +130,11 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) {
 			gotCmd = false
 		}
 	}
+	// If the command is a leaf command, check flag for completion.
+	if gotCmd && len(cur.SubCmds) == 0 {
+		return true
+	}
+
 	matchFunc := func(n *cmdTree) bool { return true }
 	if !gotCmd {
 		matchFunc = func(n *cmdTree) bool {
@@ -143,19 +153,15 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) {
 			continue
 		}
 		desc := ""
-		if sub.Cmd != nil && app.completionCtx.shell != "powershell" && app.completionCtx.shell != "unsupported" {
+		if sub.Cmd != nil {
 			desc = sub.Cmd.Description
 		}
 		suggestion := formatCompletion(app, sub.Name, desc)
 		result = append(result, suggestion)
 	}
 
-	// INFO go to flags suggestion when there's no commands
-	if len(result) > 0 {
-		printLines(app.completionCtx.out, result)
-	} else {
-		t.suggestFlags(app, cmdNames, "")
-	}
+	printLines(app.completionCtx.out, result)
+	return false
 }
 
 func (t *cmdTree) suggestFlags(app *App, userArgs []string, flagName string) {
@@ -178,6 +184,13 @@ func (t *cmdTree) suggestFlags(app *App, userArgs []string, flagName string) {
 		}
 	}
 	if cur.Cmd == nil || cur.Cmd.isGroup || cur.Cmd.noCompletion {
+		return
+	}
+
+	// Check that flag completion is enabled for the command.
+	cmdOpts := newCmdOptions(cur.Cmd.cmdOpts...)
+	isCmdFlagEnabled := app.EnableFlagCompletionForAllCommands || cmdOpts.enableFlagCompletion
+	if !isCmdFlagEnabled {
 		return
 	}
 
@@ -226,7 +239,7 @@ func (p *App) continueFlagCompletion() {
 
 	result := make([]string, 0, 16)
 	hyphenCount, flagName := countFlagPrefixHyphen(flagName)
-	if hyphenCount == 1 {
+	if hyphenCount <= 1 {
 		for _, flag := range flags {
 			if flag.short != "" && strings.HasPrefix(flag.short, flagName) &&
 				(flag.isCompositeType() || !isSeenFlag(flag)) {
@@ -236,8 +249,8 @@ func (p *App) continueFlagCompletion() {
 			} else if flag.name != "" && strings.HasPrefix(flag.name, flagName) &&
 				(flag.isCompositeType() || !isSeenFlag(flag)) {
 				usage := getUsage(flag)
-				hint := formatCompletion(p, "--"+flag.name, usage)
-				result = append(result, hint)
+				suggestion := formatCompletion(p, "--"+flag.name, usage)
+				result = append(result, suggestion)
 			}
 		}
 	} else {
@@ -283,42 +296,24 @@ func formatCompletion(app *App, opt string, desc string) string {
 	case "fish":
 		return fmt.Sprintf("%s\t%s", opt, desc)
 	default:
-		return fmt.Sprintf("%s -- %s", opt, desc)
+		return opt
 	}
 }
 
 func (p *App) addCompletionCommands(name string) {
 	p.completionCmdName = name
-	p.addCommand(&Command{
-		Name:         name,
-		Description:  "Generate shell completion scripts",
-		f:            p.groupCmd,
-		noCompletion: true,
-	})
-	p.addCommand(&Command{
-		Name:         name + " bash",
-		Description:  "Generate the completion script for bash",
-		f:            p.completionCmd("bash"),
-		noCompletion: true,
-	})
-	p.addCommand(&Command{
-		Name:         name + " fish",
-		Description:  "Generate the completion script for fish",
-		f:            p.completionCmd("fish"),
-		noCompletion: true,
-	})
-	p.addCommand(&Command{
-		Name:         name + " zsh",
-		Description:  "Generate the completion script for zsh",
-		f:            p.completionCmd("zsh"),
-		noCompletion: true,
-	})
-	p.addCommand(&Command{
-		Name:         name + " powershell",
-		Description:  "Generate the completion script for powershell",
-		f:            p.completionCmd("powershell"),
-		noCompletion: true,
-	})
+
+	grpCmd := newUntypedCommand(p.groupCmd)
+	grpCmd.noCompletion = true
+	p._add(name, grpCmd, "Generate shell completion scripts")
+
+	for _, shell := range getAllowedShells() {
+		cmdName := name + " " + shell
+		desc := "Generate the completion script for " + shell
+		compCmd := p.completionCmd(shell)
+		shellCmd := p._add(cmdName, compCmd, desc)
+		shellCmd.noCompletion = true
+	}
 }
 
 func (p *App) completionCmd(shellType string) func() {
