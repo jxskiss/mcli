@@ -126,7 +126,7 @@ func WithLongDesc(long string) CmdOpt {
 // EnableFlagCompletion enables flag completion for a command.
 // By default, flag completion is disabled to avoid unexpectedly running
 // the user command when doing flag completion, in case that
-// the user command does not call `Parse`.
+// the user does not call `Parse` in the command.
 func EnableFlagCompletion() CmdOpt {
 	return CmdOpt{f: func(options *cmdOptions) {
 		options.enableFlagCompletion = true

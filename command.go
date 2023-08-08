@@ -31,8 +31,9 @@ type Command struct {
 // The type parameter T must be a struct, else it panics.
 // When the command is matched, mcli will parse "args" and pass it to f,
 // thus user must not call "Parse" again in f, else it panics.
-// If option WithErrorHandling is used, user can use Context.ArgsError
-// to check error that occurred during parsing flags and arguments.
+// If option `WithErrorHandling(flag.ContinueOnError)` is used,
+// user can use Context.ArgsError to check error that occurred during parsing
+// flags and arguments.
 // In case you want to get the parsed flag.FlagSet, check Context.FlagSet.
 func NewCommand[T any](f func(ctx *Context, args *T), opts ...ParseOpt) *Command {
 	if reflect.TypeOf(*(new(T))).Kind() != reflect.Struct {

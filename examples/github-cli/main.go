@@ -8,6 +8,10 @@ import (
 )
 
 func main() {
+	mcli.SetOptions(mcli.Options{
+		EnableFlagCompletionForAllCommands: true,
+	})
+
 	mcli.Add("browse", Example_githubCliCommandBrowse, "Open the repository in the browser")
 	mcli.Add("actions", dummyCmd, "Learn about working with GitHub Actions")
 

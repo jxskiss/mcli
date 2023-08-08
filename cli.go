@@ -420,11 +420,23 @@ func (p *App) AddHelp() {
 
 // AddCompletion enables the "completion" command to generate auto-completion script.
 // If you want a different name other than "completion", use AddCompletionWithName.
+//
+// Note: by default this command only enables command completion,
+// to enable flag completion, user should either set
+// `App.Options.EnableFlagCompletionForAllCommands` to enable flag completion
+// for the whole application, or provide command option `EnableFlagCompletion`
+// when adding a command to enable for a specific command.
 func (p *App) AddCompletion() {
 	p.AddCompletionWithName("completion")
 }
 
 // AddCompletionWithName enables the completion command with custom command name.
+//
+// Note: by default this command only enables command completion,
+// to enable flag completion, user should either set
+// `App.Options.EnableFlagCompletionForAllCommands` to enable flag completion
+// for the whole application, or provide command option `EnableFlagCompletion`
+// when adding a command to enable for a specific command.
 func (p *App) AddCompletionWithName(name string) {
 	p.addCompletionCommands(name)
 }

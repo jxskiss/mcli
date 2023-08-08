@@ -11,6 +11,11 @@ func setRunningApp(app *App) func() {
 	return func() { runningApp = old }
 }
 
+// SetOptions updates options of the default application.
+func SetOptions(options Options) {
+	defaultApp.Options = options
+}
+
 // SetGlobalFlags sets global flags, global flags are available to all commands.
 // DisableGlobalFlags may be used to disable global flags for a specific
 // command when calling Parse.
@@ -68,11 +73,23 @@ func AddHelp() {
 
 // AddCompletion enables the "completion" command to generate auto-completion script.
 // If you want a different name other than "completion", use AddCompletionWithName.
+//
+// Note: by default this command only enables command completion,
+// to enable flag completion, user should either set
+// `App.Options.EnableFlagCompletionForAllCommands` to enable flag completion
+// for the whole application, or provide command option `EnableFlagCompletion`
+// when adding a command to enable for a specific command.
 func AddCompletion() {
 	defaultApp.AddCompletion()
 }
 
 // AddCompletionWithName enables the completion command with custom command name.
+//
+// Note: by default this command only enables command completion,
+// to enable flag completion, user should either set
+// `App.Options.EnableFlagCompletionForAllCommands` to enable flag completion
+// for the whole application, or provide command option `EnableFlagCompletion`
+// when adding a command to enable for a specific command.
 func AddCompletionWithName(name string) {
 	defaultApp.AddCompletionWithName(name)
 }
