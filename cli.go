@@ -605,6 +605,16 @@ func (p *App) parseArgs(v any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 		return fs, err
 	}
 
+	// TODO
+	// for flag value completion and positional arguments completion,
+	// it's not enough to just parsing the args definition,
+	// the command line arguments also need to be parsed.
+	//
+	// To make the command line parsing working, flag.FlagSet.Parse
+	// must not exit the program or quit parsing in case of help flag
+	// (maybe changing the command line is a reasonable choice),
+	// and mcli shall not validate required flags and arguments.
+
 	// For flags completion, just parsing the args definition is enough,
 	// don't bother to parse the command arguments and really run the command.
 	if p.isCompletion {
