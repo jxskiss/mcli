@@ -69,12 +69,13 @@ type _flag struct {
 	_tags
 	_value
 
-	isGlobal   bool
-	hasDefault bool
-	deprecated bool
-	hidden     bool
-	required   bool
-	nonflag    bool
+	isGlobal           bool
+	hasDefault         bool
+	deprecated         bool
+	hidden             bool
+	required           bool
+	nonflag            bool
+	completionFunction string
 }
 
 type _tags struct {
@@ -468,6 +469,7 @@ func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[s
 		flagMap: flagMap,
 	}
 	rt := rv.Type()
+
 	for i := 0; i < rt.NumField(); i++ {
 		ft := rt.Field(i)
 		fv := rv.Field(i)
@@ -477,13 +479,14 @@ func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[s
 		}
 		defaultValue := strings.TrimSpace(ft.Tag.Get("default"))
 		envTag := strings.TrimSpace(ft.Tag.Get("env"))
+		cmplTag := strings.TrimSpace(ft.Tag.Get("cmpl"))
 
 		isGlobalFlag := isGlobal
 		if ft.Name == "GlobalFlags" && rt == reflect.TypeOf(withGlobalFlagArgs{}) {
 			isGlobalFlag = true
 		}
 
-		err = p.parseField(ft, fv, isGlobalFlag, cliTag, defaultValue, envTag)
+		err = p.parseField(ft, fv, isGlobalFlag, cliTag, defaultValue, envTag, cmplTag)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -549,7 +552,7 @@ func (p *flagParser) tidyFieldValue(ft reflect.StructField, fv reflect.Value, cl
 func (p *flagParser) parseField(
 	ft reflect.StructField, fv reflect.Value,
 	isGlobalFlag bool,
-	cliTag, defaultValue, envTag string) error {
+	cliTag, defaultValue, envTag string, cmplTag string) error {
 
 	fv, ok := p.tidyFieldValue(ft, fv, cliTag)
 	if !ok {
@@ -574,7 +577,7 @@ func (p *flagParser) parseField(
 
 	// Parse the flag.
 	var f *_flag
-	f, err := p.parseFlag(isGlobalFlag, cliTag, defaultValue, envTag, fv)
+	f, err := p.parseFlag(isGlobalFlag, cliTag, defaultValue, envTag, fv, cmplTag)
 	if err != nil {
 		return err
 	}
@@ -593,15 +596,16 @@ func (p *flagParser) parseField(
 
 var spaceRE = regexp.MustCompile(`\s+`)
 
-func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Value) (*_flag, error) {
+func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag string, rv reflect.Value, cmplTag string) (*_flag, error) {
 	f := &_flag{
 		_tags: _tags{
 			cliTag:          cliTag,
 			defaultValueTag: defaultValue,
 			envTag:          envTag,
 		},
-		_value:   _value{rv},
-		isGlobal: isGlobal,
+		_value:             _value{rv},
+		isGlobal:           isGlobal,
+		completionFunction: cmplTag,
 	}
 
 	p.parseCliTag(f, cliTag)

@@ -23,8 +23,12 @@ type parseOptions struct {
 	customUsage func() string
 	helpFooter  func() string
 
-	disableGlobalFlags bool
+	disableGlobalFlags  bool
+	completionFunctions CompletionFunctions
 }
+
+type CompletionFunctions map[string]CompletionFunction
+type CompletionFunction func(args []string) []string
 
 func (p *parseOptions) apply(opts ...ParseOpt) *parseOptions {
 	for _, o := range opts {
@@ -91,6 +95,13 @@ func WithExamples(examples string) ParseOpt {
 func WithFooter(f func() string) ParseOpt {
 	return ParseOpt{f: func(options *parseOptions) {
 		options.helpFooter = f
+	}}
+}
+
+// CompletionFunctions for struct holding completion functions for use with flags completion
+func WithCompletionFunctions(functions CompletionFunctions) ParseOpt {
+	return ParseOpt{f: func(options *parseOptions) {
+		options.completionFunctions = functions
 	}}
 }
 

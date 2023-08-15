@@ -41,17 +41,21 @@ func isFlagCompletion(args []string) (isFlag bool, flagName string, userArgs []s
 
 	// User has provided other flags, this completion request is for another flag.
 	hasFlag := false
-	for _, arg := range args {
-		if strings.HasPrefix(arg, "-") {
-			hasFlag = true
-		}
-	}
+	// for _, arg := range args {
+	// 	if strings.HasPrefix(arg, "-") {
+	// 		hasFlag = true
+	// 	}
+	// }
 	return hasFlag, "", args
 }
 
 func (p *App) doAutoCompletion(args []string) {
 	tree := p.parseCompletionInfo()
 	isFlag, flagName, userArgs := isFlagCompletion(args)
+	// for _, item := range numbers {
+	// 	fmt.Printf(item)<{+}>
+	// }
+	// fmt.Printf("cfs %#v", tree.Cmd.app.completionCtx.flags)
 	if isFlag {
 		tree.suggestFlags(p, userArgs, flagName)
 	} else {
@@ -255,6 +259,10 @@ func (p *App) continueFlagCompletion() {
 		}
 	} else {
 		for _, flag := range flags {
+			if flag.completionFunction != "" {
+				fmt.Printf("flag %s completion %s\n", flag.name, flag.completionFunction)
+			}
+
 			if flag.name != "" && strings.HasPrefix(flag.name, flagName) &&
 				(flag.isCompositeType() || !isSeenFlag(flag)) {
 				suggestion := formatCompletion(p, "--"+flag.name, getUsage(flag))
