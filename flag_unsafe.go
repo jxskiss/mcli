@@ -6,7 +6,7 @@ import (
 	"unsafe"
 )
 
-func tidyFlagSet(fs *flag.FlagSet, flags []*_flag, nonflagArgs []string) {
+func tidyFlags(fs *flag.FlagSet, flags []*_flag, nonflagArgs []string) {
 	m := make(map[string]*_flag)
 	for _, f := range flags {
 		m[f.name] = f
@@ -27,6 +27,13 @@ func tidyFlagSet(fs *flag.FlagSet, flags []*_flag, nonflagArgs []string) {
 		if f == nil {
 			return
 		}
+
+		// Special processing for *bool value.
+		if f.isBooleanPtr() {
+			f.rv.Set(reflect.New(f.rv.Type().Elem()))
+			f.rv.Elem().SetBool(ff.Value.String() == "true")
+		}
+
 		if f.name != ff.Name {
 			formal[f.name].Value = ff.Value
 			actual[f.name] = formal[f.name]
