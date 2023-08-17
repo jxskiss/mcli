@@ -327,7 +327,7 @@ func (f *_flag) helpName() string {
 }
 
 func (f *_flag) usageName() string {
-	if f.rv.Kind() == reflect.Bool {
+	if f.isBoolean() || f.isBooleanPtr() {
 		return ""
 	}
 	if isFlagValueImpl(f.rv) {
@@ -337,6 +337,9 @@ func (f *_flag) usageName() string {
 }
 
 func usageName(typ reflect.Type) string {
+	if isSupportedBasicTypePtr(typ) {
+		return usageName(typ.Elem())
+	}
 	switch typ.Kind() {
 	case reflect.Bool:
 		return "bool"

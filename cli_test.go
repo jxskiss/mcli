@@ -278,6 +278,79 @@ func TestParsing_PointerValues(t *testing.T) {
 			assert.Equalf(t, tt.value, gotValue, "flag= %v", tt.flag)
 		}
 	})
+
+	t.Run("env and default values", func(t *testing.T) {
+		var args struct {
+			A1 *bool          `cli:"-a1"` // default false
+			A2 *bool          `cli:"-a2"`
+			B1 *int           `cli:"-b1" default:"1024"`
+			C1 *string        `cli:"-c1" env:"C1_STR"`
+			C2 *string        `cli:"-c2" default:"c2default" env:"C2_STR"`
+			C3 *string        `cli:"-c3" default:"c3default" env:"C3_STR"`
+			C4 *string        `cli:"-c4"`
+			C5 *string        `cli:"-c5"`
+			D1 *time.Duration `cli:"-d1" default:"1.5s"`
+		}
+		resetDefaultApp()
+		os.Setenv("C1_STR", "c1EnvValue")
+		os.Setenv("C3_STR", "c3EnvValue")
+		fs, err := Parse(&args, WithArgs([]string{
+			"-a2",
+			"-c3", "c3arg",
+			"-c4", "c4arg",
+		}))
+		_ = fs
+		assert.Nil(t, err)
+		assert.True(t, args.A1 == nil)
+		assert.True(t, *args.A2)
+		assert.Equal(t, 1024, *args.B1)
+		assert.Equal(t, "c1EnvValue", *args.C1)
+		assert.Equal(t, "c2default", *args.C2)
+		assert.Equal(t, "c3arg", *args.C3)
+		assert.Equal(t, "c4arg", *args.C4)
+		assert.True(t, args.C5 == nil)
+		assert.Equal(t, 1500*time.Millisecond, *args.D1)
+	})
+
+	t.Run("usage", func(t *testing.T) {
+		var args struct {
+			A1 *bool          `cli:"-a1, a1 description"` // default false
+			A2 *bool          `cli:"-a2  a2 description"`
+			B1 *int           `cli:"-b1,   b1 description" default:"1024"`
+			C1 *string        `cli:"-c1" env:"C1_STR"`
+			C2 *string        `cli:"-c2" default:"c2default" env:"C2_STR"`
+			C3 *string        `cli:"-c3" default:"c3default" env:"C3_STR"`
+			C4 *string        `cli:"-c4, a 'c4' value"`
+			C5 *string        `cli:"-c5, c5 description"`
+			D1 *time.Duration `cli:"-d1" default:"1.5s"`
+		}
+		resetDefaultApp()
+
+		buf := &bytes.Buffer{}
+		defaultApp.getFlagSet().SetOutput(buf)
+		fs, err := Parse(&args,
+			WithArgs([]string{"-h"}),
+			WithErrorHandling(flag.ContinueOnError))
+		_ = fs
+		assert.Equal(t, flag.ErrHelp, err)
+		got := buf.String()
+		want := `USAGE:
+  mcli.test [flags]
+
+FLAGS:
+  -a1             a1 description
+  -a2             a2 description
+  -b1 int         b1 description (default 1024)
+  -c1 string      (env "C1_STR")
+  -c2 string      (default c2default) (env "C2_STR")
+  -c3 string      (default c3default) (env "C3_STR")
+  -c4 c4          a c4 value
+  -c5 string      c5 description
+  -d1 duration    (default 1.5s)
+
+`
+		assert.Equal(t, want, got)
+	})
 }
 
 func TestParsing_DefaultValues(t *testing.T) {
