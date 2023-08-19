@@ -272,3 +272,52 @@ func ld(s, t string, ignoreCase bool) int {
 	}
 	return d[len(s)][len(t)]
 }
+
+type commandGroup struct {
+	category string
+	commands commands
+}
+
+func (p commands) groupByCategory() ([]*commandGroup, bool) {
+	var result []*commandGroup
+	var hasGroups = false
+	for _, c := range p {
+		opts := newCmdOptions(c.cmdOpts...)
+		if opts.category != "" {
+			hasGroups = true
+			break
+		}
+	}
+	if !hasGroups {
+		return nil, false
+	}
+
+	var groupIdxMap = make(map[string]int)
+	var noCategoryCmds []*Command
+	for _, c := range p {
+		if c.level > 1 {
+			continue
+		}
+		opts := newCmdOptions(c.cmdOpts...)
+		if opts.category == "" {
+			noCategoryCmds = append(noCategoryCmds, c)
+			continue
+		}
+		if idx, ok := groupIdxMap[opts.category]; !ok {
+			groupIdxMap[opts.category] = len(result)
+			result = append(result, &commandGroup{
+				category: opts.category,
+				commands: commands{c},
+			})
+		} else {
+			result[idx].commands = append(result[idx].commands, c)
+		}
+	}
+	if len(noCategoryCmds) > 0 {
+		result = append(result, &commandGroup{
+			category: "Other Commands",
+			commands: noCategoryCmds,
+		})
+	}
+	return result, true
+}
