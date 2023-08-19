@@ -188,25 +188,25 @@ USAGE:
   gh <command> ...
 
 Additional Commands:
-  alias       Create command shortcuts
-  api         Make an authenticated GitHub API request
-  workflow    View details about GitHub Actions workflows
+  alias         Create command shortcuts
+  api           Make an authenticated GitHub API request
+  workflow      View details about GitHub Actions workflows
 
 Core Commands:
-  auth         Login, logout, and refresh your authentication
-  browse       Open the repository in the browser
-  codespace    Connect to and manage your codespaces
-  gist         Manage gists
-  issue        Manage issues
-  pr           Manage pull requests
-  release      Manage GitHub releases
-  repo         Create, clone, fork, and view repositories
+  auth          Login, logout, and refresh your authentication
+  browse        Open the repository in the browser
+  codespace     Connect to and manage your codespaces
+  gist          Manage gists
+  issue         Manage issues
+  pr            Manage pull requests
+  release       Manage GitHub releases
+  repo          Create, clone, fork, and view repositories
 
 GitHub Actions Commands:
-  run    View details about workflow runs
+  run           View details about workflow runs
 
 Help Topics:
-  actions    Learn about working with GitHub Actions
+  actions       Learn about working with GitHub Actions
 
 Other Commands:
   completion    Generate shell completion scripts
@@ -236,25 +236,25 @@ USAGE:
   gh <command> ...
 
 Core Commands:
-  auth         Login, logout, and refresh your authentication
-  browse       Open the repository in the browser
-  issue        Manage issues
-  codespace    Connect to and manage your codespaces
-  gist         Manage gists
-  pr           Manage pull requests
-  release      Manage GitHub releases
-  repo         Create, clone, fork, and view repositories
+  auth          Login, logout, and refresh your authentication
+  browse        Open the repository in the browser
+  issue         Manage issues
+  codespace     Connect to and manage your codespaces
+  gist          Manage gists
+  pr            Manage pull requests
+  release       Manage GitHub releases
+  repo          Create, clone, fork, and view repositories
 
 GitHub Actions Commands:
-  run    View details about workflow runs
+  run           View details about workflow runs
 
 Additional Commands:
-  workflow    View details about GitHub Actions workflows
-  alias       Create command shortcuts
-  api         Make an authenticated GitHub API request
+  workflow      View details about GitHub Actions workflows
+  alias         Create command shortcuts
+  api           Make an authenticated GitHub API request
 
 Help Topics:
-  actions    Learn about working with GitHub Actions
+  actions       Learn about working with GitHub Actions
 
 Other Commands:
   config        Manage configuration for gh
