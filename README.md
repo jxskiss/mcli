@@ -32,6 +32,7 @@ which is licensed under the Apache License 2.0.
 
 * Easy to use, dead simple yet very powerful API to define commands, flags and arguments.
 * Add arbitrary nested sub-command with single line code.
+* Group subcommands into different categories in help.
 * Define command flags and arguments inside the command processor using struct tag.
 * Define global flags apply to all commands, or share common flags between a group of commands.
 * Read environment variables for flags and arguments.
@@ -185,6 +186,7 @@ App:
 
 CmdOpt:
 
+- `WithCategory` groups commands into different categories in help.
 - `WithLongDesc` specifies a long description of a command, which will be showed in the command's help.
 - `EnableFlagCompletion` enables flag completion for a command.
 

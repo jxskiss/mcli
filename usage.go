@@ -160,7 +160,6 @@ func (p *usagePrinter) printSubCommands() {
 		showHidden := ctx.showHidden
 		keepCmdOrder := p.app.Options.KeepCommandOrder
 		printSubCommands(out, subCmds, showHidden, keepCmdOrder)
-		fmt.Fprint(out, "\n")
 	}
 }
 
@@ -258,7 +257,7 @@ func (p *usagePrinter) printFooter() {
 	}
 }
 
-func printSubCommands(out io.Writer, cmds commands, showHidden bool, keepCmdOrder bool) {
+func printSubCommands(out io.Writer, cmds commands, showHidden, keepCmdOrder bool) {
 	if len(cmds) == 0 {
 		return
 	}
@@ -266,6 +265,12 @@ func printSubCommands(out io.Writer, cmds commands, showHidden bool, keepCmdOrde
 		sort.Slice(cmds, func(i, j int) bool {
 			return cmds[i].idx < cmds[j].idx
 		})
+	}
+
+	cmdGroups, hasCategories := cmds.groupByCategory()
+	if hasCategories {
+		printGroupedSubCommands(out, cmdGroups, showHidden, keepCmdOrder)
+		return
 	}
 
 	var cmdLines [][2]string
@@ -297,6 +302,55 @@ func printSubCommands(out io.Writer, cmds commands, showHidden bool, keepCmdOrde
 	}
 	fmt.Fprint(out, "COMMANDS:\n")
 	printWithAlignment(out, cmdLines)
+	fmt.Fprint(out, "\n")
+}
+
+func printGroupedSubCommands(out io.Writer, cmdGroups []*commandGroup, showHidden, keepCmdOrder bool) {
+	type groupCmdLines struct {
+		category string
+		cmdLines [][2]string
+	}
+
+	if !keepCmdOrder {
+		sort.Slice(cmdGroups, func(i, j int) bool {
+			return cmdGroups[i].category < cmdGroups[j].category
+		})
+	}
+
+	var cmdLines []*groupCmdLines
+	for _, grp := range cmdGroups {
+		var grpLines [][2]string
+		for _, cmd := range grp.commands {
+			if cmd.Name == "" || (cmd.Hidden && !showHidden) || cmd.level > 1 {
+				continue
+			}
+			name := "  " + cmd.Name
+			description := cmd.Description
+			if cmd.Hidden {
+				name += " (HIDDEN)"
+			}
+			grpLines = append(grpLines, [2]string{name, description})
+		}
+		if len(grpLines) == 0 {
+			continue
+		}
+		cmdLines = append(cmdLines, &groupCmdLines{
+			category: grp.category,
+			cmdLines: grpLines,
+		})
+	}
+	for _, grp := range cmdLines {
+		fmt.Fprint(out, addTrailingColon(grp.category)+"\n")
+		printWithAlignment(out, grp.cmdLines)
+		fmt.Fprint(out, "\n")
+	}
+}
+
+func addTrailingColon(s string) string {
+	if !strings.HasSuffix(s, ":") {
+		s += ":"
+	}
+	return s
 }
 
 func printWithAlignment(out io.Writer, lines [][2]string) {
