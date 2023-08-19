@@ -334,10 +334,10 @@ func TestParsing_PointerValues(t *testing.T) {
 		_ = fs
 		assert.Equal(t, flag.ErrHelp, err)
 		got := buf.String()
-		want := `USAGE:
+		want := `Usage:
   mcli.test [flags]
 
-FLAGS:
+Flags:
   -a1             a1 description
   -a2             a2 description
   -b1 int         b1 description (default 1024)
@@ -601,10 +601,10 @@ func Test_runGroupCommand(t *testing.T) {
 	assert.NotContains(t, got, "not a valid command")
 	for _, x := range []string{
 		"Dummy group1 group",
-		"USAGE:",
+		"Usage:\n",
 		"group1 <command> ...",
-		"COMMANDS:",
-		"group1 cmd1    Dummy group1 cmd1 command",
+		"Commands:\n",
+		"cmd1    Dummy group1 cmd1 command",
 	} {
 		assert.Contains(t, got, x)
 	}
@@ -657,9 +657,9 @@ func Test_printAvailableCommands(t *testing.T) {
 	got := buf.String()
 	assert.NotContains(t, got, "not a valid command")
 	for _, x := range []string{
-		"USAGE:",
+		"Usage:\n",
 		"<command> ...",
-		"COMMANDS:",
+		"Commands:\n",
 		"config     config settings",
 		"gh         (Use -h to see available sub commands)",
 		"git        dummy git group",
@@ -690,21 +690,21 @@ func Test_printAvailableCommands(t *testing.T) {
 	ctx.cmd.f()
 
 	got = buf.String()
-	assert.NotContains(t, got, "not a valid command")
-	for _, x := range []string{
-		"USAGE:",
-		"<command> ...",
-		"COMMANDS:",
-		"  git branch    dummy git branch command",
-		"    new         dummy git branch new command",
-		"    rm          dummy git branch rm command",
-		"  git remote    git remote group",
-		"    add         dummy git remote add command",
-		"    rm          dummy git remote rm command",
-	} {
-		assert.Contains(t, got, x)
-	}
-	assert.NotContains(t, got, "gh pr")
+	want := `dummy git group
+
+Usage:
+  mcli.test git <command> ...
+
+Commands:
+  branch    dummy git branch command
+    new     dummy git branch new command
+    rm      dummy git branch rm command
+  remote    git remote group
+    add     dummy git remote add command
+    rm      dummy git remote rm command
+
+`
+	assert.Equal(t, want, got)
 
 	ctx, invalidCmdName, found = _search([]string{"gh", "pr", "-h"})
 	assert.False(t, found)
@@ -808,7 +808,7 @@ func TestShowHidden(t *testing.T) {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	got := buf.String()
-	assert.Contains(t, got, "group1 cmd4 (HIDDEN)")
+	assert.Contains(t, got, "cmd4 (HIDDEN)    A group1 cmd4 hidden command")
 
 	resetDefaultApp()
 	addCommands()
@@ -888,7 +888,7 @@ func TestApp_AliasCommand(t *testing.T) {
 	PrintHelp()
 
 	got := buf.String()
-	assert.Contains(t, got, "COMMANDS")
+	assert.Contains(t, got, "Commands:\n")
 	assert.Contains(t, got, "cmd1    dummy cmd1")
 	assert.Contains(t, got, "cmd2    dummy cmd2")
 	assert.Contains(t, got, `cmd3    Alias of command "cmd1"`)
@@ -905,7 +905,7 @@ func TestApp_FunctionWithContext(t *testing.T) {
 	PrintHelp()
 
 	got := buf.String()
-	assert.Contains(t, got, "COMMANDS")
+	assert.Contains(t, got, "Commands:\n")
 	assert.Contains(t, got, "cmd1    dummy cmd1")
 	assert.Contains(t, got, "cmd2    dummy cmd2")
 	assert.Contains(t, got, `cmd3    Alias of command "cmd1"`)

@@ -184,7 +184,7 @@ func Test_githubCli_mainHelp(t *testing.T) {
 	Run()
 
 	want := strings.TrimSpace(`
-USAGE:
+Usage:
   gh <command> ...
 
 Additional Commands:
@@ -232,7 +232,7 @@ func Test_githubCli_mainHelp_keepCmdOrder(t *testing.T) {
 	Run()
 
 	want := strings.TrimSpace(`
-USAGE:
+Usage:
   gh <command> ...
 
 Core Commands:
@@ -281,20 +281,20 @@ func Test_githubCli_issueHelp(t *testing.T) {
 	want := strings.TrimSpace(`
 Manage issues
 
-USAGE:
+Usage:
   gh issue <command> ...
 
-COMMANDS:
-  issue close       Close issue
-  issue comment     Create a new issue comment
-  issue create      Create a new issue
-  issue delete      Delete issue
-  issue edit        Edit an issue
-  issue list        List and filter issues in this repository
-  issue reopen      Reopen issue
-  issue status      Show status of relevant issues
-  issue transfer    Transfer issue to another repository
-  issue view        View an issue
+Commands:
+  close       Close issue
+  comment     Create a new issue comment
+  create      Create a new issue
+  delete      Delete issue
+  edit        Edit an issue
+  list        List and filter issues in this repository
+  reopen      Reopen issue
+  status      Show status of relevant issues
+  transfer    Transfer issue to another repository
+  view        View an issue
 
 LEARN MORE
   Use 'gh <command> <subcommand> --help' for more information about a command.
@@ -396,10 +396,10 @@ func Test_githubCli_browseHelp(t *testing.T) {
 	want := strings.TrimSpace(`
 Open the repository in the browser
 
-USAGE:
+Usage:
   gh browse [flags] [location]
 
-FLAGS:
+Flags:
   -b, --branch string             Select another branch by passing in the branch name
   -c, --commit                    Open the last commit
   -n, --no-browser                Print destination URL instead of opening the browser
@@ -408,12 +408,12 @@ FLAGS:
   -s, --settings                  Open repository settings
   -w, --wiki                      Open repository wiki
 
-ARGUMENTS:
+Arguments:
   location string    A browser location can be specified using arguments in the following format:
                      - by number for issue or pull request, e.g. "123"; or
                      - by path for opening folders and files, e.g. "cmd/gh/main.go"
 
-EXAMPLES:
+Examples:
   $ gh browse
   #=> Open the home page of the current repository
 
@@ -501,10 +501,10 @@ func exampleGithubCliIssueCreate() {
 var exampleGithubCliIssueCreateHelp = strings.TrimSpace(`
 Create a new issue
 
-USAGE:
+Usage:
   gh issue create [flags]
 
-FLAGS:
+Flags:
   -a, --assignee login            Assign people by their login. Use "@me" to self-assign.
   -b, --body string               Supply a body. Will prompt for one otherwise.
   -F, --body-file file            Read body text from file (use "-" to read from standard input)
@@ -516,7 +516,7 @@ FLAGS:
   -t, --title string              Supply a title. Will prompt for one otherwise.
   -w, --web                       Open the browser to create an issue
 
-EXAMPLES:
+Examples:
   $ gh issue create --title "I found a bug" --body "Nothing works"
   $ gh issue create --label "bug,help wanted"
   $ gh issue create --label bug --label "help wanted"
