@@ -303,7 +303,10 @@ func formatCompletion(app *App, opt string, desc string) string {
 func (p *App) addCompletionCommands(name string) {
 	p.completionCmdName = name
 
-	grpCmd := newUntypedCommand(p.groupCmd)
+	grpCmd := newUntypedCommand(func() {
+		p.parseArgs(nil, DisableGlobalFlags())
+		p.printUsage()
+	})
 	grpCmd.isCompletion = true
 	p._add(name, grpCmd, "Generate shell completion scripts")
 
@@ -319,7 +322,7 @@ func (p *App) addCompletionCommands(name string) {
 func (p *App) completionCmd(shellType string) func() {
 	return func() {
 		customUsage := p.completionUsage(shellType)
-		p.parseArgs(nil, ReplaceUsage(customUsage))
+		p.parseArgs(nil, DisableGlobalFlags(), ReplaceUsage(customUsage))
 
 		data := map[string]any{
 			"ProgramName":       getProgramName(),
