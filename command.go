@@ -24,7 +24,7 @@ type Command struct {
 
 	isRoot       bool
 	isGroup      bool
-	noCompletion bool
+	isCompletion bool
 }
 
 // NewCommand accepts a typed function and returns a Command.

@@ -115,7 +115,7 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) (checkFlag bool) 
 	for i < len(cmdNames)-1 {
 		name := cmdNames[i]
 		cur = cur.SubTree[name]
-		if cur == nil || (cur.Cmd != nil && cur.Cmd.noCompletion) {
+		if cur == nil || (cur.Cmd != nil && cur.Cmd.isCompletion) {
 			return false
 		}
 		i++
@@ -146,7 +146,7 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) (checkFlag bool) 
 		if sub.Cmd == nil && len(sub.SubCmds) == 0 {
 			continue
 		}
-		if sub.Cmd != nil && (sub.Cmd.noCompletion || sub.Cmd.Hidden) {
+		if sub.Cmd != nil && (sub.Cmd.isCompletion || sub.Cmd.Hidden) {
 			continue
 		}
 		if !matchFunc(sub) {
@@ -183,7 +183,7 @@ func (t *cmdTree) suggestFlags(app *App, userArgs []string, flagName string) {
 			return
 		}
 	}
-	if cur.Cmd == nil || cur.Cmd.isGroup || cur.Cmd.noCompletion {
+	if cur.Cmd == nil || cur.Cmd.isGroup || cur.Cmd.isCompletion {
 		return
 	}
 
@@ -304,7 +304,7 @@ func (p *App) addCompletionCommands(name string) {
 	p.completionCmdName = name
 
 	grpCmd := newUntypedCommand(p.groupCmd)
-	grpCmd.noCompletion = true
+	grpCmd.isCompletion = true
 	p._add(name, grpCmd, "Generate shell completion scripts")
 
 	for _, shell := range getAllowedShells() {
@@ -312,7 +312,7 @@ func (p *App) addCompletionCommands(name string) {
 		desc := "Generate the completion script for " + shell
 		compCmd := p.completionCmd(shell)
 		shellCmd := p._add(cmdName, compCmd, desc)
-		shellCmd.noCompletion = true
+		shellCmd.isCompletion = true
 	}
 }
 

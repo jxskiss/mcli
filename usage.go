@@ -293,6 +293,9 @@ func printSubCommands(out io.Writer, cmds commands, showHidden, keepCmdOrder boo
 			}
 		}
 		leafCmdName := strings.TrimSpace(strings.TrimPrefix(cmd.Name, prefix[len(prefix)-1]))
+		if cmd.isCompletion && leafCmdName != cmd.Name {
+			continue
+		}
 		name := strings.Repeat("  ", len(prefix)) + leafCmdName
 		description := cmd.Description
 		if cmd.Hidden {
