@@ -107,7 +107,7 @@ func (p *usagePrinter) printUsageLine() {
 	if usage != "" {
 		usage += "\n"
 	}
-	usage += "USAGE:\n  " + progName
+	usage += "Usage:\n  " + progName
 	if cmd != nil && cmd.isRoot {
 		usage += p.commandLineFlagAndSubCmdInfo("")
 		if len(p.app.cmds) > 0 {
@@ -208,7 +208,7 @@ func (p *usagePrinter) splitAndFormatFlags() {
 func (p *usagePrinter) printCmdFlags() {
 	out := p.out
 	if len(p.cmdFlagHelp) > 0 {
-		fmt.Fprint(out, "FLAGS:\n")
+		fmt.Fprint(out, "Flags:\n")
 		printWithAlignment(out, p.cmdFlagHelp, 0)
 		fmt.Fprint(out, "\n")
 	}
@@ -217,7 +217,7 @@ func (p *usagePrinter) printCmdFlags() {
 func (p *usagePrinter) printArguments() {
 	out := p.out
 	if len(p.nonFlagHelp) > 0 {
-		fmt.Fprint(out, "ARGUMENTS:\n")
+		fmt.Fprint(out, "Arguments:\n")
 		printWithAlignment(out, p.nonFlagHelp, 0)
 		fmt.Fprint(out, "\n")
 	}
@@ -226,7 +226,7 @@ func (p *usagePrinter) printArguments() {
 func (p *usagePrinter) printGlobalFlags() {
 	out := p.out
 	if len(p.globalFlagHelp) > 0 {
-		fmt.Fprint(out, "GLOBAL FLAGS:\n")
+		fmt.Fprint(out, "Global Flags:\n")
 		printWithAlignment(out, p.globalFlagHelp, 0)
 		fmt.Fprint(out, "\n")
 	}
@@ -241,7 +241,7 @@ func (p *usagePrinter) printExamples() {
 	if ctx.opts.examples != "" {
 		examples := strings.ReplaceAll(ctx.opts.examples, "\n", "\n  ")
 		examples = blankLineRE.ReplaceAllString(examples, "\n\n")
-		fmt.Fprint(out, "EXAMPLES:\n  ")
+		fmt.Fprint(out, "Examples:\n  ")
 		fmt.Fprintf(out, "%s\n\n", examples)
 	}
 }
@@ -304,7 +304,7 @@ func printSubCommands(out io.Writer, cmds commands, showHidden, keepCmdOrder boo
 		cmdLines = append(cmdLines, [2]string{name, description})
 		preName = cmd.Name
 	}
-	fmt.Fprint(out, "COMMANDS:\n")
+	fmt.Fprint(out, "Commands:\n")
 	printWithAlignment(out, cmdLines, 0)
 	fmt.Fprint(out, "\n")
 }
@@ -362,7 +362,7 @@ func addTrailingColon(s string) string {
 }
 
 const (
-	__MaxPrefixLen = 36
+	__MaxPrefixLen = 30
 )
 
 func printWithAlignment(out io.Writer, lines [][2]string, maxPrefixLen int) {

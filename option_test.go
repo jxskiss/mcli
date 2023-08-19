@@ -25,7 +25,7 @@ func TestWithName(t *testing.T) {
 
 	got := buf.String()
 	assert.Contains(t, got, "my awesome command [flags]\n")
-	assert.Contains(t, got, "FLAGS:")
+	assert.Contains(t, got, "Flags:\n")
 	assert.Contains(t, got, "  -a value")
 	assert.Contains(t, got, "  -b value")
 }
@@ -157,5 +157,5 @@ $ gh issue create --project "Roadmap"
 	fs.Usage()
 
 	got := buf.String()
-	assert.Contains(t, got, "EXAMPLES:\n  $ gh issue create --title \"I found a bug\" --body \"Nothing works\"\n  $ gh issue create --label \"bug,help wanted\"\n  $ gh")
+	assert.Contains(t, got, "Examples:\n  $ gh issue create --title \"I found a bug\" --body \"Nothing works\"\n  $ gh issue create --label \"bug,help wanted\"\n  $ gh")
 }
