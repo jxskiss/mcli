@@ -157,10 +157,11 @@ func (p *usagePrinter) printSubCommands() {
 	ctx := p.ctx
 	out := p.out
 	if len(p.subCmds) > 0 {
+		parentCmdName := ctx.name
 		subCmds := p.subCmds
 		showHidden := ctx.showHidden
 		keepCmdOrder := p.app.Options.KeepCommandOrder
-		printSubCommands(out, subCmds, showHidden, keepCmdOrder)
+		printSubCommands(out, subCmds, parentCmdName, showHidden, keepCmdOrder)
 	}
 }
 
@@ -258,7 +259,7 @@ func (p *usagePrinter) printFooter() {
 	}
 }
 
-func printSubCommands(out io.Writer, cmds commands, showHidden, keepCmdOrder bool) {
+func printSubCommands(out io.Writer, cmds commands, parentCmdName string, showHidden, keepCmdOrder bool) {
 	if len(cmds) == 0 {
 		return
 	}
@@ -278,22 +279,23 @@ func printSubCommands(out io.Writer, cmds commands, showHidden, keepCmdOrder boo
 	prefix := []string{""}
 	preName := ""
 	for _, cmd := range cmds {
-		if cmd.Name == "" || (cmd.Hidden && !showHidden) {
+		cmdName := trimPrefix(cmd.Name, parentCmdName)
+		if cmdName == "" || (cmd.Hidden && !showHidden) {
 			continue
 		}
-		if preName != "" && cmd.Name != preName {
-			if strings.HasPrefix(cmd.Name, preName) {
+		if preName != "" && cmdName != preName {
+			if strings.HasPrefix(cmdName, preName) {
 				prefix = append(prefix, preName)
 			} else {
 				for i := len(prefix) - 1; i > 0; i-- {
-					if !strings.HasPrefix(cmd.Name, prefix[i]) {
+					if !strings.HasPrefix(cmdName, prefix[i]) {
 						prefix = prefix[:i]
 					}
 				}
 			}
 		}
-		leafCmdName := strings.TrimSpace(strings.TrimPrefix(cmd.Name, prefix[len(prefix)-1]))
-		if cmd.isCompletion && leafCmdName != cmd.Name {
+		leafCmdName := trimPrefix(cmdName, prefix[len(prefix)-1])
+		if cmd.isCompletion && leafCmdName != cmdName {
 			continue
 		}
 		name := strings.Repeat("  ", len(prefix)) + leafCmdName
@@ -302,7 +304,7 @@ func printSubCommands(out io.Writer, cmds commands, showHidden, keepCmdOrder boo
 			name += " (HIDDEN)"
 		}
 		cmdLines = append(cmdLines, [2]string{name, description})
-		preName = cmd.Name
+		preName = cmdName
 	}
 	fmt.Fprint(out, "Commands:\n")
 	printWithAlignment(out, cmdLines, 0)
@@ -326,10 +328,11 @@ func printGroupedSubCommands(out io.Writer, cmdGroups []*commandGroup, showHidde
 	for _, grp := range cmdGroups {
 		var grpLines [][2]string
 		for _, cmd := range grp.commands {
-			if cmd.Name == "" || (cmd.Hidden && !showHidden) || cmd.level > 1 {
+			cmdName := cmd.Name
+			if cmdName == "" || (cmd.Hidden && !showHidden) || cmd.level > 1 {
 				continue
 			}
-			name := "  " + cmd.Name
+			name := "  " + cmdName
 			description := cmd.Description
 			if cmd.Hidden {
 				name += " (HIDDEN)"

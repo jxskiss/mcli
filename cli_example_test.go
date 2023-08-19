@@ -285,16 +285,16 @@ Usage:
   gh issue <command> ...
 
 Commands:
-  issue close       Close issue
-  issue comment     Create a new issue comment
-  issue create      Create a new issue
-  issue delete      Delete issue
-  issue edit        Edit an issue
-  issue list        List and filter issues in this repository
-  issue reopen      Reopen issue
-  issue status      Show status of relevant issues
-  issue transfer    Transfer issue to another repository
-  issue view        View an issue
+  close       Close issue
+  comment     Create a new issue comment
+  create      Create a new issue
+  delete      Delete issue
+  edit        Edit an issue
+  list        List and filter issues in this repository
+  reopen      Reopen issue
+  status      Show status of relevant issues
+  transfer    Transfer issue to another repository
+  view        View an issue
 
 LEARN MORE
   Use 'gh <command> <subcommand> --help' for more information about a command.

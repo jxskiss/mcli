@@ -604,7 +604,7 @@ func Test_runGroupCommand(t *testing.T) {
 		"Usage:\n",
 		"group1 <command> ...",
 		"Commands:\n",
-		"group1 cmd1    Dummy group1 cmd1 command",
+		"cmd1    Dummy group1 cmd1 command",
 	} {
 		assert.Contains(t, got, x)
 	}
@@ -690,21 +690,21 @@ func Test_printAvailableCommands(t *testing.T) {
 	ctx.cmd.f()
 
 	got = buf.String()
-	assert.NotContains(t, got, "not a valid command")
-	for _, x := range []string{
-		"Usage:\n",
-		"<command> ...",
-		"Commands:\n",
-		"  git branch    dummy git branch command",
-		"    new         dummy git branch new command",
-		"    rm          dummy git branch rm command",
-		"  git remote    git remote group",
-		"    add         dummy git remote add command",
-		"    rm          dummy git remote rm command",
-	} {
-		assert.Contains(t, got, x)
-	}
-	assert.NotContains(t, got, "gh pr")
+	want := `dummy git group
+
+Usage:
+  mcli.test git <command> ...
+
+Commands:
+  branch    dummy git branch command
+    new     dummy git branch new command
+    rm      dummy git branch rm command
+  remote    git remote group
+    add     dummy git remote add command
+    rm      dummy git remote rm command
+
+`
+	assert.Equal(t, want, got)
 
 	ctx, invalidCmdName, found = _search([]string{"gh", "pr", "-h"})
 	assert.False(t, found)
@@ -808,7 +808,7 @@ func TestShowHidden(t *testing.T) {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	got := buf.String()
-	assert.Contains(t, got, "group1 cmd4 (HIDDEN)")
+	assert.Contains(t, got, "cmd4 (HIDDEN)    A group1 cmd4 hidden command")
 
 	resetDefaultApp()
 	addCommands()
