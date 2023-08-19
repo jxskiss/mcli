@@ -115,7 +115,7 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) (checkFlag bool) 
 	for i < len(cmdNames)-1 {
 		name := cmdNames[i]
 		cur = cur.SubTree[name]
-		if cur == nil || (cur.Cmd != nil && cur.Cmd.noCompletion) {
+		if cur == nil || (cur.Cmd != nil && cur.Cmd.isCompletion) {
 			return false
 		}
 		i++
@@ -146,7 +146,7 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) (checkFlag bool) 
 		if sub.Cmd == nil && len(sub.SubCmds) == 0 {
 			continue
 		}
-		if sub.Cmd != nil && (sub.Cmd.noCompletion || sub.Cmd.Hidden) {
+		if sub.Cmd != nil && (sub.Cmd.isCompletion || sub.Cmd.Hidden) {
 			continue
 		}
 		if !matchFunc(sub) {
@@ -183,7 +183,7 @@ func (t *cmdTree) suggestFlags(app *App, userArgs []string, flagName string) {
 			return
 		}
 	}
-	if cur.Cmd == nil || cur.Cmd.isGroup || cur.Cmd.noCompletion {
+	if cur.Cmd == nil || cur.Cmd.isGroup || cur.Cmd.isCompletion {
 		return
 	}
 
@@ -303,8 +303,11 @@ func formatCompletion(app *App, opt string, desc string) string {
 func (p *App) addCompletionCommands(name string) {
 	p.completionCmdName = name
 
-	grpCmd := newUntypedCommand(p.groupCmd)
-	grpCmd.noCompletion = true
+	grpCmd := newUntypedCommand(func() {
+		p.parseArgs(nil, DisableGlobalFlags())
+		p.printUsage()
+	})
+	grpCmd.isCompletion = true
 	p._add(name, grpCmd, "Generate shell completion scripts")
 
 	for _, shell := range getAllowedShells() {
@@ -312,14 +315,14 @@ func (p *App) addCompletionCommands(name string) {
 		desc := "Generate the completion script for " + shell
 		compCmd := p.completionCmd(shell)
 		shellCmd := p._add(cmdName, compCmd, desc)
-		shellCmd.noCompletion = true
+		shellCmd.isCompletion = true
 	}
 }
 
 func (p *App) completionCmd(shellType string) func() {
 	return func() {
 		customUsage := p.completionUsage(shellType)
-		p.parseArgs(nil, ReplaceUsage(customUsage))
+		p.parseArgs(nil, DisableGlobalFlags(), ReplaceUsage(customUsage))
 
 		data := map[string]any{
 			"ProgramName":       getProgramName(),
