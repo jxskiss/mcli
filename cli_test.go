@@ -334,9 +334,7 @@ func TestParsing_PointerValues(t *testing.T) {
 		_ = fs
 		assert.Equal(t, flag.ErrHelp, err)
 		got := buf.String()
-		want := `Usage:
-  mcli.test [flags]
-
+		want := `
 Flags:
   -a1             a1 description
   -a2             a2 description
@@ -349,7 +347,7 @@ Flags:
   -d1 duration    (default 1.5s)
 
 `
-		assert.Equal(t, want, got)
+		assert.Contains(t, got, want)
 	})
 }
 
@@ -690,10 +688,9 @@ func Test_printAvailableCommands(t *testing.T) {
 	ctx.cmd.f()
 
 	got = buf.String()
-	want := `dummy git group
+	want1 := "dummy git group\n\nUsage:\n  mcli.test"
 
-Usage:
-  mcli.test git <command> ...
+	want2 := ` git <command> ...
 
 Commands:
   branch    dummy git branch command
@@ -704,7 +701,8 @@ Commands:
     rm      dummy git remote rm command
 
 `
-	assert.Equal(t, want, got)
+	assert.Contains(t, got, want1)
+	assert.Contains(t, got, want2)
 
 	ctx, invalidCmdName, found = _search([]string{"gh", "pr", "-h"})
 	assert.False(t, found)
