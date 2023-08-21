@@ -2,6 +2,7 @@ package mcli
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"testing"
 
@@ -41,17 +42,13 @@ func TestCompletionUsage(t *testing.T) {
 	resetDefaultApp()
 	addTestCompletionCommands()
 
-	bashUsage := defaultApp.completionUsage("bash")()
-	assert.Contains(t, bashUsage, "USAGE:\n  mcli.test completion bash")
-
-	zshUsage := defaultApp.completionUsage("zsh")()
-	assert.Contains(t, zshUsage, "USAGE:\n  mcli.test completion zsh")
-
-	powershellUsage := defaultApp.completionUsage("powershell")
-	assert.Contains(t, powershellUsage(), "USAGE:\n  mcli.test completion powershell")
-
-	fishUsage := defaultApp.completionUsage("fish")()
-	assert.Contains(t, fishUsage, "USAGE:\n  mcli.test completion fish")
+	for _, shellType := range []string{
+		"bash", "zsh", "fish", "powershell",
+	} {
+		usage := defaultApp.completionUsage(shellType)()
+		want := fmt.Sprintf("USAGE:\n  %s completion %s", getProgramName(), shellType)
+		assert.Contains(t, usage, want)
+	}
 }
 
 func TestSuggestCommands(t *testing.T) {
