@@ -32,6 +32,7 @@ type usagePrinter struct {
 	subCmds        commands
 	globalFlagHelp [][2]string
 	cmdFlagHelp    [][2]string
+	nonFlagHelp    [][2]string
 }
 
 func (p *usagePrinter) Do() {
@@ -61,7 +62,7 @@ func (p *usagePrinter) Do() {
 	p.printUsageLine()
 	p.printSubCommands()
 	p.countFlags()
-	p.splitFlags()
+	p.splitAndFormatFlags()
 	p.printCmdFlags()
 	p.printArguments()
 	p.printGlobalFlags()
@@ -106,7 +107,7 @@ func (p *usagePrinter) printUsageLine() {
 	if usage != "" {
 		usage += "\n"
 	}
-	usage += "USAGE:\n  " + progName
+	usage += "Usage:\n  " + progName
 	if cmd != nil && cmd.isRoot {
 		usage += p.commandLineFlagAndSubCmdInfo("")
 		if len(p.app.cmds) > 0 {
@@ -156,11 +157,11 @@ func (p *usagePrinter) printSubCommands() {
 	ctx := p.ctx
 	out := p.out
 	if len(p.subCmds) > 0 {
+		parentCmdName := ctx.name
 		subCmds := p.subCmds
 		showHidden := ctx.showHidden
 		keepCmdOrder := p.app.Options.KeepCommandOrder
-		printSubCommands(out, subCmds, showHidden, keepCmdOrder)
-		fmt.Fprint(out, "\n")
+		printSubCommands(out, subCmds, parentCmdName, showHidden, keepCmdOrder)
 	}
 }
 
@@ -175,13 +176,14 @@ func (p *usagePrinter) countFlags() {
 	}
 }
 
-func (p *usagePrinter) splitFlags() {
+func (p *usagePrinter) splitAndFormatFlags() {
 	flags := p.ctx.flags
 	showHidden := p.ctx.showHidden
 	hasShortFlag := p.hasShortFlag
 
 	var globalFlagHelp [][2]string
 	var cmdFlagHelp [][2]string
+	var nonFlagHelp [][2]string
 	if p.flagCount > 0 {
 		for _, f := range flags {
 			if f.hidden && !showHidden {
@@ -195,30 +197,29 @@ func (p *usagePrinter) splitFlags() {
 			}
 		}
 	}
+	for _, f := range p.ctx.nonflags {
+		name, usage := f.getUsage(false)
+		nonFlagHelp = append(nonFlagHelp, [2]string{name, usage})
+	}
 	p.globalFlagHelp = globalFlagHelp
 	p.cmdFlagHelp = cmdFlagHelp
+	p.nonFlagHelp = nonFlagHelp
 }
 
 func (p *usagePrinter) printCmdFlags() {
 	out := p.out
 	if len(p.cmdFlagHelp) > 0 {
-		fmt.Fprint(out, "FLAGS:\n")
-		printWithAlignment(out, p.cmdFlagHelp)
+		fmt.Fprint(out, "Flags:\n")
+		printWithAlignment(out, p.cmdFlagHelp, 0)
 		fmt.Fprint(out, "\n")
 	}
 }
 
 func (p *usagePrinter) printArguments() {
 	out := p.out
-	nonflags := p.ctx.nonflags
-	if len(nonflags) > 0 {
-		var nonflagLines [][2]string
-		for _, f := range nonflags {
-			name, usage := f.getUsage(false)
-			nonflagLines = append(nonflagLines, [2]string{name, usage})
-		}
-		fmt.Fprint(out, "ARGUMENTS:\n")
-		printWithAlignment(out, nonflagLines)
+	if len(p.nonFlagHelp) > 0 {
+		fmt.Fprint(out, "Arguments:\n")
+		printWithAlignment(out, p.nonFlagHelp, 0)
 		fmt.Fprint(out, "\n")
 	}
 }
@@ -226,8 +227,8 @@ func (p *usagePrinter) printArguments() {
 func (p *usagePrinter) printGlobalFlags() {
 	out := p.out
 	if len(p.globalFlagHelp) > 0 {
-		fmt.Fprint(out, "GLOBAL FLAGS:\n")
-		printWithAlignment(out, p.globalFlagHelp)
+		fmt.Fprint(out, "Global Flags:\n")
+		printWithAlignment(out, p.globalFlagHelp, 0)
 		fmt.Fprint(out, "\n")
 	}
 }
@@ -241,7 +242,7 @@ func (p *usagePrinter) printExamples() {
 	if ctx.opts.examples != "" {
 		examples := strings.ReplaceAll(ctx.opts.examples, "\n", "\n  ")
 		examples = blankLineRE.ReplaceAllString(examples, "\n\n")
-		fmt.Fprint(out, "EXAMPLES:\n  ")
+		fmt.Fprint(out, "Examples:\n  ")
 		fmt.Fprintf(out, "%s\n\n", examples)
 	}
 }
@@ -258,7 +259,7 @@ func (p *usagePrinter) printFooter() {
 	}
 }
 
-func printSubCommands(out io.Writer, cmds commands, showHidden bool, keepCmdOrder bool) {
+func printSubCommands(out io.Writer, cmds commands, parentCmdName string, showHidden, keepCmdOrder bool) {
 	if len(cmds) == 0 {
 		return
 	}
@@ -268,51 +269,115 @@ func printSubCommands(out io.Writer, cmds commands, showHidden bool, keepCmdOrde
 		})
 	}
 
+	cmdGroups, hasCategories := cmds.groupByCategory()
+	if hasCategories {
+		printGroupedSubCommands(out, cmdGroups, showHidden, keepCmdOrder)
+		return
+	}
+
 	var cmdLines [][2]string
 	prefix := []string{""}
 	preName := ""
 	for _, cmd := range cmds {
-		if cmd.Name == "" || (cmd.Hidden && !showHidden) {
+		cmdName := trimPrefix(cmd.Name, parentCmdName)
+		if cmdName == "" || (cmd.Hidden && !showHidden) {
 			continue
 		}
-		if preName != "" && cmd.Name != preName {
-			if strings.HasPrefix(cmd.Name, preName) {
+		if preName != "" && cmdName != preName {
+			if strings.HasPrefix(cmdName, preName) {
 				prefix = append(prefix, preName)
 			} else {
 				for i := len(prefix) - 1; i > 0; i-- {
-					if !strings.HasPrefix(cmd.Name, prefix[i]) {
+					if !strings.HasPrefix(cmdName, prefix[i]) {
 						prefix = prefix[:i]
 					}
 				}
 			}
 		}
-		leafCmdName := strings.TrimSpace(strings.TrimPrefix(cmd.Name, prefix[len(prefix)-1]))
+		leafCmdName := trimPrefix(cmdName, prefix[len(prefix)-1])
+		if cmd.isCompletion && leafCmdName != cmdName {
+			continue
+		}
 		name := strings.Repeat("  ", len(prefix)) + leafCmdName
 		description := cmd.Description
 		if cmd.Hidden {
 			name += " (HIDDEN)"
 		}
 		cmdLines = append(cmdLines, [2]string{name, description})
-		preName = cmd.Name
+		preName = cmdName
 	}
-	fmt.Fprint(out, "COMMANDS:\n")
-	printWithAlignment(out, cmdLines)
+	fmt.Fprint(out, "Commands:\n")
+	printWithAlignment(out, cmdLines, 0)
+	fmt.Fprint(out, "\n")
 }
 
-func printWithAlignment(out io.Writer, lines [][2]string) {
-	const _N = 36
-	maxPrefixLen := 0
-	for _, line := range lines {
-		if n := len(line[0]); n > maxPrefixLen && n <= _N {
-			maxPrefixLen = n
+func printGroupedSubCommands(out io.Writer, cmdGroups []*commandGroup, showHidden, keepCmdOrder bool) {
+	type groupCmdLines struct {
+		category string
+		cmdLines [][2]string
+	}
+
+	if !keepCmdOrder {
+		sort.Slice(cmdGroups, func(i, j int) bool {
+			return cmdGroups[i].category < cmdGroups[j].category
+		})
+	}
+
+	var groupLines []*groupCmdLines
+	var cmdLines [][][2]string
+	for _, grp := range cmdGroups {
+		var grpLines [][2]string
+		for _, cmd := range grp.commands {
+			cmdName := cmd.Name
+			if cmdName == "" || (cmd.Hidden && !showHidden) || cmd.level > 1 {
+				continue
+			}
+			name := "  " + cmdName
+			description := cmd.Description
+			if cmd.Hidden {
+				name += " (HIDDEN)"
+			}
+			grpLines = append(grpLines, [2]string{name, description})
 		}
+		if len(grpLines) == 0 {
+			continue
+		}
+		groupLines = append(groupLines, &groupCmdLines{
+			category: grp.category,
+			cmdLines: grpLines,
+		})
+		cmdLines = append(cmdLines, grpLines)
+	}
+
+	maxPrefixLen := calcMaxPrefixLen(cmdLines)
+	for _, grp := range groupLines {
+		fmt.Fprint(out, addTrailingColon(grp.category)+"\n")
+		printWithAlignment(out, grp.cmdLines, maxPrefixLen)
+		fmt.Fprint(out, "\n")
+	}
+}
+
+func addTrailingColon(s string) string {
+	if !strings.HasSuffix(s, ":") {
+		s += ":"
+	}
+	return s
+}
+
+const (
+	__MaxPrefixLen = 30
+)
+
+func printWithAlignment(out io.Writer, lines [][2]string, maxPrefixLen int) {
+	if maxPrefixLen <= 0 {
+		maxPrefixLen = calcMaxPrefixLen([][][2]string{lines})
 	}
 	padding := "\n" + strings.Repeat(" ", maxPrefixLen+4)
 	for _, line := range lines {
 		x, y := line[0], line[1]
 		fmt.Fprint(out, x)
 		if y != "" {
-			if len(x) <= _N {
+			if len(x) <= __MaxPrefixLen {
 				fmt.Fprint(out, strings.Repeat(" ", maxPrefixLen+4-len(x)))
 				fmt.Fprint(out, strings.ReplaceAll(y, "\n", padding))
 			} else {
@@ -322,4 +387,16 @@ func printWithAlignment(out io.Writer, lines [][2]string) {
 		}
 		fmt.Fprint(out, "\n")
 	}
+}
+
+func calcMaxPrefixLen(lineGroups [][][2]string) int {
+	maxPrefixLen := 0
+	for _, lines := range lineGroups {
+		for _, line := range lines {
+			if n := len(line[0]); n > maxPrefixLen && n <= __MaxPrefixLen {
+				maxPrefixLen = n
+			}
+		}
+	}
+	return maxPrefixLen
 }

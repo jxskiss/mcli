@@ -5,8 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -72,17 +74,18 @@ func TestParsing_WithoutCallingRun(t *testing.T) {
 func TestParsing_CheckFlagSetValues(t *testing.T) {
 	resetDefaultApp()
 	var args struct {
-		A  bool     `cli:"-a,  -a-flag, description a flag"`
-		A1 bool     `cli:"-1, -a1-flag"`
-		B  int32    `cli:"-b,  -b-flag, description b flag"`
-		C  int64    `cli:"-c, --c-flag, description c flag"`
-		D  float32  `cli:"-D, --d-flag, description d flag"`
-		E  float64  `cli:"-E, --e-flag, description e flag"`
-		F  string   `cli:"-f,  -f-flag, description f flag"`
-		G  uint     `cli:"-g, --g-flag, description g flag"`
-		H  []bool   `cli:"-H, --h-flag, description h flag"`
-		I  []uint   `cli:"-i,  -i-flag, description i flag"`
-		J  []string `cli:"-j,  -j-flag, description j flag"`
+		A  bool          `cli:"-a,  -a-flag, description a flag"`
+		A1 bool          `cli:"-1, -a1-flag"`
+		B  int32         `cli:"-b,  -b-flag, description b flag"`
+		C  int64         `cli:"-c, --c-flag, description c flag"`
+		D  float32       `cli:"-D, --d-flag, description d flag"`
+		E  float64       `cli:"-E, --e-flag, description e flag"`
+		F  string        `cli:"-f,  -f-flag, description f flag"`
+		G  uint          `cli:"-g, --g-flag, description g flag"`
+		H  []bool        `cli:"-H, --h-flag, description h flag"`
+		I  []uint        `cli:"-i,  -i-flag, description i flag"`
+		J  []string      `cli:"-j,  -j-flag, description j flag"`
+		K  time.Duration `cli:"-k, --k-flag, description k flag"`
 
 		ValueImpl2 flagValueImpl2 `cli:"-v, -v-flag, description v flag"`
 
@@ -109,6 +112,7 @@ func TestParsing_CheckFlagSetValues(t *testing.T) {
 		"-j-flag", "j2",
 		"-j-flag", "j,3",
 		"-j-flag", "j,4,5",
+		"-k", "1.5s",
 		"-v", "abc",
 		"-v", "123",
 
@@ -128,10 +132,11 @@ func TestParsing_CheckFlagSetValues(t *testing.T) {
 	assert.Equal(t, []bool{true, false, true, false}, args.H)
 	assert.Equal(t, []uint{5, 6, 7, 8}, args.I)
 	assert.Equal(t, []string{"j1", "j2", `j,3`, `j,4,5`}, args.J)
+	assert.Equal(t, 1500*time.Millisecond, args.K)
 	assert.Equal(t, []string{"some-args 0", "some-args 1"}, args.Args)
 	assert.Equal(t, []byte("abc123"), args.ValueImpl2.Data)
 
-	flagCount := 12 * 2
+	flagCount := 13 * 2
 	fs.Visit(func(flag *flag.Flag) {
 		flagCount--
 	})
@@ -163,14 +168,187 @@ func TestParsing_CheckFlagSetValues(t *testing.T) {
 		{"i-flag", "[5,6,7,8]", []uint{5, 6, 7, 8}},
 		{"j", `["j1","j2","j,3","j,4,5"]`, []string{"j1", "j2", "j,3", "j,4,5"}},
 		{"j-flag", `["j1","j2","j,3","j,4,5"]`, []string{"j1", "j2", "j,3", "j,4,5"}},
-		{"v", "flagValueImpl2", []byte("abc123")},
-		{"v-flag", "flagValueImpl2", []byte("abc123")},
+		{"k", "1.5s", 1500 * time.Millisecond},
+		{"k-flag", "1.5s", 1500 * time.Millisecond},
+		{"v", "abc123", []byte("abc123")},
+		{"v-flag", "abc123", []byte("abc123")},
 	} {
 		got := fs.Lookup(tt.flag).Value.String()
 		assert.Equalf(t, tt.want, got, "flag= %v", tt.flag)
 		gotValue := fs.Lookup(tt.flag).Value.(flag.Getter).Get()
 		assert.Equalf(t, tt.value, gotValue, "flag= %v", tt.flag)
 	}
+}
+
+func TestParsing_PointerValues(t *testing.T) {
+	var args struct {
+		A  *bool          `cli:"-a,  -a-flag, description a flag"`
+		A1 *bool          `cli:"-1, -a1-flag"`
+		B  *int32         `cli:"-b,  -b-flag, description b flag"`
+		C  *int64         `cli:"-c, --c-flag, description c flag"`
+		D  *float32       `cli:"-D, --d-flag, description d flag"`
+		E  *float64       `cli:"-E, --e-flag, description e flag"`
+		F  *string        `cli:"-f,  -f-flag, description f flag"`
+		G  *uint          `cli:"-g, --g-flag, description g flag"`
+		K  *time.Duration `cli:"-k, --k-flag, description k flag"`
+
+		ValueImpl2 *flagValueImpl2 `cli:"-v, -v-flag, description v flag"`
+
+		Arg1 *string `cli:"arg1"`
+	}
+
+	t.Run("all empty", func(t *testing.T) {
+		resetDefaultApp()
+		fs, err := Parse(&args, WithArgs([]string{}))
+		assert.Nil(t, err)
+		for _, x := range []any{
+			args.A, args.A1, args.B, args.C, args.D, args.E, args.F, args.G, args.K, args.ValueImpl2,
+			args.Arg1,
+		} {
+			assert.True(t, reflect.ValueOf(x).IsNil())
+		}
+		_ = fs
+	})
+
+	t.Run("set flags", func(t *testing.T) {
+		resetDefaultApp()
+		fs, err := Parse(&args, WithArgs([]string{
+			"-a-flag",
+			"-1=false",
+			"-b", "1",
+			"-c-flag", "2",
+			"--D", "3",
+			"--e-flag", "4",
+			"-f", "fstr",
+			"-g-flag", "5",
+			"-k", "1.5s",
+			"-v", "abc",
+			"-v", "123",
+
+			"arg1 value",
+		}))
+		assert.Nil(t, err)
+
+		assert.True(t, args.A != nil && *args.A)
+		assert.True(t, args.A1 != nil && !*args.A1)
+		assert.Equal(t, int32(1), *args.B)
+		assert.Equal(t, int64(2), *args.C)
+		assert.Equal(t, float32(3), *args.D)
+		assert.Equal(t, float64(4), *args.E)
+		assert.Equal(t, "fstr", *args.F)
+		assert.Equal(t, uint(5), *args.G)
+		assert.Equal(t, 1500*time.Millisecond, *args.K)
+		assert.Equal(t, []byte("abc123"), args.ValueImpl2.Data)
+		assert.Equal(t, "arg1 value", *args.Arg1)
+
+		flagCount := 10 * 2
+		fs.Visit(func(flag *flag.Flag) {
+			flagCount--
+		})
+		assert.Zero(t, flagCount)
+		for _, tt := range []struct {
+			flag  string
+			want  string
+			value any
+		}{
+			{"a", "true", true},
+			{"a-flag", "true", true},
+			{"1", "false", false},
+			{"a1-flag", "false", false},
+			{"b", "1", int32(1)},
+			{"b-flag", "1", int32(1)},
+			{"c", "2", int64(2)},
+			{"c-flag", "2", int64(2)},
+			{"D", "3", float32(3)},
+			{"d-flag", "3", float32(3)},
+			{"E", "4", float64(4)},
+			{"e-flag", "4", float64(4)},
+			{"f", "fstr", "fstr"},
+			{"f-flag", "fstr", "fstr"},
+			{"g", "5", uint(5)},
+			{"g-flag", "5", uint(5)},
+			{"k", "1.5s", 1500 * time.Millisecond},
+			{"k-flag", "1.5s", 1500 * time.Millisecond},
+			{"v", "abc123", []byte("abc123")},
+			{"v-flag", "abc123", []byte("abc123")},
+		} {
+			got := fs.Lookup(tt.flag).Value.String()
+			assert.Equalf(t, tt.want, got, "flag= %v", tt.flag)
+			gotValue := fs.Lookup(tt.flag).Value.(flag.Getter).Get()
+			assert.Equalf(t, tt.value, gotValue, "flag= %v", tt.flag)
+		}
+	})
+
+	t.Run("env and default values", func(t *testing.T) {
+		var args struct {
+			A1 *bool          `cli:"-a1"` // default false
+			A2 *bool          `cli:"-a2"`
+			B1 *int           `cli:"-b1" default:"1024"`
+			C1 *string        `cli:"-c1" env:"C1_STR"`
+			C2 *string        `cli:"-c2" default:"c2default" env:"C2_STR"`
+			C3 *string        `cli:"-c3" default:"c3default" env:"C3_STR"`
+			C4 *string        `cli:"-c4"`
+			C5 *string        `cli:"-c5"`
+			D1 *time.Duration `cli:"-d1" default:"1.5s"`
+		}
+		resetDefaultApp()
+		os.Setenv("C1_STR", "c1EnvValue")
+		os.Setenv("C3_STR", "c3EnvValue")
+		fs, err := Parse(&args, WithArgs([]string{
+			"-a2",
+			"-c3", "c3arg",
+			"-c4", "c4arg",
+		}))
+		_ = fs
+		assert.Nil(t, err)
+		assert.True(t, args.A1 == nil)
+		assert.True(t, *args.A2)
+		assert.Equal(t, 1024, *args.B1)
+		assert.Equal(t, "c1EnvValue", *args.C1)
+		assert.Equal(t, "c2default", *args.C2)
+		assert.Equal(t, "c3arg", *args.C3)
+		assert.Equal(t, "c4arg", *args.C4)
+		assert.True(t, args.C5 == nil)
+		assert.Equal(t, 1500*time.Millisecond, *args.D1)
+	})
+
+	t.Run("usage", func(t *testing.T) {
+		var args struct {
+			A1 *bool          `cli:"-a1, a1 description"` // default false
+			A2 *bool          `cli:"-a2  a2 description"`
+			B1 *int           `cli:"-b1,   b1 description" default:"1024"`
+			C1 *string        `cli:"-c1" env:"C1_STR"`
+			C2 *string        `cli:"-c2" default:"c2default" env:"C2_STR"`
+			C3 *string        `cli:"-c3" default:"c3default" env:"C3_STR"`
+			C4 *string        `cli:"-c4, a 'c4' value"`
+			C5 *string        `cli:"-c5, c5 description"`
+			D1 *time.Duration `cli:"-d1" default:"1.5s"`
+		}
+		resetDefaultApp()
+
+		buf := &bytes.Buffer{}
+		defaultApp.getFlagSet().SetOutput(buf)
+		fs, err := Parse(&args,
+			WithArgs([]string{"-h"}),
+			WithErrorHandling(flag.ContinueOnError))
+		_ = fs
+		assert.Equal(t, flag.ErrHelp, err)
+		got := buf.String()
+		want := `
+Flags:
+  -a1             a1 description
+  -a2             a2 description
+  -b1 int         b1 description (default 1024)
+  -c1 string      (env "C1_STR")
+  -c2 string      (default c2default) (env "C2_STR")
+  -c3 string      (default c3default) (env "C3_STR")
+  -c4 c4          a c4 value
+  -c5 string      c5 description
+  -d1 duration    (default 1.5s)
+
+`
+		assert.Contains(t, got, want)
+	})
 }
 
 func TestParsing_DefaultValues(t *testing.T) {
@@ -421,10 +599,10 @@ func Test_runGroupCommand(t *testing.T) {
 	assert.NotContains(t, got, "not a valid command")
 	for _, x := range []string{
 		"Dummy group1 group",
-		"USAGE:",
+		"Usage:\n",
 		"group1 <command> ...",
-		"COMMANDS:",
-		"group1 cmd1    Dummy group1 cmd1 command",
+		"Commands:\n",
+		"cmd1    Dummy group1 cmd1 command",
 	} {
 		assert.Contains(t, got, x)
 	}
@@ -477,9 +655,9 @@ func Test_printAvailableCommands(t *testing.T) {
 	got := buf.String()
 	assert.NotContains(t, got, "not a valid command")
 	for _, x := range []string{
-		"USAGE:",
+		"Usage:\n",
 		"<command> ...",
-		"COMMANDS:",
+		"Commands:\n",
 		"config     config settings",
 		"gh         (Use -h to see available sub commands)",
 		"git        dummy git group",
@@ -510,21 +688,21 @@ func Test_printAvailableCommands(t *testing.T) {
 	ctx.cmd.f()
 
 	got = buf.String()
-	assert.NotContains(t, got, "not a valid command")
-	for _, x := range []string{
-		"USAGE:",
-		"<command> ...",
-		"COMMANDS:",
-		"  git branch    dummy git branch command",
-		"    new         dummy git branch new command",
-		"    rm          dummy git branch rm command",
-		"  git remote    git remote group",
-		"    add         dummy git remote add command",
-		"    rm          dummy git remote rm command",
-	} {
-		assert.Contains(t, got, x)
-	}
-	assert.NotContains(t, got, "gh pr")
+	want1 := "dummy git group\n\nUsage:\n  mcli.test"
+
+	want2 := ` git <command> ...
+
+Commands:
+  branch    dummy git branch command
+    new     dummy git branch new command
+    rm      dummy git branch rm command
+  remote    git remote group
+    add     dummy git remote add command
+    rm      dummy git remote rm command
+
+`
+	assert.Contains(t, got, want1)
+	assert.Contains(t, got, want2)
 
 	ctx, invalidCmdName, found = _search([]string{"gh", "pr", "-h"})
 	assert.False(t, found)
@@ -563,8 +741,11 @@ func (f *flagValueImpl2) Get() any {
 	return f.Data
 }
 
-func (f flagValueImpl2) String() string {
-	return "flagValueImpl2"
+func (f *flagValueImpl2) String() string {
+	if f == nil {
+		return ""
+	}
+	return string(f.Data)
 }
 
 func (f *flagValueImpl2) Set(s string) error {
@@ -591,16 +772,10 @@ type SomeComplexType struct {
 func TestParse_UnsupportedType(t *testing.T) {
 	resetDefaultApp()
 	var args1 struct {
-		A *bool `cli:"-a"`
-	}
-	var args2 struct {
-		B *string `cli:"-b"`
-	}
-	var args3 struct {
 		C *SomeComplexType `cli:"-c"`
 	}
 
-	for _, args := range []any{&args1, &args2, &args3} {
+	for _, args := range []any{&args1} {
 		assert.Panics(t, func() {
 			Parse(args)
 		})
@@ -631,7 +806,7 @@ func TestShowHidden(t *testing.T) {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	got := buf.String()
-	assert.Contains(t, got, "group1 cmd4 (HIDDEN)")
+	assert.Contains(t, got, "cmd4 (HIDDEN)    A group1 cmd4 hidden command")
 
 	resetDefaultApp()
 	addCommands()
@@ -711,7 +886,7 @@ func TestApp_AliasCommand(t *testing.T) {
 	PrintHelp()
 
 	got := buf.String()
-	assert.Contains(t, got, "COMMANDS")
+	assert.Contains(t, got, "Commands:\n")
 	assert.Contains(t, got, "cmd1    dummy cmd1")
 	assert.Contains(t, got, "cmd2    dummy cmd2")
 	assert.Contains(t, got, `cmd3    Alias of command "cmd1"`)
@@ -728,7 +903,7 @@ func TestApp_FunctionWithContext(t *testing.T) {
 	PrintHelp()
 
 	got := buf.String()
-	assert.Contains(t, got, "COMMANDS")
+	assert.Contains(t, got, "Commands:\n")
 	assert.Contains(t, got, "cmd1    dummy cmd1")
 	assert.Contains(t, got, "cmd2    dummy cmd2")
 	assert.Contains(t, got, `cmd3    Alias of command "cmd1"`)

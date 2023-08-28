@@ -95,6 +95,13 @@ func (f *_flag) Get() any {
 	if f.rv.CanAddr() && f.rv.Addr().Type().Implements(flagGetterTyp) {
 		return f.rv.Addr().Interface().(flag.Getter).Get()
 	}
+	if f.rv.Kind() == reflect.Pointer {
+		if f.rv.Elem().IsValid() {
+			return f.rv.Elem().Interface()
+		}
+		zero := reflect.New(f.rv.Type().Elem()).Elem()
+		return zero.Interface()
+	}
 	return f.rv.Interface()
 }
 
@@ -120,7 +127,18 @@ func formatValue(rv reflect.Value) string {
 		b, _ := rv.Addr().Interface().(textValue).MarshalText()
 		return string(b)
 	}
+	if rv.Kind() == reflect.Pointer {
+		return formatValueOfBasicTypePtr(rv)
+	}
 	return formatValueOfBasicType(rv)
+}
+
+func formatValueOfBasicTypePtr(rv reflect.Value) string {
+	if rv.Elem().IsValid() {
+		return formatValueOfBasicType(rv.Elem())
+	}
+	zero := reflect.New(rv.Type().Elem()).Elem()
+	return formatValueOfBasicType(zero)
 }
 
 func formatValueOfBasicType(rv reflect.Value) string {
@@ -177,6 +195,11 @@ func applyValue(rv reflect.Value, s string) error {
 }
 
 func applyValueOfBasicType(rv reflect.Value, s string) error {
+	if isSupportedBasicTypePtr(rv.Type()) {
+		rv.Set(reflect.New(rv.Type().Elem()))
+		return applyValueOfBasicType(rv.Elem(), s)
+	}
+
 	if isIntegerValue(rv) {
 		return applyIntegerValue(rv, s)
 	}
@@ -253,6 +276,11 @@ func applyIntegerValue(rv reflect.Value, s string) error {
 	return nil
 }
 
+func (f *_flag) isBooleanPtr() bool {
+	return f.rv.Kind() == reflect.Pointer &&
+		f.rv.Type().Elem().Kind() == reflect.Bool
+}
+
 func (f *_flag) isBoolean() bool {
 	return f.rv.Kind() == reflect.Bool
 }
@@ -300,7 +328,7 @@ func (f *_flag) helpName() string {
 }
 
 func (f *_flag) usageName() string {
-	if f.rv.Kind() == reflect.Bool {
+	if f.isBoolean() || f.isBooleanPtr() {
 		return ""
 	}
 	if isFlagValueImpl(f.rv) {
@@ -310,6 +338,9 @@ func (f *_flag) usageName() string {
 }
 
 func usageName(typ reflect.Type) string {
+	if isSupportedBasicTypePtr(typ) {
+		return usageName(typ.Elem())
+	}
 	switch typ.Kind() {
 	case reflect.Bool:
 		return "bool"
@@ -518,11 +549,19 @@ func (p *flagParser) appendFlag(f *_flag) {
 
 func (p *flagParser) addToFlagSet(f *_flag, fv reflect.Value) {
 	fs := p.fs
-	if fv.Kind() == reflect.Bool {
+	if f.isBoolean() {
 		ptr := fv.Addr().Interface().(*bool)
 		fs.BoolVar(ptr, f.name, f.rv.Bool(), f.description)
 		if f.short != "" {
 			fs.BoolVar(ptr, f.short, f.rv.Bool(), f.description)
+		}
+		return
+	}
+	if f.isBooleanPtr() {
+		ptr := new(bool)
+		fs.BoolVar(ptr, f.name, false, f.description)
+		if f.short != "" {
+			fs.BoolVar(ptr, f.short, false, f.description)
 		}
 		return
 	}
@@ -722,6 +761,9 @@ func isSupportedType(rv reflect.Value) bool {
 	if isFlagValueImpl(rv) || isTextValueImpl(rv) {
 		return true
 	}
+	if isSupportedBasicTypePtr(rv.Type()) {
+		return true
+	}
 	if isSupportedBasicType(rv.Kind()) {
 		return true
 	}
@@ -765,6 +807,10 @@ func zeroTextValueStr(rv reflect.Value) string {
 	zero.Elem().Set(reflect.Zero(typ))
 	b, _ := zero.Interface().(textValue).MarshalText()
 	return string(b)
+}
+
+func isSupportedBasicTypePtr(typ reflect.Type) bool {
+	return typ.Kind() == reflect.Pointer && isSupportedBasicType(typ.Elem().Kind())
 }
 
 func isSupportedBasicType(kind reflect.Kind) bool {

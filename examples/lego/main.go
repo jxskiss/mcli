@@ -100,9 +100,9 @@ type GlobalFlags struct {
 	HttpMemcachedHost []string `cli:"--http.memcached-host, Set the memcached host(s) to use for HTTP based challenges. Challenges will be written to all specified hosts."`
 	TLS               bool     `cli:"--tls, Use the TLS challenge to solve challenges. Can be mixed with other types of challenges."`
 	TlsPort           string   `cli:"--tls.port, Set the port and interface to use for TLS based challenges to listen on. Supported: interface:port or :port." default:":443"`
-	DNS               string   `cli:"--dns, Solve a DNS challenge using the specified provider. Can be mixed with other types of challenges. Run 'lego dnshelp' for help on usage."`
+	DNS               string   `cli:"--dns, Solve a DNS challenge using the specified 'provider'. Can be mixed with other types of challenges. Run \\'lego dnshelp\\' for help on usage."`
 	DnsDisableCp      bool     `cli:"--dns.disable-cp, By setting this flag to true, disables the need to wait the propagation of the TXT record to all authoritative name servers."`
-	DnsResolvers      []string `cli:"--dns.resolvers, Set the resolvers to use for performing recursive DNS queries. Supported: host:port. The default is to use the system resolvers, or Google's DNS resolvers if the system's cannot be determined."`
+	DnsResolvers      []string `cli:"--dns.resolvers, Set the resolvers to use for performing recursive DNS queries. Supported: host:port. The default is to use the system resolvers, or Google\\'s DNS resolvers if the system\\'s cannot be determined."`
 	HttpTimeout       int      `cli:"--http-timeout, Set the HTTP timeout value to a specific value in seconds."`
 	DnsTimeout        int      `cli:"--dns-timeout, Set the DNS timeout value to a specific value in seconds. Used only when performing authoritative name servers queries."`
 	PEM               bool     `cli:"--pem, Generate a .pem file by concatenating the .key and .crt files together."`

@@ -664,7 +664,7 @@ func (p *App) parseArgs(v any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	if err = ctx.checkRequired(); err != nil {
 		return fs, err
 	}
-	tidyFlagSet(fs, ctx.flags, nonflagArgs)
+	tidyFlags(fs, ctx.flags, nonflagArgs)
 	return fs, err
 }
 

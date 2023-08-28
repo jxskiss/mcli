@@ -110,6 +110,7 @@ func newCmdOptions(opts ...CmdOpt) cmdOptions {
 }
 
 type cmdOptions struct {
+	category             string
 	longDesc             string
 	enableFlagCompletion bool
 }
@@ -124,6 +125,13 @@ func (p *cmdOptions) apply(opts ...CmdOpt) *cmdOptions {
 // CmdOpt specifies options to customize the behavior of a Command.
 type CmdOpt struct {
 	f func(*cmdOptions)
+}
+
+// WithCategory groups commands into different categories in help.
+func WithCategory(category string) CmdOpt {
+	return CmdOpt{f: func(options *cmdOptions) {
+		options.category = category
+	}}
 }
 
 // WithLongDesc specifies a long description of a command,
