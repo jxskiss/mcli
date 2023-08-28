@@ -49,6 +49,10 @@ func isFlagCompletion(args []string) (isFlag bool, flagName string, userArgs []s
 	return hasFlag, "", args
 }
 
+// TODO: isFlagValueCompletion
+
+// TODO: isPositionalArgCompletion
+
 func (p *App) doAutoCompletion(args []string) {
 	tree := p.parseCompletionInfo()
 	isFlag, flagName, userArgs := isFlagCompletion(args)
@@ -56,6 +60,9 @@ func (p *App) doAutoCompletion(args []string) {
 	// 	fmt.Printf(item)<{+}>
 	// }
 	// fmt.Printf("cfs %#v", tree.Cmd.app.completionCtx.flags)
+
+	// TODO: flag value completion and positional arguments completion
+
 	if isFlag {
 		tree.suggestFlags(p, userArgs, flagName)
 	} else {

@@ -20,6 +20,8 @@ type parseOptions struct {
 	errorHandling flag.ErrorHandling
 	examples      string
 
+	argCompFuncs map[string]ArgCompletionFunc // TODO
+
 	customUsage func() string
 	helpFooter  func() string
 
