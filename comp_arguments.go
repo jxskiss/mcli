@@ -62,7 +62,7 @@ const (
 )
 
 // ArgCompletionFunc is a function to do completion for flag value or positional argument.
-type ArgCompletionFunc func(ctx ArgCompletionContext) ([]string, ShellCompDirective)
+type ArgCompletionFunc func(ctx ArgCompletionContext) ([][]string, ShellCompDirective)
 
 // ArgCompletionContext provides essential information to do suggestion
 // for flag value and positional argument completion.
@@ -99,21 +99,21 @@ func WithArgCompFuncs(funcMap map[string]ArgCompletionFunc) ParseOpt {
 }
 
 func compByFunc(funcName string) ArgCompletionFunc {
-	return func(ctx ArgCompletionContext) ([]string, ShellCompDirective) {
+	return func(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
 		panic("not implemented")
 	}
 }
 
-func compNofile(ctx ArgCompletionContext) ([]string, ShellCompDirective) {
+func compNofile(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
 	return nil, ShellCompDirectiveNoFileComp
 }
 
-func compEnums(values []string) ArgCompletionFunc {
-	return func(ctx ArgCompletionContext) ([]string, ShellCompDirective) {
-		return values, ShellCompDirectiveDefault
-	}
-}
+// func compEnums(values []string) ArgCompletionFunc {
+// 	return func(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
+// 		return values, ShellCompDirectiveDefault
+// 	}
+// }
 
-func compListFilesExt(extList []string) ArgCompletionFunc {
+func compListFilesExt(extList [][]string) ArgCompletionFunc {
 	panic("not implemented")
 }

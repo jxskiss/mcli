@@ -362,8 +362,17 @@ func (p *App) continueFlagCompletion() {
 	}
 	fmt.Println(len(result))
 	if len(result) == 1 && completionFunc != "" {
-		if f, ok := funcs[completionFunc]; !ok {
-			f(p.argsCtx)
+		if f, ok := funcs[completionFunc]; ok {
+			// TODO: on one hand it's simpler to format here | 2023-08-30
+			// on the other we could let user to format, but then we would need to expose formatCompletion with shell as argument instead of app
+			// and let user to format by him self if needed
+
+			// TODO: directive is cut, and not used | 2023-08-30
+			res, _ := f(p.argsCtx)
+			result = []string{}
+			for _, item := range res {
+				result = append(result, formatCompletion(p, item[0], item[1]))
+			}
 		}
 	}
 
