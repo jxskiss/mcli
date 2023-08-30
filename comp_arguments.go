@@ -69,20 +69,31 @@ type ArgCompletionFunc func(ctx ArgCompletionContext) ([]string, ShellCompDirect
 type ArgCompletionContext interface {
 	context.Context
 
+	Args() []string
 	// TODO
 }
 
 type compContextImpl struct {
 	*Context
-	app *App
+	app      *App
+	userArgs []string
 
 	// TODO
 }
 
+func (c compContextImpl) Args() []string {
+	return c.userArgs
+}
+
+// func (c compContextImpl) App() []string {
+// 	return c.app
+// }
+
+// WithArgCompFuncs for struct holding completion functions for use with flags and args completions
 func WithArgCompFuncs(funcMap map[string]ArgCompletionFunc) ParseOpt {
 	return ParseOpt{
 		f: func(options *parseOptions) {
-			// FIXME
+			options.argCompFuncs = funcMap
 		},
 	}
 }

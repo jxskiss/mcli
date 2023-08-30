@@ -66,18 +66,21 @@ type App struct {
 	groups      map[string]bool
 	globalFlags any
 
-	ctx *parsingContext
+	ctx     *parsingContext
+	argsCtx *compContextImpl
 
 	completionCmdName string
 	isCompletion      bool
 	completionCtx     struct {
-		out      io.Writer // help in testing to inspect completion output
-		postFunc func()    // help in testing to not exit the program
-		shell    string
-		userArgs []string
-		cmd      *cmdTree
-		flagName string
-		flags    []*_flag
+		out           io.Writer // help in testing to inspect completion output
+		postFunc      func()    // help in testing to not exit the program
+		shell         string
+		userArgs      []string
+		cmd           *cmdTree
+		flagName      string
+		flags         []*_flag
+		flagValuePart string
+		argCompFuncs  map[string]ArgCompletionFunc
 	}
 }
 
@@ -115,6 +118,13 @@ func (p *App) getParsingContext() *parsingContext {
 	return p.ctx
 }
 
+func (p *App) getArgCompletionContext() *parsingContext {
+	if p.ctx == nil {
+		p.argsCtx = &compContextImpl{app: p}
+	}
+	return p.ctx
+}
+
 func (p *App) resetParsingContext() {
 	var fsOut io.Writer
 	if p.ctx != nil && p.ctx.fs != nil {
@@ -127,6 +137,11 @@ func (p *App) resetParsingContext() {
 func (p *App) getFlagSet() *flag.FlagSet {
 	return p.getParsingContext().getFlagSet()
 }
+
+// type argsContext struct {
+// 	app          *App
+// 	argCompFuncs map[string]ArgCompletionFunc
+// }
 
 type parsingContext struct {
 	app     *App
@@ -520,6 +535,7 @@ func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 }
 
 func (p *App) setupCompletionCtx(userArgs []string, completionShell string) {
+	// TODO ?
 	p.isCompletion = true
 	if p.completionCtx.out == nil {
 		p.completionCtx.out = os.Stdout
@@ -618,6 +634,7 @@ func (p *App) parseArgs(v any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	// For flags completion, just parsing the args definition is enough,
 	// don't bother to parse the command arguments and really run the command.
 	if p.isCompletion {
+		p.completionCtx.argCompFuncs = ctx.opts.argCompFuncs
 		p.completionCtx.flags = ctx.flags
 		p.continueFlagCompletion()
 		p.completionCtx.postFunc()

@@ -10,6 +10,16 @@ import (
 
 const completionFlag = "--mcli-generate-completion"
 
+type completionMethod struct {
+	flag          bool
+	flagName      string
+	flagValue     bool
+	flagValuePart string
+	command       bool
+	userArgs      []string
+	commandValue  bool
+}
+
 func getAllowedShells() []string {
 	return []string{"bash", "zsh", "fish", "powershell"}
 }
@@ -30,45 +40,107 @@ func hasCompletionFlag(args []string) (bool, []string, string) {
 	return true, args, shell
 }
 
-func isFlagCompletion(args []string) (isFlag bool, flagName string, userArgs []string) {
+func completedCommands(args []string, c commands) []string {
+	catched := []string{}
+	line := strings.Join(args, " ")
+	for _, item := range c {
+		if strings.HasPrefix(item.Name, line) && len(line) < len(item.Name) {
+			catched = append(catched, item.Name)
+		}
+	}
+	return catched
+}
+
+func detectCompletionMethod(args []string, c commands) completionMethod {
 	var lastArg string
+	var penultimateArg string
 	if len(args) > 0 {
 		lastArg = args[len(args)-1]
 	}
+	if len(args) > 1 {
+		penultimateArg = args[len(args)-2]
+	}
+	fmt.Println(lastArg)
+	fmt.Println(penultimateArg)
+	fmt.Println(args)
+
 	if strings.HasPrefix(lastArg, "-") {
-		return true, lastArg, args[:len(args)-1]
+		return completionMethod{
+			flag:     true,
+			flagName: lastArg,
+			userArgs: args[:len(args)-1],
+		}
+
+		// jeśli flaga jest pełna podpowiadaj wartość
+	}
+
+	if strings.HasPrefix(penultimateArg, "-") {
+		return completionMethod{
+			flagValue:     true,
+			flagName:      penultimateArg,
+			flagValuePart: lastArg,
+			userArgs:      args,
+		}
+	}
+
+	// completing command
+	catched := completedCommands(args, c)
+	fmt.Println(len(catched))
+	if len(catched) >= 1 {
+		fmt.Printf("%#v", catched)
+		return completionMethod{
+			command:  true,
+			flagName: "",
+			userArgs: args,
+		}
+	}
+
+	if len(catched) == 0 {
+		return completionMethod{
+			flagName:     "",
+			userArgs:     args,
+			commandValue: true,
+		}
 	}
 
 	// User has provided other flags, this completion request is for another flag.
-	hasFlag := false
-	// for _, arg := range args {
-	// 	if strings.HasPrefix(arg, "-") {
-	// 		hasFlag = true
-	// 	}
-	// }
-	return hasFlag, "", args
+	return completionMethod{
+		flagName: "",
+		userArgs: args,
+	}
 }
 
 // TODO: isFlagValueCompletion
 
-// TODO: isPositionalArgCompletion
+// TODO: flag value completion and positional arguments completion
 
+// 'server s' -- argument poprzedzający brak lub komenda -> uzupełniamy komendę/subkomendę
+// - jeśli nie ma dalszych subkomend? jak idzie sprawdzić to generowanie flag
+//
+// 'server s8 -' - uzupelnienie flagi
+// 'server s8 --x2 ' - uzupełnienie wartości flagi
+// 'server s8 --x2 v' - uzupełnienie wartości flagi
 func (p *App) doAutoCompletion(args []string) {
 	tree := p.parseCompletionInfo()
-	isFlag, flagName, userArgs := isFlagCompletion(args)
-	// for _, item := range numbers {
-	// 	fmt.Printf(item)<{+}>
-	// }
-	// fmt.Printf("cfs %#v", tree.Cmd.app.completionCtx.flags)
+	cm := detectCompletionMethod(args, p.cmds)
+	fmt.Printf("%#v\n", cm)
 
-	// TODO: flag value completion and positional arguments completion
-
-	if isFlag {
-		tree.suggestFlags(p, userArgs, flagName)
+	if cm.command {
+		fmt.Println("call suggestCommands")
+		tree.suggestCommands(p, cm)
+	} else if cm.commandValue {
+		fmt.Println("call TODO command argument function")
+		tree.suggestFlags(p, cm)
+	} else if cm.flagValue {
+		fmt.Println("call TODO flag argument function")
+		tree.suggestFlags(p, cm)
+	} else if cm.flag {
+		fmt.Println("call suggestFlags")
+		tree.suggestFlags(p, cm)
 	} else {
-		checkFlag := tree.suggestCommands(p, userArgs)
+		checkFlag := tree.suggestCommands(p, cm)
 		if checkFlag {
-			tree.suggestFlags(p, userArgs, "")
+			tree.suggestFlags(p, cm)
 		}
 	}
 }
@@ -120,11 +192,12 @@ func (t *cmdTree) add(cmd *Command) {
 	}
 }
 
-func (t *cmdTree) suggestCommands(app *App, cmdNames []string) (checkFlag bool) {
+func (t *cmdTree) suggestCommands(app *App, cm completionMethod) (checkFlag bool) {
+	userArgs := cm.userArgs
 	cur := t
 	i := 0
-	for i < len(cmdNames)-1 {
-		name := cmdNames[i]
+	for i < len(userArgs)-1 {
+		name := userArgs[i]
 		cur = cur.SubTree[name]
 		if cur == nil || (cur.Cmd != nil && cur.Cmd.isCompletion) {
 			return false
@@ -133,8 +206,8 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) (checkFlag bool) 
 	}
 	gotCmd := true
 	lastWord := ""
-	if len(cmdNames) > 0 {
-		lastWord = cmdNames[len(cmdNames)-1]
+	if len(userArgs) > 0 {
+		lastWord = userArgs[len(userArgs)-1]
 		if n, ok := cur.SubTree[lastWord]; ok {
 			cur = n
 		} else {
@@ -175,8 +248,9 @@ func (t *cmdTree) suggestCommands(app *App, cmdNames []string) (checkFlag bool) 
 	return false
 }
 
-func (t *cmdTree) suggestFlags(app *App, userArgs []string, flagName string) {
-	cmdNames := userArgs
+func (t *cmdTree) suggestFlags(app *App, cm completionMethod) {
+	cmdNames := cm.userArgs
+	userArgs := cm.userArgs
 	flagIdx := -1
 	for i, arg := range userArgs {
 		if strings.HasPrefix(arg, "-") {
@@ -208,7 +282,8 @@ func (t *cmdTree) suggestFlags(app *App, userArgs []string, flagName string) {
 	// Parse flags for the command,
 	// then transmit the executing to the parsing function.
 	app.completionCtx.cmd = cur
-	app.completionCtx.flagName = flagName
+	app.completionCtx.flagName = cm.flagName
+	app.completionCtx.flagValuePart = cm.flagValuePart
 	cur.Cmd.f()
 }
 
@@ -247,36 +322,51 @@ func (p *App) continueFlagCompletion() {
 
 	flagName := p.completionCtx.flagName
 	flags := p.completionCtx.flags
+	funcs := p.completionCtx.argCompFuncs
 
 	result := make([]string, 0, 16)
-	hyphenCount, flagName := countFlagPrefixHyphen(flagName)
-	if hyphenCount <= 1 {
-		for _, flag := range flags {
-			if flag.short != "" && strings.HasPrefix(flag.short, flagName) &&
-				(flag.isCompositeType() || !isSeenFlag(flag)) {
-				usage := getUsage(flag)
-				suggestion := formatCompletion(p, "-"+flag.short, usage)
-				result = append(result, suggestion)
-			} else if flag.name != "" && strings.HasPrefix(flag.name, flagName) &&
-				(flag.isCompositeType() || !isSeenFlag(flag)) {
-				usage := getUsage(flag)
-				suggestion := formatCompletion(p, "--"+flag.name, usage)
-				result = append(result, suggestion)
-			}
-		}
-	} else {
-		for _, flag := range flags {
+	// hyphenCount, flagName := countFlagPrefixHyphen(flagName)
+	// fmt.Println(hyphenCount)
+	completionFunc := ""
+
+	for _, flag := range flags {
+		usage := getUsage(flag)
+		flagShort := "-" + flag.short
+		flagLong := "--" + flag.name
+		fmt.Printf("Checking flag %s:%s\n", flag.short, flagLong)
+		if flagShort != "" && strings.HasPrefix(flagShort, flagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
+
 			if flag.completionFunction != "" {
-				fmt.Printf("flag %s completion %s\n", flag.name, flag.completionFunction)
+				if len(flagName) == len(flagShort) {
+					// fmt.Printf("flag %s completion %s\n", flagShort, flag.completionFunction)
+					completionFunc = flag.completionFunction
+				}
 			}
 
-			if flag.name != "" && strings.HasPrefix(flag.name, flagName) &&
-				(flag.isCompositeType() || !isSeenFlag(flag)) {
-				suggestion := formatCompletion(p, "--"+flag.name, getUsage(flag))
-				result = append(result, suggestion)
+			suggestion := formatCompletion(p, flagShort, usage)
+			// fmt.Printf("hit short %s\n", flagShort)
+			result = append(result, suggestion)
+
+		} else if flagLong != "" && strings.HasPrefix(flagLong, flagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
+
+			if flag.completionFunction != "" {
+				if len(flagName) == len(flagLong) {
+					// fmt.Printf("flag %s completion %s\n", flagLong, flag.completionFunction)
+					completionFunc = flag.completionFunction
+				}
 			}
+			suggestion := formatCompletion(p, flagLong, usage)
+			// fmt.Printf("hit long %s\n", flagLong)
+			result = append(result, suggestion)
 		}
 	}
+	fmt.Println(len(result))
+	if len(result) == 1 && completionFunc != "" {
+		if f, ok := funcs[completionFunc]; !ok {
+			f(p.argsCtx)
+		}
+	}
+
 	printLines(p.completionCtx.out, result)
 }
 
