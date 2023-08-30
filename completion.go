@@ -60,9 +60,6 @@ func detectCompletionMethod(args []string, c commands) completionMethod {
 	if len(args) > 1 {
 		penultimateArg = args[len(args)-2]
 	}
-	fmt.Println(lastArg)
-	fmt.Println(penultimateArg)
-	fmt.Println(args)
 
 	if strings.HasPrefix(lastArg, "-") {
 		return completionMethod{
@@ -85,9 +82,7 @@ func detectCompletionMethod(args []string, c commands) completionMethod {
 
 	// completing command
 	catched := completedCommands(args, c)
-	fmt.Println(len(catched))
 	if len(catched) >= 1 {
-		fmt.Printf("%#v", catched)
 		return completionMethod{
 			command:  true,
 			flagName: "",
@@ -123,19 +118,13 @@ func detectCompletionMethod(args []string, c commands) completionMethod {
 func (p *App) doAutoCompletion(args []string) {
 	tree := p.parseCompletionInfo()
 	cm := detectCompletionMethod(args, p.cmds)
-	fmt.Printf("%#v\n", cm)
 
 	if cm.command {
-		fmt.Println("call suggestCommands")
 		tree.suggestCommands(p, cm)
 	} else if cm.commandValue {
 		fmt.Println("call TODO command argument function")
 		tree.suggestFlags(p, cm)
-	} else if cm.flagValue {
-		fmt.Println("call TODO flag argument function")
-		tree.suggestFlags(p, cm)
-	} else if cm.flag {
-		fmt.Println("call suggestFlags")
+	} else if cm.flag || cm.flagValue {
 		tree.suggestFlags(p, cm)
 	} else {
 		checkFlag := tree.suggestCommands(p, cm)
@@ -325,42 +314,34 @@ func (p *App) continueFlagCompletion() {
 	funcs := p.completionCtx.argCompFuncs
 
 	result := make([]string, 0, 16)
-	// hyphenCount, flagName := countFlagPrefixHyphen(flagName)
-	// fmt.Println(hyphenCount)
 	completionFunc := ""
 
 	for _, flag := range flags {
 		usage := getUsage(flag)
 		flagShort := "-" + flag.short
 		flagLong := "--" + flag.name
-		fmt.Printf("Checking flag %s:%s\n", flag.short, flagLong)
-		if flagShort != "" && strings.HasPrefix(flagShort, flagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
-
+		if flagShort != "" && flagShort != "-" && strings.HasPrefix(flagShort, flagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
 			if flag.completionFunction != "" {
 				if len(flagName) == len(flagShort) {
-					// fmt.Printf("flag %s completion %s\n", flagShort, flag.completionFunction)
 					completionFunc = flag.completionFunction
 				}
 			}
 
 			suggestion := formatCompletion(p, flagShort, usage)
-			// fmt.Printf("hit short %s\n", flagShort)
 			result = append(result, suggestion)
+		}
 
-		} else if flagLong != "" && strings.HasPrefix(flagLong, flagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
-
+		if flagLong != "" && flagLong != "--" && strings.HasPrefix(flagLong, flagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
 			if flag.completionFunction != "" {
 				if len(flagName) == len(flagLong) {
-					// fmt.Printf("flag %s completion %s\n", flagLong, flag.completionFunction)
 					completionFunc = flag.completionFunction
 				}
 			}
 			suggestion := formatCompletion(p, flagLong, usage)
-			// fmt.Printf("hit long %s\n", flagLong)
 			result = append(result, suggestion)
 		}
 	}
-	fmt.Println(len(result))
+
 	if len(result) == 1 && completionFunc != "" {
 		if f, ok := funcs[completionFunc]; ok {
 			// TODO: on one hand it's simpler to format here | 2023-08-30
@@ -377,6 +358,8 @@ func (p *App) continueFlagCompletion() {
 	}
 
 	printLines(p.completionCtx.out, result)
+	// TODO: use directive | 2023-08-30
+	// printLines(p.completionCtx.out, directive)
 }
 
 func countFlagPrefixHyphen(flagName string) (int, string) {

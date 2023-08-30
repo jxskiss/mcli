@@ -118,11 +118,15 @@ func (p *App) getParsingContext() *parsingContext {
 	return p.ctx
 }
 
-func (p *App) getArgCompletionContext() *parsingContext {
-	if p.ctx == nil {
-		p.argsCtx = &compContextImpl{app: p}
+func (p *App) getArgCompletionContext() *compContextImpl {
+	withoutCompletionFlags := len(os.Args[1:]) - 1
+	if p.argsCtx == nil {
+		p.argsCtx = &compContextImpl{
+			app:  p,
+			args: os.Args[1:withoutCompletionFlags],
+		}
 	}
-	return p.ctx
+	return p.argsCtx
 }
 
 func (p *App) resetParsingContext() {
@@ -535,7 +539,6 @@ func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 }
 
 func (p *App) setupCompletionCtx(userArgs []string, completionShell string) {
-	// TODO ?
 	p.isCompletion = true
 	if p.completionCtx.out == nil {
 		p.completionCtx.out = os.Stdout
@@ -634,6 +637,7 @@ func (p *App) parseArgs(v any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	// For flags completion, just parsing the args definition is enough,
 	// don't bother to parse the command arguments and really run the command.
 	if p.isCompletion {
+		p.getArgCompletionContext()
 		p.completionCtx.argCompFuncs = ctx.opts.argCompFuncs
 		p.completionCtx.flags = ctx.flags
 		p.continueFlagCompletion()

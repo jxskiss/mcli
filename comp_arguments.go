@@ -75,14 +75,15 @@ type ArgCompletionContext interface {
 
 type compContextImpl struct {
 	*Context
-	app      *App
-	userArgs []string
+	app           *App
+	args          []string
+	flagValuePart string
 
 	// TODO
 }
 
 func (c compContextImpl) Args() []string {
-	return c.userArgs
+	return c.args
 }
 
 // func (c compContextImpl) App() []string {
