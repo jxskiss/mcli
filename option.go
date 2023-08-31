@@ -104,6 +104,7 @@ type cmdOptions struct {
 	category             string
 	longDesc             string
 	enableFlagCompletion bool
+	argCompFunc          ArgCompletionFunc
 }
 
 func (p *cmdOptions) apply(opts ...CmdOpt) *cmdOptions {

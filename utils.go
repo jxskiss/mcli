@@ -1,6 +1,8 @@
 package mcli
 
-import "strings"
+import (
+	"strings"
+)
 
 func clip[S ~[]E, E any](s S) S {
 	return s[:len(s):len(s)]
@@ -40,4 +42,17 @@ func contains(a []string, x string) bool {
 func trimPrefix(s, prefix string) string {
 	s = strings.TrimPrefix(s, prefix)
 	return strings.TrimSpace(s)
+}
+
+// reverse passed slice using generics
+func reverse[T any](original []T) (reversed []T) {
+	reversed = make([]T, len(original))
+	copy(reversed, original)
+
+	for i := len(reversed)/2 - 1; i >= 0; i-- {
+		tmp := len(reversed) - 1 - i
+		reversed[i], reversed[tmp] = reversed[tmp], reversed[i]
+	}
+
+	return
 }

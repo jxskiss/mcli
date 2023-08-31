@@ -72,15 +72,14 @@ type App struct {
 	completionCmdName string
 	isCompletion      bool
 	completionCtx     struct {
-		out           io.Writer // help in testing to inspect completion output
-		postFunc      func()    // help in testing to not exit the program
-		shell         string
-		userArgs      []string
-		cmd           *cmdTree
-		flagName      string
-		flags         []*_flag
-		flagValuePart string
-		argCompFuncs  map[string]ArgCompletionFunc
+		out          io.Writer // help in testing to inspect completion output
+		postFunc     func()    // help in testing to not exit the program
+		shell        string
+		userArgs     []string
+		cmd          *cmdTree
+		flagName     string
+		flags        []*_flag
+		argCompFuncs map[string]ArgCompletionFunc
 	}
 }
 

@@ -70,16 +70,12 @@ type ArgCompletionContext interface {
 	context.Context
 
 	Args() []string
-	// TODO
 }
 
 type compContextImpl struct {
 	*Context
-	app           *App
-	args          []string
-	flagValuePart string
-
-	// TODO
+	app  *App
+	args []string
 }
 
 func (c compContextImpl) Args() []string {
@@ -90,13 +86,20 @@ func (c compContextImpl) Args() []string {
 // 	return c.app
 // }
 
-// WithArgCompFuncs for struct holding completion functions for use with flags and args completions
+// WithArgCompFuncs for struct holding completion functions for use with flags args completion
 func WithArgCompFuncs(funcMap map[string]ArgCompletionFunc) ParseOpt {
 	return ParseOpt{
 		f: func(options *parseOptions) {
 			options.argCompFuncs = funcMap
 		},
 	}
+}
+
+// WithCommandCompFuncs for holding completion functions for use with args completions
+func WithCommandCompFunc(function ArgCompletionFunc) CmdOpt {
+	return CmdOpt{f: func(options *cmdOptions) {
+		options.argCompFunc = function
+	}}
 }
 
 func compByFunc(funcName string) ArgCompletionFunc {

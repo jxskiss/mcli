@@ -11,13 +11,13 @@ import (
 const completionFlag = "--mcli-generate-completion"
 
 type completionMethod struct {
-	flag          bool
-	flagName      string
-	flagValue     bool
-	flagValuePart string
-	command       bool
-	userArgs      []string
-	commandValue  bool
+	isFlag       bool
+	flagName     string
+	isFlagValue  bool
+	isCommand    bool
+	foundCommand *Command
+	userArgs     []string
+	isCommandArg bool
 }
 
 func getAllowedShells() []string {
@@ -40,61 +40,55 @@ func hasCompletionFlag(args []string) (bool, []string, string) {
 	return true, args, shell
 }
 
-func completedCommands(args []string, c commands) []string {
-	catched := []string{}
+func completedCommand(args []string, c commands) *Command {
+	cReversed := reverse(c)
 	line := strings.Join(args, " ")
-	for _, item := range c {
-		if strings.HasPrefix(item.Name, line) && len(line) < len(item.Name) {
-			catched = append(catched, item.Name)
+	for _, item := range cReversed {
+		if strings.HasPrefix(line, item.Name) {
+			return item
 		}
 	}
-	return catched
+	return nil
 }
 
 func detectCompletionMethod(args []string, c commands) completionMethod {
 	var lastArg string
-	var penultimateArg string
 	if len(args) > 0 {
 		lastArg = args[len(args)-1]
 	}
-	if len(args) > 1 {
-		penultimateArg = args[len(args)-2]
+
+	if lastArg == "-" {
+		return completionMethod{
+			isFlag:   true,
+			flagName: lastArg,
+			userArgs: args[:len(args)-1],
+		}
 	}
 
 	if strings.HasPrefix(lastArg, "-") {
 		return completionMethod{
-			flag:     true,
-			flagName: lastArg,
-			userArgs: args[:len(args)-1],
-		}
-
-		// jeśli flaga jest pełna podpowiadaj wartość
-	}
-
-	if strings.HasPrefix(penultimateArg, "-") {
-		return completionMethod{
-			flagValue:     true,
-			flagName:      penultimateArg,
-			flagValuePart: lastArg,
-			userArgs:      args,
+			isFlagValue: true,
+			flagName:    lastArg,
+			userArgs:    args,
 		}
 	}
 
-	// completing command
-	catched := completedCommands(args, c)
-	if len(catched) >= 1 {
-		return completionMethod{
-			command:  true,
-			flagName: "",
-			userArgs: args,
-		}
-	}
-
-	if len(catched) == 0 {
-		return completionMethod{
-			flagName:     "",
-			userArgs:     args,
-			commandValue: true,
+	catched := completedCommand(args, c)
+	if catched != nil {
+		if catched.isGroup {
+			return completionMethod{
+				isCommand:    true,
+				flagName:     "",
+				userArgs:     args,
+				foundCommand: catched,
+			}
+		} else {
+			return completionMethod{
+				flagName:     "",
+				userArgs:     args,
+				isCommandArg: true,
+				foundCommand: catched,
+			}
 		}
 	}
 
@@ -105,13 +99,9 @@ func detectCompletionMethod(args []string, c commands) completionMethod {
 	}
 }
 
-// TODO: isFlagValueCompletion
-
-// TODO: flag value completion and positional arguments completion
-
+// TODO: cleanup - use in tests | 2023-08-31
 // 'server s' -- argument poprzedzający brak lub komenda -> uzupełniamy komendę/subkomendę
 // - jeśli nie ma dalszych subkomend? jak idzie sprawdzić to generowanie flag
-//
 // 'server s8 -' - uzupelnienie flagi
 // 'server s8 --x2 ' - uzupełnienie wartości flagi
 // 'server s8 --x2 v' - uzupełnienie wartości flagi
@@ -119,13 +109,17 @@ func (p *App) doAutoCompletion(args []string) {
 	tree := p.parseCompletionInfo()
 	cm := detectCompletionMethod(args, p.cmds)
 
-	if cm.command {
+	if cm.isCommand {
 		tree.suggestCommands(p, cm)
-	} else if cm.commandValue {
-		fmt.Println("call TODO command argument function")
+	} else if cm.isCommandArg {
+		tree.suggestCommandArgs(p, cm)
+	} else if cm.isFlag {
 		tree.suggestFlags(p, cm)
-	} else if cm.flag || cm.flagValue {
-		tree.suggestFlags(p, cm)
+	} else if cm.isFlagValue {
+		checkCommandArg := tree.suggestFlags(p, cm)
+		if checkCommandArg {
+			tree.suggestCommandArgs(p, cm)
+		}
 	} else {
 		checkFlag := tree.suggestCommands(p, cm)
 		if checkFlag {
@@ -237,43 +231,43 @@ func (t *cmdTree) suggestCommands(app *App, cm completionMethod) (checkFlag bool
 	return false
 }
 
-func (t *cmdTree) suggestFlags(app *App, cm completionMethod) {
-	cmdNames := cm.userArgs
-	userArgs := cm.userArgs
-	flagIdx := -1
-	for i, arg := range userArgs {
-		if strings.HasPrefix(arg, "-") {
-			flagIdx = i
-			break
+func (t *cmdTree) suggestCommandArgs(app *App, cm completionMethod) {
+	result := []string{}
+	cmdOpts := newCmdOptions(cm.foundCommand.cmdOpts...)
+	app.argsCtx = &compContextImpl{
+		app:  app,
+		args: cm.userArgs,
+	}
+	f := cmdOpts.argCompFunc
+	if f != nil {
+		res, _ := f(app.argsCtx)
+		for _, item := range res {
+			result = append(result, formatCompletion(app, item[0], item[1]))
 		}
 	}
-	if flagIdx >= 0 {
-		cmdNames = userArgs[:flagIdx]
-	}
-	cur := t
-	for _, name := range cmdNames {
-		cur = cur.SubTree[name]
-		if cur == nil {
-			return
-		}
-	}
-	if cur.Cmd == nil || cur.Cmd.isGroup || cur.Cmd.isCompletion {
-		return
+	printLines(app.completionCtx.out, result)
+	// TODO: directive is cut, and not used | 2023-08-30
+	// printLines(p.completionCtx.out, directive)
+}
+
+func (t *cmdTree) suggestFlags(app *App, cm completionMethod) bool {
+	cmd := completedCommand(cm.userArgs, app.cmds)
+	if cmd == nil || cmd.isGroup || cmd.isCompletion {
+		return false
 	}
 
 	// Check that flag completion is enabled for the command.
-	cmdOpts := newCmdOptions(cur.Cmd.cmdOpts...)
+	cmdOpts := newCmdOptions(cmd.cmdOpts...)
 	isCmdFlagEnabled := app.EnableFlagCompletionForAllCommands || cmdOpts.enableFlagCompletion
 	if !isCmdFlagEnabled {
-		return
+		return true
 	}
 
 	// Parse flags for the command,
 	// then transmit the executing to the parsing function.
-	app.completionCtx.cmd = cur
 	app.completionCtx.flagName = cm.flagName
-	app.completionCtx.flagValuePart = cm.flagValuePart
-	cur.Cmd.f()
+	cmd.f()
+	return true
 }
 
 func (p *App) continueFlagCompletion() {
@@ -344,22 +338,19 @@ func (p *App) continueFlagCompletion() {
 
 	if len(result) == 1 && completionFunc != "" {
 		if f, ok := funcs[completionFunc]; ok {
-			// TODO: on one hand it's simpler to format here | 2023-08-30
-			// on the other we could let user to format, but then we would need to expose formatCompletion with shell as argument instead of app
-			// and let user to format by him self if needed
-
-			// TODO: directive is cut, and not used | 2023-08-30
 			res, _ := f(p.argsCtx)
 			result = []string{}
 			for _, item := range res {
 				result = append(result, formatCompletion(p, item[0], item[1]))
 			}
+		} else {
+			panic(fmt.Sprintf("mcli: flag argument completion called not passed function '%s'", completionFunc))
 		}
 	}
 
-	printLines(p.completionCtx.out, result)
-	// TODO: use directive | 2023-08-30
+	// TODO: directive is cut, and not used | 2023-08-30
 	// printLines(p.completionCtx.out, directive)
+	printLines(p.completionCtx.out, result)
 }
 
 func countFlagPrefixHyphen(flagName string) (int, string) {
