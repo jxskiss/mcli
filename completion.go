@@ -79,13 +79,11 @@ func detectCompletionMethod(args []string, c commands) completionMethod {
 		if catched.isGroup {
 			return completionMethod{
 				isCommand:    true,
-				flagName:     "",
 				userArgs:     args,
 				foundCommand: catched,
 			}
 		} else {
 			return completionMethod{
-				flagName:     "",
 				userArgs:     args,
 				isCommandArg: true,
 				foundCommand: catched,
@@ -95,17 +93,10 @@ func detectCompletionMethod(args []string, c commands) completionMethod {
 
 	// User has provided other flags, this completion request is for another flag.
 	return completionMethod{
-		flagName: "",
 		userArgs: args,
 	}
 }
 
-// TODO: cleanup - use in tests | 2023-08-31
-// 'server s' -- argument poprzedzający brak lub komenda -> uzupełniamy komendę/subkomendę
-// - jeśli nie ma dalszych subkomend? jak idzie sprawdzić to generowanie flag
-// 'server s8 -' - uzupelnienie flagi
-// 'server s8 --x2 ' - uzupełnienie wartości flagi
-// 'server s8 --x2 v' - uzupełnienie wartości flagi
 func (p *App) doAutoCompletion(args []string) {
 	tree := p.parseCompletionInfo()
 	cm := detectCompletionMethod(args, p.cmds)
@@ -328,9 +319,7 @@ func (p *App) continueFlagCompletion() {
 			}
 
 			suggestion := formatCompletion(p, "-"+flag.short, usage)
-			if !slices.Contains(p.completionCtx.userArgs, "-"+flag.short) {
-				result = append(result, suggestion)
-			}
+			result = append(result, suggestion)
 		}
 
 		if flag.name != "" && flag.name != "--" && strings.HasPrefix(flag.name, cleanFlagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
@@ -340,9 +329,7 @@ func (p *App) continueFlagCompletion() {
 				}
 			}
 			suggestion := formatCompletion(p, "--"+flag.name, usage)
-			if !slices.Contains(p.completionCtx.userArgs, "--"+flag.name) {
-				result = append(result, suggestion)
-			}
+			result = append(result, suggestion)
 		}
 	}
 

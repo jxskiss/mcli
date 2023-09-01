@@ -225,7 +225,7 @@ func TestSuggestFlags(t *testing.T) {
 	reset()
 	Run("group1", "cmd3", "-a", completionFlag, "zsh")
 	got2 := buf.String()
-	assert.NotContains(t, got2, "-a:description a flag\n")
+	assert.Contains(t, got2, "-a:description a flag\n")
 	assert.NotContains(t, got2, "-1")
 	assert.Contains(t, got2, "--a1-flag")
 	assert.Contains(t, got2, "--a2-flag:description b flag")
@@ -241,12 +241,12 @@ func TestSuggestFlags(t *testing.T) {
 	Run("group1", "cmd3", "-j", completionFlag, "zsh")
 	got4 := buf.String()
 	assert.NotContains(t, got4, "-a")
-	assert.NotContains(t, got4, "-j:description j flag\n")
+	assert.Contains(t, got4, "-j:description j flag\n")
 
 	reset()
 	Run("group1", "cmd3", "-j", "abc", "-j", completionFlag, "zsh")
 	got5 := buf.String()
-	assert.NotContains(t, got5, "-j:description j flag\n")
+	assert.Contains(t, got5, "-j:description j flag\n")
 
 	reset()
 	Run("group1", "cmd3", "-b", "5", "-j", "abc", "--", completionFlag, "zsh")
@@ -282,6 +282,166 @@ func TestSuggestFlags(t *testing.T) {
 		got := buf.String()
 		assert.Zero(t, got)
 	})
+}
+
+func flagArguments(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
+	// fmt.Printf("%s, %#v\n", config, ctx.Args())
+	return [][]string{
+		{"alfa", "description alfa"},
+		{"beta", "description beta"},
+	}, ShellCompDirectiveFilterDirs
+}
+
+func TestSuggestFlagArgs(t *testing.T) {
+	resetDefaultApp()
+	addTestCompletionCommands()
+
+	funcs := make(map[string]ArgCompletionFunc)
+	funcs["flagArguments"] = flagArguments
+
+	testCmd := func() {
+		args := &struct {
+			A  bool `cli:"-a,  -a-flag, description a flag" cmpl:"flagArguments"`
+			A1 bool `cli:"-1,  -a1-flag"`
+		}{}
+		Parse(args, WithArgCompFuncs(funcs))
+	}
+	Add("group1 cmd3", testCmd, "A group1 cmd3 description",
+		EnableFlagCompletion())
+
+	var buf bytes.Buffer
+	defaultApp.completionCtx.out = &buf
+
+	reset := func() {
+		buf.Reset()
+		defaultApp.resetParsingContext()
+	}
+
+	reset()
+	Run("group1", "cmd3", "-a", completionFlag, "zsh")
+	flagWithFunction := buf.String()
+	assert.Equal(t, flagWithFunction, "alfa:description alfa\nbeta:description beta\n")
+
+	// TODO: bug? suggestion of same flag right after? when one? | 2023-09-01
+	reset()
+	Run("group1", "cmd3", "-1", completionFlag, "zsh")
+	flagWoWithFunction := buf.String()
+	assert.Equal(t, flagWoWithFunction, "-1\n")
+}
+
+func commandArguments(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
+	// fmt.Printf("%s, %#v\n", config, ctx.Args())
+	return [][]string{
+		{"value a", "description of value a"},
+		{"value b", "description of value b"},
+	}, ShellCompDirectiveFilterDirs
+}
+
+func TestSuggestCommandArgs(t *testing.T) {
+	resetDefaultApp()
+	addTestCompletionCommands()
+
+	testCmd := func() {
+		args := &struct {
+			A  bool `cli:"-a,  -a-flag, description a flag"`
+			A1 bool `cli:"-1,  -a1-flag"`
+		}{}
+		Parse(args)
+	}
+	Add("group1 cmdv", testCmd, "A group1 cmd2 description",
+		WithCommandCompFunc(commandArguments),
+		EnableFlagCompletion(),
+	)
+	Add("group1 cmd3", testCmd, "A group1 cmd3 description",
+		EnableFlagCompletion(),
+	)
+
+	var buf bytes.Buffer
+	defaultApp.completionCtx.out = &buf
+
+	reset := func() {
+		buf.Reset()
+		defaultApp.resetParsingContext()
+	}
+
+	reset()
+	Run("group1", "cmdv", completionFlag, "zsh")
+	commandWithFunction := buf.String()
+	assert.Equal(t, commandWithFunction, "value a:description of value a\nvalue b:description of value b\n")
+
+	reset()
+	Run("group1", "cmdv", "value a", completionFlag, "zsh")
+	commandWithFunctionAgain := buf.String()
+	assert.Equal(t, commandWithFunctionAgain, "value a:description of value a\nvalue b:description of value b\n")
+
+	reset()
+	Run("group1", "cmd3", completionFlag, "zsh")
+	commandWoWithFunction := buf.String()
+	assert.Equal(t, commandWoWithFunction, "")
+}
+
+func TestSuggestArgsMixed(t *testing.T) {
+	resetDefaultApp()
+	addTestCompletionCommands()
+
+	funcs := make(map[string]ArgCompletionFunc)
+	funcs["flagArguments"] = flagArguments
+
+	testCmd := func() {
+		args := &struct {
+			A  []string `cli:"-a,  -a-flag, description a flag" cmpl:"flagArguments"`
+			A1 bool     `cli:"-1,  -1-flag"`
+			S1 bool     `cli:"-s0,  --s0-flag" cmpl:"flagArguments"`
+			S2 bool     `cli:"-s1,  --s1-flag" cmpl:"flagArguments"`
+		}{}
+		Parse(args, WithArgCompFuncs(funcs))
+	}
+	Add("group1 cmdv", testCmd, "A group1 cmd2 description",
+		WithCommandCompFunc(commandArguments),
+		EnableFlagCompletion(),
+	)
+	Add("group1 cmd3", testCmd, "A group1 cmd3 description",
+		EnableFlagCompletion(),
+	)
+
+	var buf bytes.Buffer
+	defaultApp.completionCtx.out = &buf
+
+	reset := func() {
+		buf.Reset()
+		defaultApp.resetParsingContext()
+	}
+
+	reset()
+	Run("group1", "cmdv", completionFlag, "zsh")
+	got1 := buf.String()
+	assert.Equal(t, got1, "value a:description of value a\nvalue b:description of value b\n")
+
+	reset()
+	Run("group1", "cmdv", "value a", completionFlag, "zsh")
+	got2 := buf.String()
+	assert.Equal(t, got2, "value a:description of value a\nvalue b:description of value b\n")
+
+	reset()
+	Run("group1", "cmdv", "value a", "-a", completionFlag, "zsh")
+	got3 := buf.String()
+	assert.Equal(t, got3, "alfa:description alfa\nbeta:description beta\n")
+
+	reset()
+	Run("group1", "cmdv", "value a", "-a", "alfa", completionFlag, "zsh")
+	got4 := buf.String()
+	assert.Equal(t, got4, "value a:description of value a\nvalue b:description of value b\n")
+
+	reset()
+	Run("group1", "cmdv", "value a", "-a", "alfa", "-a", completionFlag, "zsh")
+	got5 := buf.String()
+	assert.Equal(t, got5, "alfa:description alfa\nbeta:description beta\n")
+
+	// very simiar flags, flag completion instead of value because of similarity
+	reset()
+	Run("group1", "cmdv", "value a", "-a", "alfa", "-a", "alfa", "-s", completionFlag, "zsh")
+	got6 := buf.String()
+	assert.Equal(t, got6, "--s0:--s0-flag\n--s1:--s1-flag\n")
 }
 
 func TestFormatCompletion(t *testing.T) {
@@ -347,6 +507,130 @@ func TestFormatCompletion(t *testing.T) {
 
 			got := formatCompletion(defaultApp, "option", "")
 			assert.Equal(t, got, "option")
+		})
+	}
+}
+
+func TestCompletedCommand(t *testing.T) {
+	cases := []struct {
+		args        []string
+		description string
+		command     *Command
+	}{
+		{
+			args:        []string{"group1"},
+			description: "Catches command group to suggest command",
+			command:     defaultApp.cmds[2],
+		},
+		{
+			args:        []string{"group1", "cmd3"},
+			description: "Catches longest command to suggest command",
+			command:     defaultApp.cmds[2],
+		},
+		{
+			args:        []string{"group1", "cmd3", "sub1"},
+			description: "Catches longest command to suggest command args",
+			command:     defaultApp.cmds[5],
+		},
+		{
+			args:        []string{"cmd1"},
+			description: "Catches longest command to suggest command args",
+			command:     defaultApp.cmds[0],
+		},
+		{
+			args:        []string{"cmdX"},
+			description: "Command not found",
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.description, func(t *testing.T) {
+			cm := completedCommand(tt.args, defaultApp.cmds)
+			assert.Equal(t, tt.command, cm)
+		})
+	}
+}
+
+func TestDetectCompletionMethod(t *testing.T) {
+	cases := []struct {
+		args        []string
+		description string
+		cm          completionMethod
+	}{
+		{
+			args:        []string{},
+			description: "Executes without args",
+			cm: completionMethod{
+				userArgs: []string{},
+			},
+		},
+		{
+			args:        []string{"-"},
+			description: "Detects flag when last arg is hyphen",
+			cm: completionMethod{
+				isFlag:   true,
+				flagName: "-",
+				userArgs: []string{},
+			},
+		},
+		{
+			args:        []string{"test", "-"},
+			description: "Detects flag when last arg is hyphen 2",
+			cm: completionMethod{
+				isFlag:   true,
+				flagName: "-",
+				userArgs: []string{"test"},
+			},
+		},
+		{
+			args:        []string{"test", "-a"},
+			description: "Suggests named flag arguments",
+			cm: completionMethod{
+				isFlagValue: true,
+				flagName:    "-a",
+				userArgs:    []string{"test", "-a"},
+			},
+		},
+		{
+			args:        []string{"group1"},
+			description: "Catches command group to suggest command",
+			cm: completionMethod{
+				isCommand:    true,
+				foundCommand: defaultApp.cmds[2],
+				userArgs:     []string{"group1"},
+			},
+		},
+		{
+			args:        []string{"group1", "cmd3"},
+			description: "Catches longest command to suggest command",
+			cm: completionMethod{
+				isCommand:    true,
+				foundCommand: defaultApp.cmds[2],
+				userArgs:     []string{"group1", "cmd3"},
+			},
+		},
+		{
+			args:        []string{"group1", "cmd3", "sub1"},
+			description: "Catches longest command to suggest command args",
+			cm: completionMethod{
+				isCommandArg: true,
+				foundCommand: defaultApp.cmds[5],
+				userArgs:     []string{"group1", "cmd3", "sub1"},
+			},
+		},
+		{
+			args:        []string{"cmd1"},
+			description: "Catches longest command to suggest command args",
+			cm: completionMethod{
+				isCommandArg: true,
+				foundCommand: defaultApp.cmds[0],
+				userArgs:     []string{"cmd1"},
+			},
+		},
+	}
+	for _, tt := range cases {
+		t.Run(tt.description, func(t *testing.T) {
+			cm := detectCompletionMethod(tt.args, defaultApp.cmds)
+			assert.Equal(t, tt.cm, cm)
 		})
 	}
 }
