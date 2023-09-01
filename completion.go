@@ -233,19 +233,21 @@ func (t *cmdTree) suggestCommands(app *App, cm completionMethod) (checkFlag bool
 
 func (t *cmdTree) suggestCommandArgs(app *App, cm completionMethod) {
 	result := []string{}
-	cmdOpts := newCmdOptions(cm.foundCommand.cmdOpts...)
-	app.argsCtx = &compContextImpl{
-		app:  app,
-		args: cm.userArgs,
-	}
-	f := cmdOpts.argCompFunc
-	if f != nil {
-		res, _ := f(app.argsCtx)
-		for _, item := range res {
-			result = append(result, formatCompletion(app, item[0], item[1]))
+	if cm.foundCommand != nil {
+		cmdOpts := newCmdOptions(cm.foundCommand.cmdOpts...)
+		app.argsCtx = &compContextImpl{
+			app:  app,
+			args: cm.userArgs,
 		}
+		f := cmdOpts.argCompFunc
+		if f != nil {
+			res, _ := f(app.argsCtx)
+			for _, item := range res {
+				result = append(result, formatCompletion(app, item[0], item[1]))
+			}
+		}
+		printLines(app.completionCtx.out, result)
 	}
-	printLines(app.completionCtx.out, result)
 	// TODO: directive is cut, and not used | 2023-08-30
 	// printLines(p.completionCtx.out, directive)
 }
@@ -310,33 +312,40 @@ func (p *App) continueFlagCompletion() {
 	result := make([]string, 0, 16)
 	completionFunc := ""
 
+	_, cleanFlagName := countFlagPrefixHyphen(flagName)
+
 	for _, flag := range flags {
 		usage := getUsage(flag)
-		flagShort := "-" + flag.short
-		flagLong := "--" + flag.name
-		if flagShort != "" && flagShort != "-" && strings.HasPrefix(flagShort, flagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
+		// flagShort := "--" + flag.short
+		// flagLong := "--" + flag.name
+		if flag.short != "" && flag.short != "-" && strings.HasPrefix(flag.short, cleanFlagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
 			if flag.completionFunction != "" {
-				if len(flagName) == len(flagShort) {
+				if len(cleanFlagName) == len(flag.short) {
 					completionFunc = flag.completionFunction
 				}
 			}
 
-			suggestion := formatCompletion(p, flagShort, usage)
-			result = append(result, suggestion)
+			suggestion := formatCompletion(p, "-"+flag.short, usage)
+			if !contains(p.completionCtx.userArgs, "-"+flag.short) {
+				result = append(result, suggestion)
+			}
 		}
 
-		if flagLong != "" && flagLong != "--" && strings.HasPrefix(flagLong, flagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
+		if flag.name != "" && flag.name != "--" && strings.HasPrefix(flag.name, cleanFlagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
 			if flag.completionFunction != "" {
-				if len(flagName) == len(flagLong) {
+				if len(cleanFlagName) == len(flag.name) {
 					completionFunc = flag.completionFunction
 				}
 			}
-			suggestion := formatCompletion(p, flagLong, usage)
-			result = append(result, suggestion)
+			suggestion := formatCompletion(p, "--"+flag.name, usage)
+			if !contains(p.completionCtx.userArgs, "--"+flag.name) {
+				result = append(result, suggestion)
+			}
 		}
 	}
 
-	if len(result) == 1 && completionFunc != "" {
+	// fmt.Println(result)
+	if completionFunc != "" {
 		if f, ok := funcs[completionFunc]; ok {
 			res, _ := f(p.argsCtx)
 			result = []string{}

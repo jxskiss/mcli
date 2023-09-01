@@ -225,7 +225,7 @@ func TestSuggestFlags(t *testing.T) {
 	reset()
 	Run("group1", "cmd3", "-a", completionFlag, "zsh")
 	got2 := buf.String()
-	assert.Contains(t, got2, "-a:description a flag\n")
+	assert.NotContains(t, got2, "-a:description a flag\n")
 	assert.NotContains(t, got2, "-1")
 	assert.Contains(t, got2, "--a1-flag")
 	assert.Contains(t, got2, "--a2-flag:description b flag")
@@ -241,12 +241,12 @@ func TestSuggestFlags(t *testing.T) {
 	Run("group1", "cmd3", "-j", completionFlag, "zsh")
 	got4 := buf.String()
 	assert.NotContains(t, got4, "-a")
-	assert.Contains(t, got4, "-j:description j flag\n")
+	assert.NotContains(t, got4, "-j:description j flag\n")
 
 	reset()
 	Run("group1", "cmd3", "-j", "abc", "-j", completionFlag, "zsh")
 	got5 := buf.String()
-	assert.Contains(t, got5, "-j:description j flag\n")
+	assert.NotContains(t, got5, "-j:description j flag\n")
 
 	reset()
 	Run("group1", "cmd3", "-b", "5", "-j", "abc", "--", completionFlag, "zsh")
@@ -256,18 +256,19 @@ func TestSuggestFlags(t *testing.T) {
 	assert.NotContains(t, got6, "a2-flag")
 	assert.Contains(t, got6, "--j-flag:description j flag\n")
 
-	t.Run("without trailing hyphen", func(t *testing.T) {
-		reset()
-		Run("group1", "cmd3", "-b", "5", completionFlag, "zsh")
-		got := buf.String()
-		assert.Contains(t, got, "-a:description a flag\n")
-		assert.NotContains(t, got, "description b flag")
-		assert.Contains(t, got, "-j:description j flag\n")
-	})
+	// INFO: no longer valid | 2023-09-01
+	// t.Run("without trailing hyphen", func(t *testing.T) {
+	// 	reset()
+	// 	Run("group1", "cmd3", "-b", "5", completionFlag, "zsh")
+	// 	got := buf.String()
+	// 	assert.Contains(t, got, "-a:description a flag\n")
+	// 	assert.NotContains(t, got, "description b flag")
+	// 	assert.Contains(t, got, "-j:description j flag\n")
+	// })
 
 	t.Run("leaf command", func(t *testing.T) {
 		reset()
-		Run("group1", "cmd3", "sub2", completionFlag, "zsh")
+		Run("group1", "cmd3", "sub2", "-", completionFlag, "zsh")
 		got := buf.String()
 		assert.Contains(t, got, "-a:description a flag\n")
 		assert.Contains(t, got, "-1\n")

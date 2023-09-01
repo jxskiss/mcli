@@ -30,9 +30,9 @@ func find(a []string, x string) int {
 }
 
 // contains tells whether a contains x.
-func contains(a []string, x string) bool {
-	for _, n := range a {
-		if x == n {
+func contains[T comparable](elems []T, v T) bool {
+	for _, s := range elems {
+		if v == s {
 			return true
 		}
 	}
