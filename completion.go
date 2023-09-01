@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"text/template"
 )
@@ -32,7 +33,7 @@ func hasCompletionFlag(args []string) (bool, []string, string) {
 	}
 	if completionFlagIndex < len(args)-1 {
 		proposedShell := args[completionFlagIndex+1]
-		if contains(getAllowedShells(), proposedShell) {
+		if slices.Contains(getAllowedShells(), proposedShell) {
 			shell = proposedShell
 		}
 	}
@@ -108,6 +109,7 @@ func detectCompletionMethod(args []string, c commands) completionMethod {
 func (p *App) doAutoCompletion(args []string) {
 	tree := p.parseCompletionInfo()
 	cm := detectCompletionMethod(args, p.cmds)
+	// fmt.Printf("%+v\n", cm)
 
 	if cm.isCommand {
 		tree.suggestCommands(p, cm)
@@ -326,7 +328,7 @@ func (p *App) continueFlagCompletion() {
 			}
 
 			suggestion := formatCompletion(p, "-"+flag.short, usage)
-			if !contains(p.completionCtx.userArgs, "-"+flag.short) {
+			if !slices.Contains(p.completionCtx.userArgs, "-"+flag.short) {
 				result = append(result, suggestion)
 			}
 		}
@@ -338,7 +340,7 @@ func (p *App) continueFlagCompletion() {
 				}
 			}
 			suggestion := formatCompletion(p, "--"+flag.name, usage)
-			if !contains(p.completionCtx.userArgs, "--"+flag.name) {
+			if !slices.Contains(p.completionCtx.userArgs, "--"+flag.name) {
 				result = append(result, suggestion)
 			}
 		}
