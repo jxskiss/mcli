@@ -4,7 +4,6 @@ import (
 	"embed"
 	"fmt"
 	"io"
-	"slices"
 	"strings"
 	"text/template"
 )
@@ -33,7 +32,7 @@ func hasCompletionFlag(args []string) (bool, []string, string) {
 	}
 	if completionFlagIndex < len(args)-1 {
 		proposedShell := args[completionFlagIndex+1]
-		if slices.Contains(getAllowedShells(), proposedShell) {
+		if contains(getAllowedShells(), proposedShell) {
 			shell = proposedShell
 		}
 	}

@@ -29,6 +29,16 @@ func find(a []string, x string) int {
 	return -1
 }
 
+// contains tells whether a contains x.
+func contains[T comparable](elems []T, v T) bool {
+	for _, s := range elems {
+		if v == s {
+			return true
+		}
+	}
+	return false
+}
+
 func trimPrefix(s, prefix string) string {
 	s = strings.TrimPrefix(s, prefix)
 	return strings.TrimSpace(s)
