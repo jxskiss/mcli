@@ -1,9 +1,5 @@
 package mcli
 
-import (
-	"strings"
-)
-
 func clip[S ~[]E, E any](s S) S {
 	return s[:len(s):len(s)]
 }
@@ -37,11 +33,6 @@ func contains[T comparable](elems []T, v T) bool {
 		}
 	}
 	return false
-}
-
-func trimPrefix(s, prefix string) string {
-	s = strings.TrimPrefix(s, prefix)
-	return strings.TrimSpace(s)
 }
 
 // reverse passed slice using generics
