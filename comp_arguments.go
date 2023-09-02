@@ -102,15 +102,15 @@ func WithCommandCompFunc(function ArgCompletionFunc) CmdOpt {
 	}}
 }
 
-func compByFunc(funcName string) ArgCompletionFunc {
-	return func(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
-		panic("not implemented")
-	}
-}
-
-func compNofile(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
-	return nil, ShellCompDirectiveNoFileComp
-}
+// func compByFunc(funcName string) ArgCompletionFunc {
+// 	return func(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
+// 		panic("not implemented")
+// 	}
+// }
+//
+// func compNofile(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
+// 	return nil, ShellCompDirectiveNoFileComp
+// }
 
 // func compEnums(values []string) ArgCompletionFunc {
 // 	return func(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
@@ -118,6 +118,6 @@ func compNofile(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
 // 	}
 // }
 
-func compListFilesExt(extList [][]string) ArgCompletionFunc {
-	panic("not implemented")
-}
+// func compListFilesExt(extList [][]string) ArgCompletionFunc {
+// 	panic("not implemented")
+// }
