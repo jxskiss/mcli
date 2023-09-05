@@ -196,7 +196,7 @@ __{{.ProgramName}}_handle_completion_types() {
             if [[ $comp == "$cur"* ]]; then
                 COMPREPLY+=("$comp")
             fi
-        done < <(printf "%s\n" "${completions[@]}")
+        done < <(printf "%s\n" "${out[@]}")
         ;;
 
     *)
@@ -211,7 +211,7 @@ __{{.ProgramName}}_handle_standard_completion_case() {
 
     # Short circuit to optimize if we don't have descriptions
     if [[ "${completions[*]}" != *$tab* ]]; then
-        IFS=$'\n' read -ra COMPREPLY -d '' < <(compgen -W "${completions[*]}" -- "$cur")
+        IFS=$'\n' read -ra COMPREPLY -d '' < <(compgen -W "${out[*]}" -- "$cur")
         return 0
     fi
 
@@ -228,7 +228,7 @@ __{{.ProgramName}}_handle_standard_completion_case() {
         if ((${#comp}>longest)); then
             longest=${#comp}
         fi
-    done < <(printf "%s\n" "${completions[@]}")
+    done < <(printf "%s\n" "${out[@]}")
 
     # If there is a single completion left, remove the description text
     if ((${#COMPREPLY[*]} == 1)); then
