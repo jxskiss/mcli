@@ -495,13 +495,6 @@ func (f *_flag) validate() error {
 }
 
 func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (flags, nonflags []*_flag, err error) {
-
-	// TODO: pass parsingContext to this function (maybe)
-	// check ctx.app.isCompletion
-	// parse tag "comp"
-	// validate comp tag and build the ArgCompletionFunc
-	// save the result func to _flag
-
 	p := &flagParser{
 		fs:      fs,
 		flagMap: flagMap,
@@ -598,8 +591,8 @@ func (p *flagParser) tidyFieldValue(ft reflect.StructField, fv reflect.Value, cl
 func (p *flagParser) parseField(
 	ft reflect.StructField, fv reflect.Value,
 	isGlobalFlag bool,
-	cliTag, defaultValue, envTag string, cmplTag string) error {
-
+	cliTag, defaultValue, envTag string, cmplTag string,
+) error {
 	fv, ok := p.tidyFieldValue(ft, fv, cliTag)
 	if !ok {
 		return nil

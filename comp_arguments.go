@@ -61,8 +61,13 @@ const (
 	ShellCompDirectiveDefault ShellCompDirective = 0
 )
 
+type CompletionItem struct {
+	Value       string
+	Description string
+}
+
 // ArgCompletionFunc is a function to do completion for flag value or positional argument.
-type ArgCompletionFunc func(ctx ArgCompletionContext) ([][]string, ShellCompDirective)
+type ArgCompletionFunc func(ctx ArgCompletionContext) []CompletionItem
 
 // ArgCompletionContext provides essential information to do suggestion
 // for flag value and positional argument completion.

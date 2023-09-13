@@ -256,16 +256,6 @@ func TestSuggestFlags(t *testing.T) {
 	assert.NotContains(t, got6, "a2-flag")
 	assert.Contains(t, got6, "--j-flag:description j flag\n")
 
-	// INFO: no longer valid | 2023-09-01
-	// t.Run("without trailing hyphen", func(t *testing.T) {
-	// 	reset()
-	// 	Run("group1", "cmd3", "-b", "5", completionFlag, "zsh")
-	// 	got := buf.String()
-	// 	assert.Contains(t, got, "-a:description a flag\n")
-	// 	assert.NotContains(t, got, "description b flag")
-	// 	assert.Contains(t, got, "-j:description j flag\n")
-	// })
-
 	t.Run("leaf command", func(t *testing.T) {
 		reset()
 		Run("group1", "cmd3", "sub2", "-", completionFlag, "zsh")
@@ -284,12 +274,12 @@ func TestSuggestFlags(t *testing.T) {
 	})
 }
 
-func flagArguments(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
+func flagArguments(ctx ArgCompletionContext) []CompletionItem {
 	// fmt.Printf("%s, %#v\n", config, ctx.Args())
-	return [][]string{
+	return []CompletionItem{
 		{"alfa", "description alfa"},
 		{"beta", "description beta"},
-	}, ShellCompDirectiveFilterDirs
+	}
 }
 
 func TestSuggestFlagArgs(t *testing.T) {
@@ -339,12 +329,11 @@ func TestSuggestFlagArgs(t *testing.T) {
 	assert.Equal(t, flagWoWithFunction, "--a1-flag\n")
 }
 
-func commandArguments(ctx ArgCompletionContext) ([][]string, ShellCompDirective) {
-	// fmt.Printf("%s, %#v\n", config, ctx.Args())
-	return [][]string{
+func commandArguments(ctx ArgCompletionContext) []CompletionItem {
+	return []CompletionItem{
 		{"value a", "description of value a"},
 		{"value b", "description of value b"},
-	}, ShellCompDirectiveFilterDirs
+	}
 }
 
 func TestSuggestCommandArgs(t *testing.T) {

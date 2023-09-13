@@ -233,15 +233,13 @@ func (t *cmdTree) suggestCommandArgs(app *App, cm completionMethod) {
 		}
 		f := cmdOpts.argCompFunc
 		if f != nil {
-			res, _ := f(app.argsCtx)
+			res := f(app.argsCtx)
 			for _, item := range res {
-				result = append(result, formatCompletion(app, item[0], item[1]))
+				result = append(result, formatCompletion(app, item.Value, item.Description))
 			}
 		}
 		printLines(app.completionCtx.out, result)
 	}
-	// TODO: directive is cut, and not used | 2023-08-30
-	// printLines(p.completionCtx.out, directive)
 }
 
 func (t *cmdTree) suggestFlags(app *App, cm completionMethod) bool {
@@ -335,18 +333,16 @@ func (p *App) continueFlagCompletion() {
 	// fmt.Println(result)
 	if completionFunc != "" {
 		if f, ok := funcs[completionFunc]; ok {
-			res, _ := f(p.argsCtx)
+			res := f(p.argsCtx)
 			result = []string{}
 			for _, item := range res {
-				result = append(result, formatCompletion(p, item[0], item[1]))
+				result = append(result, formatCompletion(p, item.Value, item.Description))
 			}
 		} else {
 			panic(fmt.Sprintf("mcli: flag argument completion called not passed function '%s'", completionFunc))
 		}
 	}
 
-	// TODO: directive is cut, and not used | 2023-08-30
-	// printLines(p.completionCtx.out, directive)
 	printLines(p.completionCtx.out, result)
 }
 

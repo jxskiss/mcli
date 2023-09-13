@@ -14,7 +14,6 @@ const showHiddenFlag = "mcli-show-hidden"
 
 // Options specifies optional options for an App.
 type Options struct {
-
 	// KeepCommandOrder makes Parse to print commands in the order of
 	// adding the commands.
 	// By default, it prints commands in lexicographic order.
@@ -51,7 +50,6 @@ func NewApp() *App {
 
 // App holds the state of a cli application.
 type App struct {
-
 	// Description optionally provides a description of the program.
 	Description string
 
@@ -622,16 +620,6 @@ func (p *App) parseArgs(v any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	if err = ctx.parseTags(reflect.ValueOf(wrapArgs).Elem()); err != nil {
 		return fs, err
 	}
-
-	// TODO
-	// for flag value completion and positional arguments completion,
-	// it's not enough to just parsing the args definition,
-	// the command line arguments also need to be parsed.
-	//
-	// To make the command line parsing working, flag.FlagSet.Parse
-	// must not exit the program or quit parsing in case of help flag
-	// (maybe changing the command line is a reasonable choice),
-	// and mcli shall not validate required flags and arguments.
 
 	// For flags completion, just parsing the args definition is enough,
 	// don't bother to parse the command arguments and really run the command.
