@@ -99,6 +99,7 @@ func detectCompletionMethod(args []string, c commands) completionMethod {
 func (p *App) doAutoCompletion(args []string) {
 	tree := p.parseCompletionInfo()
 	cm := detectCompletionMethod(args, p.cmds)
+	p.completionCtx.completionMethod = cm
 	// fmt.Printf("%+v\n", cm)
 
 	if cm.isCommand {
@@ -298,48 +299,48 @@ func (p *App) continueFlagCompletion() {
 	flagName := p.completionCtx.flagName
 	flags := p.completionCtx.flags
 	funcs := p.completionCtx.argCompFuncs
+	cm := p.completionCtx.completionMethod
 
 	result := make([]string, 0, 16)
-	completionFunc := ""
+	var completionFunc ArgCompletionFunc
 
 	_, cleanFlagName := countFlagPrefixHyphen(flagName)
 
-	for _, flag := range flags {
-		usage := getUsage(flag)
-		// flagShort := "--" + flag.short
-		// flagLong := "--" + flag.name
-		if flag.short != "" && flag.short != "-" && strings.HasPrefix(flag.short, cleanFlagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
-			if flag.completionFunction != "" {
-				if len(cleanFlagName) == len(flag.short) {
-					completionFunc = flag.completionFunction
+	if cm.isFlagValue {
+		for _, flag := range flags {
+			if flag.short != "" && flag.short != "-" && strings.HasPrefix(flag.short, cleanFlagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
+				if f, ok := funcs["-"+flag.short]; ok {
+					completionFunc = f
 				}
 			}
-
-			suggestion := formatCompletion(p, "-"+flag.short, usage)
-			result = append(result, suggestion)
-		}
-
-		if flag.name != "" && flag.name != "--" && strings.HasPrefix(flag.name, cleanFlagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
-			if flag.completionFunction != "" {
-				if len(cleanFlagName) == len(flag.name) {
-					completionFunc = flag.completionFunction
+			if flag.name != "" && flag.name != "--" && strings.HasPrefix(flag.name, cleanFlagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
+				if f, ok := funcs["--"+flag.name]; ok {
+					completionFunc = f
 				}
 			}
-			suggestion := formatCompletion(p, "--"+flag.name, usage)
-			result = append(result, suggestion)
 		}
-	}
 
-	// fmt.Println(result)
-	if completionFunc != "" {
-		if f, ok := funcs[completionFunc]; ok {
-			res := f(p.argsCtx)
+		if completionFunc != nil {
+			res := completionFunc(p.argsCtx)
 			result = []string{}
 			for _, item := range res {
 				result = append(result, formatCompletion(p, item.Value, item.Description))
 			}
-		} else {
-			panic(fmt.Sprintf("mcli: flag argument completion called not passed function '%s'", completionFunc))
+		}
+	}
+
+	if completionFunc == nil || cm.isFlag {
+		for _, flag := range flags {
+			usage := getUsage(flag)
+			if flag.short != "" && flag.short != "-" && strings.HasPrefix(flag.short, cleanFlagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
+				suggestion := formatCompletion(p, "-"+flag.short, usage)
+				result = append(result, suggestion)
+			}
+
+			if flag.name != "" && flag.name != "--" && strings.HasPrefix(flag.name, cleanFlagName) && (flag.isCompositeType() || !isSeenFlag(flag)) {
+				suggestion := formatCompletion(p, "--"+flag.name, usage)
+				result = append(result, suggestion)
+			}
 		}
 	}
 

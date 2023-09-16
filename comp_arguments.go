@@ -93,11 +93,9 @@ func (c compContextImpl) Args() []string {
 
 // WithArgCompFuncs for struct holding completion functions for use with flags args completion
 func WithArgCompFuncs(funcMap map[string]ArgCompletionFunc) ParseOpt {
-	return ParseOpt{
-		f: func(options *parseOptions) {
-			options.argCompFuncs = funcMap
-		},
-	}
+	return ParseOpt{f: func(options *parseOptions) {
+		options.argCompFuncs = funcMap
+	}}
 }
 
 // WithCommandCompFuncs for holding completion functions for use with args completions

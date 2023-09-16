@@ -287,11 +287,12 @@ func TestSuggestFlagArgs(t *testing.T) {
 	addTestCompletionCommands()
 
 	funcs := make(map[string]ArgCompletionFunc)
-	funcs["flagArguments"] = flagArguments
+	funcs["-a"] = flagArguments
+	funcs["--a-flag"] = flagArguments
 
 	testCmd := func() {
 		args := &struct {
-			A  bool `cli:"-a, --a-flag, description a flag" cmpl:"flagArguments"`
+			A  bool `cli:"-a, --a-flag, description a flag"`
 			A1 bool `cli:"-1, --a1-flag"`
 		}{}
 		Parse(args, WithArgCompFuncs(funcs))
@@ -384,14 +385,16 @@ func TestSuggestArgsMixed(t *testing.T) {
 	addTestCompletionCommands()
 
 	funcs := make(map[string]ArgCompletionFunc)
-	funcs["flagArguments"] = flagArguments
+	funcs["-a"] = flagArguments
+	funcs["-s0"] = flagArguments
+	funcs["-s1"] = flagArguments
 
 	testCmd := func() {
 		args := &struct {
-			A  []string `cli:"-a, --a-flag, description a flag" cmpl:"flagArguments"`
+			A  []string `cli:"-a, --a-flag, description a flag"`
 			A1 bool     `cli:"-1, --1-flag"`
-			S1 bool     `cli:"-s0, --s0-flag" cmpl:"flagArguments"`
-			S2 bool     `cli:"-s1, --s1-flag" cmpl:"flagArguments"`
+			S1 bool     `cli:"-s0, --s0-flag"`
+			S2 bool     `cli:"-s1, --s1-flag"`
 		}{}
 		Parse(args, WithArgCompFuncs(funcs))
 	}
@@ -441,48 +444,6 @@ func TestSuggestArgsMixed(t *testing.T) {
 	Run("group1", "cmdv", "value a", "-a", "alfa", "-a", "alfa", "-s", completionFlag, "zsh")
 	got6 := buf.String()
 	assert.Equal(t, got6, "--s0:--s0-flag\n--s1:--s1-flag\n")
-}
-
-func TestSuggestFlagKeyNotMatching(t *testing.T) {
-	resetDefaultApp()
-	addTestCompletionCommands()
-
-	funcs := make(map[string]ArgCompletionFunc)
-	funcs["flagArguments"] = flagArguments
-
-	testCmd := func() {
-		args := &struct {
-			A  []string `cli:"-a, --a-flag, description a flag" cmpl:"flagArgumentsX"`
-			A1 bool     `cli:"-1, --1-flag"`
-			S1 bool     `cli:"-s0, --s0-flag" cmpl:"flagArguments"`
-			S2 bool     `cli:"-s1, --s1-flag" cmpl:"flagArguments"`
-		}{}
-		Parse(args, WithArgCompFuncs(funcs))
-	}
-	Add("group1 cmdv", testCmd, "A group1 cmd2 description",
-		WithCommandCompFunc(commandArguments),
-		EnableFlagCompletion(),
-	)
-	Add("group1 cmd3", testCmd, "A group1 cmd3 description",
-		EnableFlagCompletion(),
-	)
-
-	var buf bytes.Buffer
-	defaultApp.completionCtx.out = &buf
-
-	reset := func() {
-		buf.Reset()
-		defaultApp.resetParsingContext()
-	}
-
-	reset()
-	assert.PanicsWithValue(
-		t,
-		"mcli: flag argument completion called not passed function 'flagArgumentsX'",
-		func() {
-			Run("group1", "cmdv", "-a", completionFlag, "zsh")
-		},
-	)
 }
 
 func TestFormatCompletion(t *testing.T) {
