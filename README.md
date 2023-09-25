@@ -103,7 +103,7 @@ func main() {
 
     // This is a hidden command, it won't be showed in help,
     // except that when flag "--mcli-show-hidden" is given.
-    mcli.AddHiden("secret-cmd", secretCmd, "An secret command won't be showed in help")
+    mcli.AddHidden("secret-cmd", secretCmd, "An secret command won't be showed in help")
 
     // Enable shell auto-completion, see `program completion -h` for help.
     mcli.AddCompletion()
