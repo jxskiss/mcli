@@ -467,7 +467,7 @@ func (p *App) continuePositionalArgCompletion() {
 
 	var nf = pCtx.nonflags[0]
 	var i, j int
-	for i < fs.NArg() && j < len(pCtx.nonflags) {
+	for i <= fs.NArg() && j < len(pCtx.nonflags) {
 		nf = pCtx.nonflags[j]
 		if !nf.isCompositeType() {
 			j++

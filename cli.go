@@ -598,6 +598,7 @@ func (p *App) parseArgs(v any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	// For completion, we parse the command arguments,
 	// then transmit the executing to `continueCompletion`.
 	if p.isCompletion {
+		p.completionCtx.parsedArgs = v
 		p.checkLastArgForCompletion()
 		p.parseArgsForCompletion()
 		p.continueCompletion()
