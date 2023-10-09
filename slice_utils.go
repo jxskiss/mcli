@@ -1,5 +1,7 @@
 package mcli
 
+import "strings"
+
 func clip[S ~[]E, E any](s S) S {
 	return s[:len(s):len(s)]
 }
@@ -46,4 +48,15 @@ func reverse[T any](original []T) (reversed []T) {
 	}
 
 	return
+}
+
+func removeCommandName(args []string, cmdName string) []string {
+	cmdWords := strings.Fields(cmdName)
+	i := 0
+	for ; i < len(cmdWords) && i < len(args); i++ {
+		if cmdWords[i] != args[i] {
+			break
+		}
+	}
+	return args[i:]
 }

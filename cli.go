@@ -64,22 +64,11 @@ type App struct {
 	groups      map[string]bool
 	globalFlags any
 
-	ctx     *parsingContext
-	argsCtx *compContextImpl
+	ctx *parsingContext
 
 	completionCmdName string
 	isCompletion      bool
-	completionCtx     struct {
-		out              io.Writer // help in testing to inspect completion output
-		postFunc         func()    // help in testing to not exit the program
-		shell            string
-		userArgs         []string
-		cmd              *cmdTree
-		flagName         string
-		flags            []*_flag
-		argCompFuncs     map[string]ArgCompletionFunc
-		completionMethod completionMethod
-	}
+	completionCtx     completionCtx
 }
 
 func (p *App) addCommand(cmd *Command) {
@@ -114,17 +103,6 @@ func (p *App) getParsingContext() *parsingContext {
 		p.ctx = &parsingContext{app: p, opts: newParseOptions()}
 	}
 	return p.ctx
-}
-
-func (p *App) getArgCompletionContext() *compContextImpl {
-	withoutCompletionFlags := len(os.Args[1:]) - 1
-	if p.argsCtx == nil {
-		p.argsCtx = &compContextImpl{
-			app:  p,
-			args: os.Args[1:withoutCompletionFlags],
-		}
-	}
-	return p.argsCtx
 }
 
 func (p *App) resetParsingContext() {
@@ -536,20 +514,6 @@ func (p *App) runWithArgs(cmdArgs []string, exitOnInvalidCmd bool) {
 	}
 }
 
-func (p *App) setupCompletionCtx(userArgs []string, completionShell string) {
-	p.isCompletion = true
-	if p.completionCtx.out == nil {
-		p.completionCtx.out = os.Stdout
-	}
-	if p.completionCtx.postFunc == nil {
-		p.completionCtx.postFunc = func() {
-			os.Exit(0)
-		}
-	}
-	p.completionCtx.shell = completionShell
-	p.completionCtx.userArgs = userArgs
-}
-
 // searchCmd helps to do testing.
 func (p *App) searchCmd(cmdArgs []string) (invalidCmdName string, found bool) {
 	cmds := p.cmds
@@ -622,37 +586,35 @@ func (p *App) parseArgs(v any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 		return fs, err
 	}
 
-	// For flags completion, just parsing the args definition is enough,
-	// don't bother to parse the command arguments and really run the command.
+	if options.cmdName != nil {
+		ctx.name = *options.cmdName
+	}
+	cmdArgs := p.getCmdArgs()
+	if hasBoolFlag(showHiddenFlag, cmdArgs) {
+		ctx.showHidden = true
+		fs.BoolVar(&ctx.showHidden, showHiddenFlag, true, "show hidden commands and flags")
+	}
+
+	// For completion, we parse the command arguments,
+	// then transmit the executing to `continueCompletion`.
 	if p.isCompletion {
-		p.getArgCompletionContext()
-		p.completionCtx.argCompFuncs = ctx.opts.argCompFuncs
-		p.completionCtx.flags = ctx.flags
-		p.continueFlagCompletion()
+		p.checkLastArgForCompletion()
+		p.parseArgsForCompletion()
+		p.continueCompletion()
 		p.completionCtx.postFunc()
 		return
 	}
 
-	if options.cmdName != nil {
-		ctx.name = *options.cmdName
-	}
+	return p.parseArgsForRunningCommand()
+}
 
-	var cmdArgs []string
-	if options.args != nil {
-		cmdArgs = *options.args
-	} else if ctx.args != nil {
-		cmdArgs = *ctx.args
-	} else {
-		cmdArgs = os.Args[1:]
-	}
+func (p *App) parseArgsForRunningCommand() (fs *flag.FlagSet, err error) {
+	ctx := p.getParsingContext()
+	fs = ctx.getFlagSet()
+	cmdArgs := p.getCmdArgs()
 	flagsReordered := ctx.args != nil
 	if !flagsReordered {
 		cmdArgs = ctx.reorderFlags(cmdArgs)
-	}
-
-	if hasBoolFlag(showHiddenFlag, cmdArgs) {
-		ctx.showHidden = true
-		fs.BoolVar(&ctx.showHidden, showHiddenFlag, true, "show hidden commands and flags")
 	}
 
 	// Read env values before parsing command line flags and arguments.
@@ -685,6 +647,22 @@ func (p *App) parseArgs(v any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	}
 	tidyFlags(fs, ctx.flags, nonflagArgs)
 	return fs, err
+}
+
+func (p *App) getCmdArgs() []string {
+	ctx := p.getParsingContext()
+	if ctx.args != nil {
+		return *ctx.args
+	}
+	if p.isCompletion && p.completionCtx.cmdArgs != nil {
+		args := *p.completionCtx.cmdArgs
+		args = removeCommandName(args, ctx.cmd.Name)
+		return args
+	}
+	if ctx.opts.args != nil {
+		return *ctx.opts.args
+	}
+	return os.Args[1:]
 }
 
 func assertStructPointer(v any) {

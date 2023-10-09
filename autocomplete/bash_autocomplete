@@ -29,12 +29,12 @@ __{{.ProgramName}}_get_completion_results() {
     lastChar=${lastParam:$((${#lastParam}-1)):1}
     __{{.ProgramName}}_debug "lastParam ${lastParam}, lastChar ${lastChar}"
 
-    # if [[ -z ${cur} && ${lastChar} != = ]]; then
-    #     # If the last parameter is complete (there is a space following it)
-    #     # We add an extra empty parameter so we can indicate this to the go method.
-    #     __{{.ProgramName}}_debug "Adding extra empty parameter"
-    #     requestComp="${requestComp} ''"
-    # fi
+    if [[ -z ${cur} && ${lastChar} != = ]]; then
+        # If the last parameter is complete (there is a space following it)
+        # We add an extra empty parameter so we can indicate this to the go method.
+        __{{.ProgramName}}_debug "Adding extra empty parameter"
+        requestComp="${requestComp} ''"
+    fi
 
     # When completing a flag with an = (e.g., {{.ProgramName}} -n=<TAB>)
     # bash focuses on the part after the =, so we need to remove

@@ -58,3 +58,26 @@ func TestSubSlice(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveCommandName(t *testing.T) {
+	t.Run("match command", func(t *testing.T) {
+		cmdName := "group1 cmd1 sub1"
+		args := []string{"group1", "cmd1", "sub1", "-a", "-b", "12345"}
+		got := removeCommandName(args, cmdName)
+		assert.Equal(t, []string{"-a", "-b", "12345"}, got)
+	})
+
+	t.Run("partial match", func(t *testing.T) {
+		cmdName := "group1 cmd1 sub2"
+		args := []string{"group1", "cmd1", "sub1", "-a", "-b", "12345"}
+		got := removeCommandName(args, cmdName)
+		assert.Equal(t, []string{"sub1", "-a", "-b", "12345"}, got)
+	})
+
+	t.Run("not match", func(t *testing.T) {
+		cmdName := "group2 cmd1"
+		args := []string{"group1", "cmd1", "sub1", "-a", "-b", "12345"}
+		got := removeCommandName(args, cmdName)
+		assert.Equal(t, []string{"group1", "cmd1", "sub1", "-a", "-b", "12345"}, got)
+	})
+}
