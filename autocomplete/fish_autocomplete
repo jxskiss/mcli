@@ -10,11 +10,23 @@ end
 function __fish_{{.ProgramName}}_complete_command
   __{{.ProgramName}}_debug "Starting __{{.ProgramName}}_complete_command"
 
+  set -l token (commandline -ct)
   set -l args (commandline -op)
+  set -l lchar (string sub --start=-1 (echo "$token" | sed 's/^-*//'))
 
-  __{{.ProgramName}}_debug "args: $args"
+  __{{.ProgramName}}_debug "---------------"
+  __{{.ProgramName}}_debug "token: '$token'"
+  __{{.ProgramName}}_debug "args: '$args'"
+  __{{.ProgramName}}_debug "lchar: '$lchar'"
 
-  $args --mcli-generate-completion fish
+  if test -z "$token"
+    and test "$lchar" != "="
+    $args '' --mcli-generate-completion fish
+  else
+    $args --mcli-generate-completion fish
+  end
 end
 
 complete -fc server -a "(__fish_{{.ProgramName}}_complete_command)"
+
+# vim: ft=fish

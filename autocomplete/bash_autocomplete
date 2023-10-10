@@ -29,12 +29,12 @@ __{{.ProgramName}}_get_completion_results() {
     lastChar=${lastParam:$((${#lastParam}-1)):1}
     __{{.ProgramName}}_debug "lastParam ${lastParam}, lastChar ${lastChar}"
 
-    # if [[ -z ${cur} && ${lastChar} != = ]]; then
-    #     # If the last parameter is complete (there is a space following it)
-    #     # We add an extra empty parameter so we can indicate this to the go method.
-    #     __{{.ProgramName}}_debug "Adding extra empty parameter"
-    #     requestComp="${requestComp} ''"
-    # fi
+    if [[ -z ${cur} && ${lastChar} != = ]]; then
+        # If the last parameter is complete (there is a space following it)
+        # We add an extra empty parameter so we can indicate this to the go method.
+        __{{.ProgramName}}_debug "Adding extra empty parameter"
+        requestComp="${requestComp} ''"
+    fi
 
     # When completing a flag with an = (e.g., {{.ProgramName}} -n=<TAB>)
     # bash focuses on the part after the =, so we need to remove
@@ -196,7 +196,7 @@ __{{.ProgramName}}_handle_completion_types() {
             if [[ $comp == "$cur"* ]]; then
                 COMPREPLY+=("$comp")
             fi
-        done < <(printf "%s\n" "${completions[@]}")
+        done < <(printf "%s\n" "${out[@]}")
         ;;
 
     *)
@@ -211,7 +211,7 @@ __{{.ProgramName}}_handle_standard_completion_case() {
 
     # Short circuit to optimize if we don't have descriptions
     if [[ "${completions[*]}" != *$tab* ]]; then
-        IFS=$'\n' read -ra COMPREPLY -d '' < <(compgen -W "${completions[*]}" -- "$cur")
+        IFS=$'\n' read -ra COMPREPLY -d '' < <(compgen -W "${out[*]}" -- "$cur")
         return 0
     fi
 
@@ -228,7 +228,7 @@ __{{.ProgramName}}_handle_standard_completion_case() {
         if ((${#comp}>longest)); then
             longest=${#comp}
         fi
-    done < <(printf "%s\n" "${completions[@]}")
+    done < <(printf "%s\n" "${out[@]}")
 
     # If there is a single completion left, remove the description text
     if ((${#COMPREPLY[*]} == 1)); then

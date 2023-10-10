@@ -499,6 +499,7 @@ func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[s
 		flagMap: flagMap,
 	}
 	rt := rv.Type()
+
 	for i := 0; i < rt.NumField(); i++ {
 		ft := rt.Field(i)
 		fv := rv.Field(i)
@@ -588,8 +589,8 @@ func (p *flagParser) tidyFieldValue(ft reflect.StructField, fv reflect.Value, cl
 func (p *flagParser) parseField(
 	ft reflect.StructField, fv reflect.Value,
 	isGlobalFlag bool,
-	cliTag, defaultValue, envTag string) error {
-
+	cliTag, defaultValue, envTag string,
+) error {
 	fv, ok := p.tidyFieldValue(ft, fv, cliTag)
 	if !ok {
 		return nil

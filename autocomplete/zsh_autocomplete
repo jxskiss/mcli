@@ -1,14 +1,39 @@
 #compdef {{.ProgramName}}
 
+__{{.ProgramName}}_debug() {
+  if [[ -v COMP_DEBUG_FILE ]]; then
+    echo "$*" >> "${COMP_DEBUG_FILE}"
+  fi
+}
+
 __{{.ProgramName}}_zsh_autocomplete() {
   local -a opts
-  local cur
-  cur=${words[-1]}
-  if [[ "$cur" == "-"* ]]; then
-    opts=("${(@f)$(${words[@]:0:#words[@]-1} ${cur} --mcli-generate-completion zsh)}")
+  local lastParam lastChar
+  lastParam=${words[-1]}
+  lastChar=${lastParam[-1]}
+
+  local cur cword prev
+
+  cur=${words[CURRENT]}
+  prev=${words[CURRENT-1]}
+
+  __{{.ProgramName}}_debug "---------"
+  __{{.ProgramName}}_debug "cur: '$cur'"
+  __{{.ProgramName}}_debug "prev: '$prev'"
+  __{{.ProgramName}}_debug "---------"
+  __{{.ProgramName}}_debug "words: '$words'"
+  __{{.ProgramName}}_debug "lastParam: '$lastParam'"
+  __{{.ProgramName}}_debug "lastChar: '$lastChar'"
+
+  if [[ "$lastChar" == "" || "$lastChar" == " " ]]; then
+    opts=("${(@f)$(${words[@]:0:#words[@]-1} '' --mcli-generate-completion zsh)}")
+  elif [[ "$lastChar" == "-" ]]; then
+    opts=("${(@f)$(${words[@]:0:#words[@]-1} ${lastChar} --mcli-generate-completion zsh)}")
   else
     opts=("${(@f)$(${words[@]:0:#words[@]-1} --mcli-generate-completion zsh)}")
   fi
+  __{{.ProgramName}}_debug "opts: '$opts[*]'"
+  __{{.ProgramName}}_debug "opts[1]: '$opts[1]'"
 
   if [[ "${opts[1]}" != "" ]]; then
     _describe 'values' opts
@@ -18,3 +43,5 @@ __{{.ProgramName}}_zsh_autocomplete() {
 }
 
 compdef __{{.ProgramName}}_zsh_autocomplete {{.ProgramName}}
+
+# vim: ft=zsh

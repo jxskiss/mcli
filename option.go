@@ -20,6 +20,8 @@ type parseOptions struct {
 	errorHandling flag.ErrorHandling
 	examples      string
 
+	argCompFuncs map[string]ArgCompletionFunc
+
 	customUsage func() string
 	helpFooter  func() string
 
@@ -102,6 +104,7 @@ type cmdOptions struct {
 	category             string
 	longDesc             string
 	enableFlagCompletion bool
+	argCompFunc          ArgCompletionFunc
 }
 
 func (p *cmdOptions) apply(opts ...CmdOpt) *cmdOptions {
