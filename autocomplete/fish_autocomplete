@@ -27,6 +27,6 @@ function __fish_{{.ProgramName}}_complete_command
   end
 end
 
-complete -fc server -a "(__fish_{{.ProgramName}}_complete_command)"
+complete -fc {{.ProgramName}} -a "(__fish_{{.ProgramName}}_complete_command)"
 
 # vim: ft=fish
