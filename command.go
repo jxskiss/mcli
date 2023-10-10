@@ -273,26 +273,26 @@ func ld(s, t string, ignoreCase bool) int {
 	return d[len(s)][len(t)]
 }
 
-type commandGroup struct {
+type categoryCommands struct {
 	category string
 	commands commands
 }
 
-func (p commands) groupByCategory() ([]*commandGroup, bool) {
-	var result []*commandGroup
-	var hasGroups = false
+func (p commands) groupByCategory() ([]*categoryCommands, bool) {
+	var result []*categoryCommands
+	var hasCategories = false
 	for _, c := range p {
 		opts := newCmdOptions(c.cmdOpts...)
 		if opts.category != "" {
-			hasGroups = true
+			hasCategories = true
 			break
 		}
 	}
-	if !hasGroups {
+	if !hasCategories {
 		return nil, false
 	}
 
-	var groupIdxMap = make(map[string]int)
+	var categoryIdxMap = make(map[string]int)
 	var noCategoryCmds []*Command
 	for _, c := range p {
 		if c.level > 1 {
@@ -303,9 +303,9 @@ func (p commands) groupByCategory() ([]*commandGroup, bool) {
 			noCategoryCmds = append(noCategoryCmds, c)
 			continue
 		}
-		if idx, ok := groupIdxMap[opts.category]; !ok {
-			groupIdxMap[opts.category] = len(result)
-			result = append(result, &commandGroup{
+		if idx, ok := categoryIdxMap[opts.category]; !ok {
+			categoryIdxMap[opts.category] = len(result)
+			result = append(result, &categoryCommands{
 				category: opts.category,
 				commands: commands{c},
 			})
@@ -314,7 +314,7 @@ func (p commands) groupByCategory() ([]*commandGroup, bool) {
 		}
 	}
 	if len(noCategoryCmds) > 0 {
-		result = append(result, &commandGroup{
+		result = append(result, &categoryCommands{
 			category: "Other Commands",
 			commands: noCategoryCmds,
 		})

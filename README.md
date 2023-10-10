@@ -201,6 +201,7 @@ ParseOpt:
 - `WithExamples` specifies examples for a command. Examples will be showed after flags in the help.
 - `WithFooter` adds a footer message after the default help,
   this option overrides the App's setting `Options.HelpFooter` for this parsing call.
+- `WithArgCompFuncs` specifies functions to suggest flag values and positional arguments programmatically.
 
 ## Tag syntax
 
@@ -291,6 +292,10 @@ for usage guide.
 
 Also check `AddCompletion`, `EnableFlagCompletion`, and
 `Options.EnableFlagCompletionForAllCommands` for detail docs about command flag completion.
+
+User can use `WithArgCompFuncs` to specify functions to suggest flag values and
+positional arguments programmatically, already provided flags and arguments
+can be accessed in the functions.
 
 ## Changelog
 

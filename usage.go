@@ -311,7 +311,7 @@ func printSubCommands(out io.Writer, cmds commands, parentCmdName string, showHi
 	fmt.Fprint(out, "\n")
 }
 
-func printGroupedSubCommands(out io.Writer, cmdGroups []*commandGroup, showHidden, keepCmdOrder bool) {
+func printGroupedSubCommands(out io.Writer, cmdGroups []*categoryCommands, showHidden, keepCmdOrder bool) {
 	type groupCmdLines struct {
 		category string
 		cmdLines [][2]string
