@@ -25,10 +25,10 @@ type ArgCompletionContext interface {
 	ArgPrefix() string
 }
 
-func newArgCompletionContext(app *App) ArgCompletionContext {
+func (p *App) newArgCompletionContext() ArgCompletionContext {
 	return &compContextImpl{
 		Context: context.Background(),
-		app:     app,
+		app:     p,
 	}
 }
 

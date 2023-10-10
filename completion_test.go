@@ -515,7 +515,7 @@ func TestFormatCompletion(t *testing.T) {
 			defaultApp.completionCtx.out = &buf
 			defaultApp.completionCtx.shell = tt.shell
 
-			got := formatCompletion(defaultApp, "option", "some option description")
+			got := defaultApp.formatCompletion("option", "some option description")
 			assert.Equal(t, got, "option"+tt.connector+"some option description")
 		})
 	}
@@ -528,7 +528,7 @@ func TestFormatCompletion(t *testing.T) {
 			defaultApp.completionCtx.out = &buf
 			defaultApp.completionCtx.shell = tt.shell
 
-			got := formatCompletion(defaultApp, "option", "")
+			got := defaultApp.formatCompletion("option", "")
 			assert.Equal(t, got, "option")
 		})
 	}

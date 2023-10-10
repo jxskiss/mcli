@@ -145,7 +145,7 @@ func (p *App) checkLastArgForCompletion() {
 						compCtx.wantPositionalArg = true
 						compCtx.prefixWord = compCtx.lastArg
 					} else {
-						flagName := strings.TrimLeft(secondLastWord, "-")
+						flagName := cleanFlagName(secondLastWord)
 						for _, f := range pCtx.flags {
 							if f.name == flagName || f.short == flagName {
 								if f.isBoolean() {
@@ -156,7 +156,7 @@ func (p *App) checkLastArgForCompletion() {
 								} else {
 									// A non-boolean flag wants a value from command line.
 									compCtx.wantFlagValue = true
-									compCtx.flagName = normalizeCompFlagName(flagName)
+									compCtx.flagName = flagName
 									compCtx.prefixWord = compCtx.lastArg
 									// The second last arg is the flag name,
 									// don't pass this incomplete flag to parsing the FlagSet.
@@ -189,7 +189,7 @@ func (p *App) checkLastArgForCompletion() {
 					// the user is most probably requesting a positional arg.
 					compCtx.wantPositionalArg = true
 				} else {
-					flagName := strings.TrimLeft(lastWord, "-")
+					flagName := cleanFlagName(lastWord)
 					for _, f := range pCtx.flags {
 						if f.name == flagName || f.short == flagName {
 							if f.isBoolean() {
@@ -199,7 +199,7 @@ func (p *App) checkLastArgForCompletion() {
 							} else {
 								// A non-boolean flag wants a value from command line.
 								compCtx.wantFlagValue = true
-								compCtx.flagName = normalizeCompFlagName(flagName)
+								compCtx.flagName = flagName
 								// The last word is the flag name,
 								// don't pass this incomplete flag to parsing the FlagSet.
 								*compCtx.cmdArgs = compCtx.userArgs[:len(compCtx.userArgs)-1]
@@ -341,7 +341,7 @@ func (t *cmdTree) suggestSubCommands(app *App, cmdWord string) {
 		if sub.Cmd != nil {
 			desc = sub.Cmd.Description
 		}
-		suggestion := formatCompletion(app, sub.Name, desc)
+		suggestion := app.formatCompletion(sub.Name, desc)
 		result = append(result, suggestion)
 	}
 	printLines(app.completionCtx.out, result)
@@ -366,8 +366,13 @@ func (t *cmdTree) suggestFlagAndArgs(app *App) {
 	return
 }
 
-func (p *App) continueCompletion() {
-	compCtx := p.completionCtx
+func (p *App) continueCompletion(parsedArgs any) {
+	compCtx := &p.completionCtx
+	compCtx.parsedArgs = parsedArgs
+	p.checkLastArgForCompletion()
+	p.parseArgsForCompletion()
+	defer p.completionCtx.postFunc()
+
 	if compCtx.wantPositionalArg {
 		p.continuePositionalArgCompletion()
 		return
@@ -378,7 +383,11 @@ func (p *App) continueCompletion() {
 	}
 
 	// Else try to complete flags.
+	p.continueFlagCompletion()
+}
 
+func (p *App) continueFlagCompletion() {
+	compCtx := &p.completionCtx
 	getUsage := func(f *_flag) string {
 		if compCtx.shell == "powershell" {
 			return ""
@@ -417,13 +426,13 @@ func (p *App) continueCompletion() {
 	for _, flag := range pCtx.flags {
 		if flag.short != "" && strings.HasPrefix(flag.short, prefixWord) && (flag.isCompositeType() || !isSeenFlag(flag)) {
 			usage := getUsage(flag)
-			suggestion := formatCompletion(p, "-"+flag.short, usage)
+			suggestion := p.formatCompletion("-"+flag.short, usage)
 			result = append(result, suggestion)
 		}
 
 		if flag.name != "" && strings.HasPrefix(flag.name, prefixWord) && (flag.isCompositeType() || !isSeenFlag(flag)) {
 			usage := getUsage(flag)
-			suggestion := formatCompletion(p, "--"+flag.name, usage)
+			suggestion := p.formatCompletion("--"+flag.name, usage)
 			result = append(result, suggestion)
 		}
 	}
@@ -432,7 +441,7 @@ func (p *App) continueCompletion() {
 
 func (p *App) continueFlagValueCompletion() {
 	pCtx := p.getParsingContext()
-	compCtx := p.completionCtx
+	compCtx := &p.completionCtx
 	flagName := cleanFlagName(compCtx.flagName)
 
 	var f *_flag
@@ -452,9 +461,9 @@ func (p *App) continueFlagValueCompletion() {
 			return
 		}
 	}
-	acc := newArgCompletionContext(p)
+	acc := p.newArgCompletionContext()
 	compItems := compFunc(acc)
-	printCompletionItems(p, compItems)
+	p.printCompletionItems(compItems)
 }
 
 func (p *App) continuePositionalArgCompletion() {
@@ -482,32 +491,26 @@ func (p *App) continuePositionalArgCompletion() {
 	if compFunc == nil {
 		return
 	}
-	acc := newArgCompletionContext(p)
+	acc := p.newArgCompletionContext()
 	compItems := compFunc(acc)
-	printCompletionItems(p, compItems)
+	p.printCompletionItems(compItems)
 }
 
-func printCompletionItems(app *App, items []CompletionItem) {
+func (p *App) printCompletionItems(items []CompletionItem) {
 	result := make([]string, 0, len(items))
 	for _, x := range items {
-		s := formatCompletion(app, x.Value, x.Description)
+		s := p.formatCompletion(x.Value, x.Description)
 		result = append(result, s)
 	}
-	printLines(app.completionCtx.out, result)
+	printLines(p.completionCtx.out, result)
 }
 
-func printLines(w io.Writer, lines []string) {
-	for _, line := range lines {
-		fmt.Fprintln(w, line)
-	}
-}
-
-func formatCompletion(app *App, opt string, desc string) string {
+func (p *App) formatCompletion(opt string, desc string) string {
 	if desc == "" {
 		return opt
 	}
 
-	switch app.completionCtx.shell {
+	switch p.completionCtx.shell {
 	case "bash":
 		return fmt.Sprintf("%s\t%s", opt, desc)
 	case "zsh":
@@ -516,6 +519,12 @@ func formatCompletion(app *App, opt string, desc string) string {
 		return fmt.Sprintf("%s\t%s", opt, desc)
 	default:
 		return opt
+	}
+}
+
+func printLines(w io.Writer, lines []string) {
+	for _, line := range lines {
+		fmt.Fprintln(w, line)
 	}
 }
 
