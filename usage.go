@@ -33,6 +33,7 @@ type usagePrinter struct {
 	globalFlagHelp [][2]string
 	cmdFlagHelp    [][2]string
 	nonFlagHelp    [][2]string
+	envVarsHelp    [][2]string
 }
 
 func (p *usagePrinter) Do() {
@@ -66,6 +67,7 @@ func (p *usagePrinter) Do() {
 	p.printCmdFlags()
 	p.printArguments()
 	p.printGlobalFlags()
+	p.printEnvVariables()
 	p.printExamples()
 	p.printFooter()
 }
@@ -184,6 +186,7 @@ func (p *usagePrinter) splitAndFormatFlags() {
 	var globalFlagHelp [][2]string
 	var cmdFlagHelp [][2]string
 	var nonFlagHelp [][2]string
+	var envVarsHelp [][2]string
 	if p.flagCount > 0 {
 		for _, f := range flags {
 			if f.hidden && !showHidden {
@@ -201,9 +204,14 @@ func (p *usagePrinter) splitAndFormatFlags() {
 		name, usage := f.getUsage(false)
 		nonFlagHelp = append(nonFlagHelp, [2]string{name, usage})
 	}
+	for _, f := range p.ctx.envVars {
+		name, usage := f.getUsage(false)
+		envVarsHelp = append(envVarsHelp, [2]string{name, usage})
+	}
 	p.globalFlagHelp = globalFlagHelp
 	p.cmdFlagHelp = cmdFlagHelp
 	p.nonFlagHelp = nonFlagHelp
+	p.envVarsHelp = envVarsHelp
 }
 
 func (p *usagePrinter) printCmdFlags() {
@@ -229,6 +237,15 @@ func (p *usagePrinter) printGlobalFlags() {
 	if len(p.globalFlagHelp) > 0 {
 		fmt.Fprint(out, "Global Flags:\n")
 		printWithAlignment(out, p.globalFlagHelp, 0)
+		fmt.Fprint(out, "\n")
+	}
+}
+
+func (p *usagePrinter) printEnvVariables() {
+	out := p.out
+	if len(p.envVarsHelp) > 0 {
+		fmt.Fprint(out, "Environment Variables:\n")
+		printWithAlignment(out, p.envVarsHelp, 0)
 		fmt.Fprint(out, "\n")
 	}
 }
@@ -369,6 +386,7 @@ func addTrailingColon(s string) string {
 
 const (
 	__MaxPrefixLen = 30
+	__MinPrefixLen = 6
 )
 
 func printWithAlignment(out io.Writer, lines [][2]string, maxPrefixLen int) {
@@ -400,6 +418,9 @@ func calcMaxPrefixLen(lineGroups [][][2]string) int {
 				maxPrefixLen = n
 			}
 		}
+	}
+	if maxPrefixLen < __MinPrefixLen {
+		maxPrefixLen = __MinPrefixLen
 	}
 	return maxPrefixLen
 }
