@@ -483,7 +483,8 @@ func (p *App) continuePositionalArgCompletion() {
 		}
 		i++
 	}
-	if nf == nil {
+	if i <= fs.NArg() {
+		// There are still more positional args, this completion request is invalid.
 		return
 	}
 

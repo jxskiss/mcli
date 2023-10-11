@@ -97,11 +97,11 @@ func TestArgCompletionContext(t *testing.T) {
 
 	t.Run("suggest flags", func(t *testing.T) {
 		reset()
-		Run("group1", "cmdv", "-", completionFlag, "zsh")
+		Run("group1", "cmdv", "-s1=1", "-", completionFlag, "zsh")
 		got1 := buf.String()
 		assert.Contains(t, got1, "-a:description a flag\n")
 		assert.Contains(t, got1, "-1\n")
-		assert.Contains(t, got1, "--s1:--s1-flag\n")
+		assert.NotContains(t, got1, "s1-flag")
 		assert.Contains(t, got1, "--s2:--s2-flag\n")
 	})
 
@@ -183,5 +183,45 @@ func TestArgCompletionContext(t *testing.T) {
 		assert.Contains(t, got2, "def-3:def 3 description\n")
 		assert.Contains(t, got2, "def-4:def 4 description\n")
 	})
+
+	t.Run("coverage / last word is a flag which wants a value", func(t *testing.T) {
+		reset()
+		Run("group1", "cmdv", "-1", "-a=123", "-a=", completionFlag, "zsh")
+		got1 := buf.String()
+		assert.Contains(t, got1, "abc:abc description")
+		assert.Contains(t, got1, "def:def description")
+	})
+
+	t.Run("coverage / second last word is a flag which has its value", func(t *testing.T) {
+		reset()
+		Run("group1", "cmdv", "-g", "-a=123", "xxx", completionFlag, "zsh")
+		got1 := buf.String()
+		assert.Contains(t, got1, "Tom:Tom who")
+		assert.Contains(t, got1, "John:John Smith")
+	})
+
+	t.Run("coverage / second last word is a boolean flag", func(t *testing.T) {
+		reset()
+		Run("group1", "cmdv", "-g", "xxx", completionFlag, "zsh")
+		got1 := buf.String()
+		assert.Contains(t, got1, "Tom:Tom who")
+		assert.Contains(t, got1, "John:John Smith")
+	})
+
+	t.Run("coverage / second last word is a non-boolean flag", func(t *testing.T) {
+		reset()
+		Run("group1", "cmdv", "-a", "xxx", completionFlag, "zsh")
+		got1 := buf.String()
+		assert.Contains(t, got1, "abc:abc description")
+		assert.Contains(t, got1, "def:def description")
+	})
+
+	t.Run("coverage / last word is complete and second last word is a flag which has its value",
+		func(t *testing.T) {
+			reset()
+			Run("group1", "cmdv", "-a=xxx", "", completionFlag, "zsh")
+			got1 := buf.String()
+			assert.Equal(t, "dummy-value-1\n", got1)
+		})
 
 }

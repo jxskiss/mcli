@@ -50,6 +50,13 @@ func TestSubSlice(t *testing.T) {
 			from:        4,
 			to:          3,
 		},
+		{
+			description: "Handles negative index",
+			args:        []string{"a", "b", "c"},
+			expected:    []string{"a", "b"},
+			from:        0,
+			to:          -1,
+		},
 	}
 
 	for _, tt := range cases {
@@ -57,6 +64,16 @@ func TestSubSlice(t *testing.T) {
 			assert.Equal(t, subSlice(tt.args, tt.from, tt.to), tt.expected)
 		})
 	}
+}
+
+func TestReverse(t *testing.T) {
+	slice1 := []int{1, 2, 3, 4}
+	got1 := reverse(slice1)
+	assert.Equal(t, []int{4, 3, 2, 1}, got1)
+
+	slice2 := []int{1, 2, 3}
+	got2 := reverse(slice2)
+	assert.Equal(t, []int{3, 2, 1}, got2)
 }
 
 func TestRemoveCommandName(t *testing.T) {

@@ -27,6 +27,13 @@ type Context struct {
 // Parse parses the command line for flags and arguments.
 // `args` must be a pointer to a struct, else it panics.
 //
+// By default, it prints help and exits the program if an error occurs
+// when parsing, instead of returning the error,
+// which is the same behavior with package "flag".
+// Generally, user can safely ignore the return value of this function,
+// except that an option `WithErrorHandling(flag.ContinueOnError)`
+// is explicitly passed to it if you want to inspect the error.
+//
 // Note:
 //  1. if you enable flag completion for a command, you must call this
 //     in the command function to make the completion work correctly

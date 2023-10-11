@@ -453,7 +453,9 @@ func TestSuggestArgsMixed(t *testing.T) {
 	reset()
 	Run("group1", "cmdv", "value a", "-a", "alfa", "", completionFlag, "zsh")
 	got4 := buf.String()
-	assert.Equal(t, got4, "value a:description of value a\nvalue b:description of value b\n")
+	// This command only accepts one single positional arg which is already given,
+	// this completion request is invalid, should return nothing.
+	assert.Equal(t, got4, "")
 
 	reset()
 	Run("group1", "cmdv", "value a", "-a", "alfa", "-a", "", completionFlag, "zsh")

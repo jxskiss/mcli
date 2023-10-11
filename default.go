@@ -105,7 +105,17 @@ func Run(args ...string) {
 }
 
 // Parse parses the command line for flags and arguments.
-// args must be a pointer to a struct, else it panics.
+// `args` must be a pointer to a struct, else it panics.
+//
+// By default, it prints help and exits the program if an error occurs
+// when parsing, instead of returning the error,
+// which is the same behavior with package "flag".
+// Generally, user can safely ignore the return value of this function,
+// except that an option `WithErrorHandling(flag.ContinueOnError)`
+// is explicitly passed to it if you want to inspect the error.
+//
+// See Context.Parse if you use an application created by NewApp
+// instead of the default application.
 func Parse(args any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 
 	// Check running App to work correctly in case of misuse of calling

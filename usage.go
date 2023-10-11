@@ -161,7 +161,7 @@ func (p *usagePrinter) printSubCommands() {
 		subCmds := p.subCmds
 		showHidden := ctx.showHidden
 		keepCmdOrder := p.app.Options.KeepCommandOrder
-		printSubCommands(out, subCmds, parentCmdName, showHidden, keepCmdOrder)
+		p.__printSubCommands(out, subCmds, parentCmdName, showHidden, keepCmdOrder)
 	}
 }
 
@@ -259,7 +259,7 @@ func (p *usagePrinter) printFooter() {
 	}
 }
 
-func printSubCommands(out io.Writer, cmds commands, parentCmdName string, showHidden, keepCmdOrder bool) {
+func (p *usagePrinter) __printSubCommands(out io.Writer, cmds commands, parentCmdName string, showHidden, keepCmdOrder bool) {
 	if len(cmds) == 0 {
 		return
 	}
@@ -271,7 +271,7 @@ func printSubCommands(out io.Writer, cmds commands, parentCmdName string, showHi
 
 	cmdGroups, hasCategories := cmds.groupByCategory()
 	if hasCategories {
-		printGroupedSubCommands(out, cmdGroups, showHidden, keepCmdOrder)
+		p.__printGroupedSubCommands(out, cmdGroups, showHidden)
 		return
 	}
 
@@ -311,17 +311,20 @@ func printSubCommands(out io.Writer, cmds commands, parentCmdName string, showHi
 	fmt.Fprint(out, "\n")
 }
 
-func printGroupedSubCommands(out io.Writer, cmdGroups []*categoryCommands, showHidden, keepCmdOrder bool) {
+func (p *usagePrinter) __printGroupedSubCommands(out io.Writer, cmdGroups []*categoryCommands, showHidden bool) {
 	type groupCmdLines struct {
 		category string
 		cmdLines [][2]string
 	}
 
-	if !keepCmdOrder {
-		sort.Slice(cmdGroups, func(i, j int) bool {
-			return cmdGroups[i].category < cmdGroups[j].category
-		})
-	}
+	sort.Slice(cmdGroups, func(i, j int) bool {
+		idx1 := p.app.categoryIdx[cmdGroups[i].category]
+		idx2 := p.app.categoryIdx[cmdGroups[j].category]
+		if idx1 > 0 && idx2 > 0 {
+			return idx1 < idx2
+		}
+		return idx1 > 0
+	})
 
 	var groupLines []*groupCmdLines
 	var cmdLines [][][2]string

@@ -187,11 +187,6 @@ func Test_githubCli_mainHelp(t *testing.T) {
 Usage:
   gh <command> ...
 
-Additional Commands:
-  alias         Create command shortcuts
-  api           Make an authenticated GitHub API request
-  workflow      View details about GitHub Actions workflows
-
 Core Commands:
   auth          Login, logout, and refresh your authentication
   browse        Open the repository in the browser
@@ -204,6 +199,11 @@ Core Commands:
 
 GitHub Actions Commands:
   run           View details about workflow runs
+
+Additional Commands:
+  alias         Create command shortcuts
+  api           Make an authenticated GitHub API request
+  workflow      View details about GitHub Actions workflows
 
 Help Topics:
   actions       Learn about working with GitHub Actions

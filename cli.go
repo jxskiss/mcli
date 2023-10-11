@@ -42,6 +42,7 @@ type Options struct {
 }
 
 // NewApp creates a new cli application instance.
+//
 // Typically, there is no need to manually create an application, using
 // the package-level functions with the default application is preferred.
 func NewApp() *App {
@@ -61,6 +62,7 @@ type App struct {
 
 	cmdMap      map[string]*Command
 	cmds        commands
+	categoryIdx map[string]int
 	groups      map[string]bool
 	globalFlags any
 
@@ -86,6 +88,15 @@ func (p *App) addCommand(cmd *Command) {
 	}
 	p.cmdMap[cmd.Name] = cmd
 	p.cmds.add(cmd)
+
+	opts := newCmdOptions(cmd.cmdOpts...)
+	if p.categoryIdx == nil {
+		p.categoryIdx = make(map[string]int)
+	}
+	if opts.category != "" && p.categoryIdx[opts.category] == 0 {
+		p.categoryIdx[opts.category] = len(p.categoryIdx) + 1
+	}
+
 	if p.groups == nil {
 		p.groups = make(map[string]bool)
 	}
@@ -117,11 +128,6 @@ func (p *App) resetParsingContext() {
 func (p *App) getFlagSet() *flag.FlagSet {
 	return p.getParsingContext().getFlagSet()
 }
-
-// type argsContext struct {
-// 	app          *App
-// 	argCompFuncs map[string]ArgCompletionFunc
-// }
 
 type parsingContext struct {
 	app     *App
