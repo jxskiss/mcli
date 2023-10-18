@@ -146,6 +146,7 @@ type parsingContext struct {
 	flagMap  map[string]*_flag
 	flags    []*_flag
 	nonflags []*_flag
+	envVars  []*_flag
 	parsed   bool
 }
 
@@ -169,7 +170,7 @@ func (ctx *parsingContext) getInvalidCmdName() string {
 func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 	fs := ctx.getFlagSet()
 	flagMap := make(map[string]*_flag)
-	flags, nonflags, err := parseFlags(false, fs, rv, flagMap)
+	flags, nonflags, envVars, err := parseFlags(false, fs, rv, flagMap)
 	if err != nil {
 		if _, ok := err.(*programingError); ok {
 			panic(fmt.Sprintf("mcli: %v", err))
@@ -180,6 +181,7 @@ func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 	ctx.flagMap = flagMap
 	ctx.flags = flags
 	ctx.nonflags = nonflags
+	ctx.envVars = envVars
 	ctx.parsed = true
 	return nil
 }
@@ -227,9 +229,7 @@ func (ctx *parsingContext) parseNonflags() (allArgs []string, err error) {
 
 func (ctx *parsingContext) readEnvValues() (err error) {
 	fs := ctx.getFlagSet()
-	flags := ctx.flags
-	nonflags := ctx.nonflags
-	for _, f := range flags {
+	for _, f := range ctx.flags {
 		if !f.isSlice() && !f.isMap() {
 			_, err = readEnv(fs, f)
 			if err != nil {
@@ -237,7 +237,15 @@ func (ctx *parsingContext) readEnvValues() (err error) {
 			}
 		}
 	}
-	for _, f := range nonflags {
+	for _, f := range ctx.nonflags {
+		if !f.isSlice() && !f.isMap() {
+			_, err = readEnv(fs, f)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	for _, f := range ctx.envVars {
 		if !f.isSlice() && !f.isMap() {
 			_, err = readEnv(fs, f)
 			if err != nil {
@@ -255,7 +263,7 @@ func readEnv(fs *flag.FlagSet, f *_flag) (found bool, err error) {
 			continue
 		}
 		found = true
-		if f.nonflag {
+		if f.nonflag || f.isEnvVar {
 			err = f.Set(value)
 		} else {
 			err = fs.Set(f.name, value)
@@ -269,18 +277,21 @@ func readEnv(fs *flag.FlagSet, f *_flag) (found bool, err error) {
 }
 
 func (ctx *parsingContext) checkRequired() (err error) {
-	flags := ctx.flags
-	nonflags := ctx.nonflags
-	for _, f := range flags {
+	for _, f := range ctx.flags {
 		if f.required && f.isZero() {
 			ctx.failf(&err, "flag is required but not set: -%s", f.name)
 			return
 		}
 	}
-	for _, f := range nonflags {
+	for _, f := range ctx.nonflags {
 		if f.required && f.isZero() {
 			ctx.failf(&err, "argument is required but not given: %v", f.name)
 			return
+		}
+	}
+	for _, f := range ctx.envVars {
+		if f.required && f.isZero() {
+			ctx.failf(&err, "environment variable is required but not set: %v", strings.Join(f.envNames, ", "))
 		}
 	}
 	return

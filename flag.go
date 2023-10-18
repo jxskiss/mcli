@@ -19,9 +19,11 @@ import (
 //
 // Fow now the following modifiers are available:
 //
-//	D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help
-//	R - marks a flag or argument as required, "REQUIRED" will be showed in help
-//	H - marks a flag as hidden, see below for more about hidden flags
+//	D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help.
+//	R - marks a flag or argument as required, "REQUIRED" will be showed in help.
+//	H - marks a flag as hidden, see below for more about hidden flags.
+//	E - marks an argument read from environment variables, but not command line,
+//	    environment variables will be showed in a separate section in help.
 //
 // Hidden flags won't be showed in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
@@ -29,6 +31,10 @@ import (
 // Modifier `H` shall not be used for an argument, else it panics.
 // An argument must be showed in help to tell user how to use the program
 // correctly.
+//
+// Modifier `E` is useful when you want to read an environment variable,
+// but don't want user to provide from command line (e.g. password or other secrets).
+// Using together with `R` also ensures that the env variable must exist.
 //
 // Some modifiers cannot be used together, else it panics, e.g.
 //
@@ -41,6 +47,8 @@ func (m Modifier) apply(f *_flag) {
 	switch byte(m) {
 	case 'D':
 		f.deprecated = true
+	case 'E':
+		f.isEnvVar = true
 	case 'H':
 		f.hidden = true
 	case 'R':
@@ -69,6 +77,7 @@ type _flag struct {
 	_tags
 	_value
 
+	isEnvVar   bool
 	isGlobal   bool
 	hasDefault bool
 	deprecated bool
@@ -365,7 +374,22 @@ func usageName(typ reflect.Type) string {
 	}
 }
 
+func (f *_flag) formatDefaultValueForHelp() string {
+	str := ""
+	if f.hasDefault {
+		if f.isString() {
+			str = fmt.Sprintf("(default %q)", f.defValue)
+		} else {
+			str = fmt.Sprintf("(default %v)", f.defValue)
+		}
+	}
+	return str
+}
+
 func (f *_flag) getUsage(hasShortFlag bool) (prefix, usage string) {
+	if f.isEnvVar {
+		return f.getEnvVarUsage()
+	}
 	if f.nonflag {
 		prefix += "  " + f.name
 	} else if f.short != "" && f.name != "" {
@@ -392,18 +416,28 @@ func (f *_flag) getUsage(hasShortFlag bool) (prefix, usage string) {
 	if len(modifiers) > 0 {
 		prefix += fmt.Sprintf(" (%s)", strings.Join(modifiers, ", "))
 	}
-	if f.hasDefault {
-		var dftStr string
-		if f.isString() {
-			dftStr = fmt.Sprintf("(default %q)", f.defValue)
-		} else {
-			dftStr = fmt.Sprintf("(default %v)", f.defValue)
-		}
+	if dftStr := f.formatDefaultValueForHelp(); dftStr != "" {
 		usage = spaceJoin(usage, dftStr)
 	}
 	if len(f.envNames) > 0 {
 		envStr := fmt.Sprintf(`(env "%s")`, strings.Join(f.envNames, `", "`))
 		usage = spaceJoin(usage, envStr)
+	}
+	return
+}
+
+func (f *_flag) getEnvVarUsage() (prefix, usage string) {
+	envStr := strings.Join(f.envNames, ", ")
+	prefix += "  " + envStr
+	name, usage := unquoteUsage(f)
+	if name != "" {
+		prefix += " " + name
+	}
+	if f.required {
+		prefix += " (REQUIRED)"
+	}
+	if dftStr := f.formatDefaultValueForHelp(); dftStr != "" {
+		usage = spaceJoin(usage, dftStr)
 	}
 	return
 }
@@ -490,10 +524,20 @@ func (f *_flag) validate() error {
 			return newProgramingError("env is unsupported for map type, %s", f.helpName())
 		}
 	}
+	if f.isEnvVar {
+		if len(f.envNames) == 0 {
+			return newProgramingError("env name is required for environment variable: %q", f.description)
+		}
+		if len(f.envNames) > 1 {
+			return newProgramingError("environment variable requires exactly one env name, got %d: %v",
+				len(f.envNames), strings.Join(f.envNames, ", "))
+		}
+	}
 	return nil
 }
 
-func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (flags, nonflags []*_flag, err error) {
+func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (
+	flags, nonflags, envVars []*_flag, err error) {
 	p := &flagParser{
 		fs:      fs,
 		flagMap: flagMap,
@@ -517,14 +561,14 @@ func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[s
 
 		err = p.parseField(ft, fv, isGlobalFlag, cliTag, defaultValue, envTag)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 	}
 	if err = p.validateNonflags(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 	p.sortFlags()
-	return p.flags, p.nonflags, nil
+	return p.flags, p.nonflags, p.envVars, nil
 }
 
 type flagParser struct {
@@ -533,6 +577,7 @@ type flagParser struct {
 
 	flags    []*_flag
 	nonflags []*_flag
+	envVars  []*_flag
 }
 
 func (p *flagParser) appendFlag(f *_flag) {
@@ -598,7 +643,7 @@ func (p *flagParser) parseField(
 
 	// Got a struct field, parse it recursively.
 	if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) && !isTextValueImpl(fv) {
-		subFlags, subNonflags, subErr := parseFlags(isGlobalFlag, p.fs, fv, p.flagMap)
+		subFlags, subNonflags, subEnvVars, subErr := parseFlags(isGlobalFlag, p.fs, fv, p.flagMap)
 		if subErr != nil {
 			return subErr
 		}
@@ -606,6 +651,7 @@ func (p *flagParser) parseField(
 			p.appendFlag(f)
 		}
 		p.nonflags = append(p.nonflags, subNonflags...)
+		p.envVars = append(p.envVars, subEnvVars...)
 		return nil
 	}
 	if cliTag == "" {
@@ -619,6 +665,10 @@ func (p *flagParser) parseField(
 		return err
 	}
 	if f == nil || f.name == "" {
+		return nil
+	}
+	if f.isEnvVar {
+		p.envVars = append(p.envVars, f)
 		return nil
 	}
 	if f.nonflag {
@@ -644,13 +694,16 @@ func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag strin
 		isGlobal: isGlobal,
 	}
 
-	p.parseCliTag(f, cliTag)
+	parseCliTag(f, cliTag)
 
 	if f.name == "" {
 		f.name = f.short
 	}
 	if f.short == f.name {
 		f.short = ""
+	}
+	if envTag != "" {
+		f.envNames = splitByComma(envTag)
 	}
 	if err := f.validate(); err != nil {
 		return nil, err
@@ -663,13 +716,10 @@ func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag strin
 		f.defValue = defaultValue
 		f.hasDefault = !f.isZero()
 	}
-	if envTag != "" {
-		f.envNames = splitByComma(envTag)
-	}
 	return f, nil
 }
 
-func (p *flagParser) parseCliTag(f *_flag, cliTag string) {
+func parseCliTag(f *_flag, cliTag string) {
 	const (
 		modifier = iota
 		short
@@ -687,6 +737,11 @@ func (p *flagParser) parseCliTag(f *_flag, cliTag string) {
 			if strings.HasPrefix(p, "#") {
 				for _, x := range p[1:] {
 					Modifier(x).apply(f)
+				}
+				if f.isEnvVar {
+					st = stop
+					f.name = "-"
+					f.description = strings.TrimSpace(strings.Join(parts[i+1:], ","))
 				}
 				continue
 			}

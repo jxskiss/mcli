@@ -15,6 +15,10 @@ func main() {
 
 		// This argument is required.
 		Text string `cli:"#R, text, The 'message' you want to send"`
+
+		// This argument reads environment variable and requires the variable must exist,
+		// it doesn't accept input from command line.
+		APIAccessKey string `cli:"#ER, The access key to your service provider" env:"MY_API_ACCESS_KEY"`
 	}
 	mcli.Parse(&args)
 	fmt.Printf("Say to %s: %s\n", args.Name, args.Text)

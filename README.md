@@ -64,6 +64,10 @@ func main() {
 
         // This argument is required.
         Text string `cli:"#R, text, The 'message' you want to send"`
+
+        // This argument reads environment variable and requires the variable must exist,
+        // it doesn't accept input from command line.
+        APIAccessKey string `cli:"#ER, The access key to your service provider" env:"MY_API_ACCESS_KEY"`
     }
     mcli.Parse(&args)
     fmt.Printf("Say to %s: %s\n", args.Name, args.Text)
@@ -71,20 +75,21 @@ func main() {
 ```
 
 ```shell
-$ go run say.go
-argument is required but not given: text
-USAGE:
+$ go run say.go -h
+Usage:
   say [flags] <text>
 
-FLAGS:
+Flags:
   -n, --name string    Who do you want to say to (default "tom")
 
-ARGUMENTS:
+Arguments:
   text message (REQUIRED)    The message you want to send
 
-exit status 2
+Environment Variables:
+  MY_API_ACCESS_KEY string (REQUIRED)
+          The access key to your service provider
 
-$ go run say.go hello
+$ MY_API_ACCESS_KEY=xxxx go run say.go hello
 Say to tom: hello
 ```
 
@@ -223,15 +228,15 @@ The syntax is
  * - `cli:"-c, Open the last commit"`
  * - `cli:"#R, -b, --branch, Select another branch by passing in the branch name"`
  * - `cli:"--an-obvious-flag-dont-need-description"`
+ * - `cli:"#ER, AWS Secret Access Key" env:"AWS_SECRET_ACCESS_KEY"`
  */
 CliTag       <-  ( Modifiers ',' Space? )? Name ( ( ',' | Space ) Description )?
-Modifiers    <-  '#' [DHR]+
+Modifiers    <-  '#' [DHRE]+
 Name         <-  ( ShortName LongName? ) | LongName
 Description  <-  ( ![\r\n] . )*
 
 /* env tag, optional.
- * Multiple environment names can be specified, the first non-empty value
- * will be used.
+ * Multiple environment names can be specified, the first non-empty value takes effect.
  * e.g.
  * - `env:"SOME_ENV"`
  * - `env:"ANOTHER_ENV_1, ANOTHER_ENV_2"`
@@ -254,9 +259,11 @@ the first segment, starting with a `#` character.
 
 Fow now the following modifiers are available:
 
-* D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help
-* R - marks a flag or argument as required, "REQUIRED" will be showed in help
-* H - marks a flag as hidden, see below for more about hidden flags
+* D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help.
+* R - marks a flag or argument as required, "REQUIRED" will be showed in help.
+* H - marks a flag as hidden, see below for more about hidden flags.
+* E - marks an argument read from environment variables, but not command line,
+      environment variables will be showed in a separate section in help.
 
 Hidden flags won't be showed in help, except that when a special flag
 "--mcli-show-hidden" is provided.
@@ -265,11 +272,15 @@ Modifier `H` shall not be used for an argument, else it panics.
 An argument must be showed in help to tell user how to use the program
 correctly.
 
+Modifier `E` is useful when you want to read an environment variable,
+but don't want user to provide from command line (e.g. password or other secrets).
+Using together with `R` also ensures that the env variable must exist.
+
 Some modifiers cannot be used together, else it panics, e.g.
 
-* H & R - a required flag must appear in help to tell user to set it
+* H & R - a required flag must appear in help to tell user to set it.
 * D & R - a required flag must not be deprecated, it does not make sense,
-  but makes user confused
+  but makes user confused.
 
 ## Compatibility with package `flag`
 
