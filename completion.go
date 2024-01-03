@@ -169,6 +169,9 @@ func (p *App) checkLastArgForCompletion() {
 				} else if compCtx.cmd.isLeaf() {
 					compCtx.wantPositionalArg = true
 					compCtx.prefixWord = compCtx.lastArg
+				} else if compCtx.cmd.isRoot(p) {
+					compCtx.wantPositionalArg = true
+					compCtx.prefixWord = compCtx.lastArg
 				} else {
 					// The user may be requesting a command or a positional arg.
 					compCtx.prefixWord = compCtx.lastArg
@@ -209,6 +212,8 @@ func (p *App) checkLastArgForCompletion() {
 					}
 				}
 			} else if compCtx.cmd.isLeaf() {
+				compCtx.wantPositionalArg = true
+			} else if compCtx.cmd.isRoot(p) {
 				compCtx.wantPositionalArg = true
 			} else {
 				// The user may be requesting a command or a positional arg.
@@ -279,6 +284,10 @@ func newCmdTree(name string, cmd *Command) *cmdTree {
 
 func (t *cmdTree) isLeaf() bool {
 	return len(t.SubCmds) == 0
+}
+
+func (t *cmdTree) isRoot(p *App) bool {
+	return t.Cmd == p.rootCmd
 }
 
 func (t *cmdTree) add(cmd *Command) {
