@@ -90,7 +90,12 @@ func (p *App) doAutoCompletion(userArgs []string) {
 		}
 	}
 
-	tree, leftArgs := tree.findCommand(cmdNames)
+	var leftArgs []string
+	if p.rootCmd != nil && len(cmdNames) == 0 {
+		tree.Cmd = p.rootCmd
+	} else {
+		tree, leftArgs = tree.findCommand(cmdNames)
+	}
 	if tree == nil {
 		return
 	}
@@ -278,7 +283,8 @@ func newCmdTree(name string, cmd *Command) *cmdTree {
 }
 
 func (t *cmdTree) isLeaf() bool {
-	return len(t.SubCmds) == 0
+	return len(t.SubCmds) == 0 ||
+		(t.Cmd != nil && t.Cmd == t.Cmd.app.rootCmd)
 }
 
 func (t *cmdTree) add(cmd *Command) {
