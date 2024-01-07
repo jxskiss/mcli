@@ -399,6 +399,30 @@ func TestSuggestPositionalArgs(t *testing.T) {
 	assert.Equal(t, commandWoWithFunction, "")
 }
 
+func TestSuggestPositionalArgsOnRoot(t *testing.T) {
+	resetDefaultApp()
+	defaultApp.Options.EnableFlagCompletionForAllCommands = true
+
+	testCmdWithArgComp := func() {
+		args := &struct {
+			V string `cli:"value"`
+		}{}
+		Parse(args,
+			WithArgCompFuncs(map[string]ArgCompletionFunc{
+				"value": commandArguments,
+			}))
+	}
+	AddRoot(testCmdWithArgComp)
+	AddCompletion()
+
+	var buf bytes.Buffer
+	defaultApp.completionCtx.out = &buf
+
+	Run("", completionFlag, "zsh")
+	commandWithFunction := buf.String()
+	assert.Equal(t, commandWithFunction, "value a:description of value a\nvalue b:description of value b\n")
+}
+
 func TestSuggestArgsMixed(t *testing.T) {
 	resetDefaultApp()
 	addTestCompletionCommands()
