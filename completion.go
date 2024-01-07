@@ -90,7 +90,13 @@ func (p *App) doAutoCompletion(userArgs []string) {
 		}
 	}
 
-	tree, leftArgs := tree.findCommand(cmdNames)
+	var leftArgs []string
+	// WARN: if p.rootCmd != nil && len(cmdNames) == 1 {
+	if p.rootCmd != nil {
+		tree.Cmd = p.rootCmd
+	} else {
+		tree, leftArgs = tree.findCommand(cmdNames)
+	}
 	if tree == nil {
 		return
 	}
@@ -176,6 +182,11 @@ func (p *App) checkLastArgForCompletion() {
 					// The user may be requesting a command or a positional arg.
 					compCtx.prefixWord = compCtx.lastArg
 				}
+			} else {
+				if compCtx.cmd.isRoot(p) {
+					compCtx.wantPositionalArg = true
+					compCtx.prefixWord = compCtx.lastArg
+				}
 			}
 		}
 	} else {
@@ -219,6 +230,10 @@ func (p *App) checkLastArgForCompletion() {
 				// The user may be requesting a command or a positional arg.
 				// pass
 			}
+		} else {
+			if compCtx.cmd.isRoot(p) {
+				compCtx.wantPositionalArg = true
+			}
 		}
 	}
 }
@@ -255,7 +270,6 @@ func (p *App) parseArgsForCompletion() {
 		return
 	}
 	tidyFlags(fs, ctx.flags, nonflagArgs)
-	return
 }
 
 func (p *App) parseCompletionCmdTree() *cmdTree {
@@ -282,8 +296,13 @@ func newCmdTree(name string, cmd *Command) *cmdTree {
 	}
 }
 
+func (t *cmdTree) isRoot(p *App) bool {
+	return t.Cmd == p.rootCmd
+}
+
 func (t *cmdTree) isLeaf() bool {
-	return len(t.SubCmds) == 0
+	return len(t.SubCmds) == 0 ||
+		(t.Cmd != nil && t.Cmd == t.Cmd.app.rootCmd)
 }
 
 func (t *cmdTree) isRoot(p *App) bool {
@@ -372,7 +391,6 @@ func (t *cmdTree) suggestFlagAndArgs(app *App) {
 	// Parse flags for the command,
 	// then transmit the executing to the parsing function.
 	cmd.f()
-	return
 }
 
 func (p *App) continueCompletion(parsedArgs any) {
@@ -483,7 +501,7 @@ func (p *App) continuePositionalArgCompletion() {
 		return
 	}
 
-	var nf = pCtx.nonflags[0]
+	nf := pCtx.nonflags[0]
 	var i, j int
 	for i <= fs.NArg() && j < len(pCtx.nonflags) {
 		nf = pCtx.nonflags[j]
