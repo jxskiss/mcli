@@ -296,10 +296,6 @@ func newCmdTree(name string, cmd *Command) *cmdTree {
 	}
 }
 
-func (t *cmdTree) isRoot(p *App) bool {
-	return t.Cmd == p.rootCmd
-}
-
 func (t *cmdTree) isLeaf() bool {
 	return len(t.SubCmds) == 0 ||
 		(t.Cmd != nil && t.Cmd == t.Cmd.app.rootCmd)
