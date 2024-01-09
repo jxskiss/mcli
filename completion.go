@@ -76,6 +76,12 @@ func (p *App) setupCompletionCtx(userArgs []string, completionShell string) {
 	p.completionCtx.cmdArgs = &userArgs
 }
 
+func (p *App) shouldSuggestSubCommands(tree *cmdTree, hasFlag bool) bool {
+	isGroupCmd := tree.Cmd == nil || tree.Cmd.isGroup
+	isLeafCmd := len(tree.SubCmds) == 0
+	return !hasFlag && isGroupCmd && !isLeafCmd
+}
+
 func (p *App) doAutoCompletion(userArgs []string) {
 	ctx := p.getParsingContext()
 	tree := p.parseCompletionCmdTree()
@@ -91,12 +97,7 @@ func (p *App) doAutoCompletion(userArgs []string) {
 	}
 
 	var leftArgs []string
-	// WARN: if p.rootCmd != nil && len(cmdNames) == 1 {
-	if p.rootCmd != nil {
-		tree.Cmd = p.rootCmd
-	} else {
-		tree, leftArgs = tree.findCommand(cmdNames)
-	}
+	tree, leftArgs = tree.findCommand(cmdNames)
 	if tree == nil {
 		return
 	}
@@ -104,16 +105,24 @@ func (p *App) doAutoCompletion(userArgs []string) {
 	p.completionCtx.cmd = tree
 	ctx.cmd = tree.Cmd
 
-	isGroupCmd := tree.Cmd == nil || tree.Cmd.isGroup
-	isLeafCmd := len(tree.SubCmds) == 0
-	shouldParseArgs := hasFlag || !isGroupCmd || isLeafCmd
-	if !shouldParseArgs {
+	// TODO: cannot suggest flags when root
+	if p.shouldSuggestSubCommands(tree, hasFlag) {
 		// Suggest sub-commands.
 		cmdWord := ""
 		if len(leftArgs) > 0 {
 			cmdWord = leftArgs[0]
 		}
-		tree.suggestSubCommands(p, cmdWord)
+		suggestions := tree.suggestedSubCommands(p, cmdWord)
+		if len(suggestions) > 0 {
+			printLines(p.completionCtx.out, suggestions)
+		} else {
+			if p.rootCmd != nil {
+				tree.Cmd = p.rootCmd
+				p.completionCtx.cmd = tree
+				ctx.cmd = tree.Cmd
+			}
+			tree.suggestFlagAndArgs(p)
+		}
 		return
 	}
 
@@ -346,7 +355,7 @@ func (t *cmdTree) findCommand(cmdNames []string) (tree *cmdTree, leftArgs []stri
 	return cur, nil
 }
 
-func (t *cmdTree) suggestSubCommands(app *App, cmdWord string) {
+func (t *cmdTree) suggestedSubCommands(app *App, cmdWord string) []string {
 	matchFunc := func(n *cmdTree) bool {
 		return strings.HasPrefix(n.Name, cmdWord)
 	}
@@ -368,7 +377,7 @@ func (t *cmdTree) suggestSubCommands(app *App, cmdWord string) {
 		suggestion := app.formatCompletion(sub.Name, desc)
 		result = append(result, suggestion)
 	}
-	printLines(app.completionCtx.out, result)
+	return result
 }
 
 func (t *cmdTree) suggestFlagAndArgs(app *App) {
