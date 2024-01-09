@@ -115,6 +115,7 @@ func (p *App) doAutoCompletion(userArgs []string) {
 		suggestions := tree.suggestedSubCommands(p, cmdWord)
 		if len(suggestions) > 0 {
 			printLines(p.completionCtx.out, suggestions)
+			return
 		} else {
 			if p.rootCmd != nil {
 				tree.Cmd = p.rootCmd
@@ -122,16 +123,18 @@ func (p *App) doAutoCompletion(userArgs []string) {
 				ctx.cmd = tree.Cmd
 			}
 			tree.suggestFlagAndArgs(p)
+			return
 		}
-		return
 	}
 
 	tree.suggestFlagAndArgs(p)
 }
 
+// TODO:too complex?
 func (p *App) checkLastArgForCompletion() {
 	pCtx := p.getParsingContext()
 	compCtx := &p.completionCtx
+	fmt.Println("C" + compCtx.lastArg + "C")
 	if compCtx.lastArg != "" {
 		if strings.HasPrefix(compCtx.lastArg, "-") {
 			if valIdx := strings.Index(compCtx.lastArg, "="); valIdx >= 0 {
