@@ -105,7 +105,6 @@ func (p *App) doAutoCompletion(userArgs []string) {
 	p.completionCtx.cmd = tree
 	ctx.cmd = tree.Cmd
 
-	// TODO: cannot suggest flags when root
 	if p.shouldSuggestSubCommands(tree, hasFlag) {
 		// Suggest sub-commands.
 		cmdWord := ""
@@ -127,14 +126,18 @@ func (p *App) doAutoCompletion(userArgs []string) {
 		}
 	}
 
+	if p.rootCmd != nil && tree.Cmd == nil {
+		tree.Cmd = p.rootCmd
+		p.completionCtx.cmd = tree
+		ctx.cmd = tree.Cmd
+	}
+
 	tree.suggestFlagAndArgs(p)
 }
 
-// TODO:too complex?
 func (p *App) checkLastArgForCompletion() {
 	pCtx := p.getParsingContext()
 	compCtx := &p.completionCtx
-	fmt.Println("C" + compCtx.lastArg + "C")
 	if compCtx.lastArg != "" {
 		if strings.HasPrefix(compCtx.lastArg, "-") {
 			if valIdx := strings.Index(compCtx.lastArg, "="); valIdx >= 0 {

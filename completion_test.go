@@ -430,7 +430,7 @@ func TestSuggestPositionalArgsOnRootWithFlag(t *testing.T) {
 	testCmdWithArgComp := func() {
 		args := &struct {
 			A []string `cli:"-a, --a-flag, description a flag"`
-			V string   `cli:"value"`
+			V []string `cli:"value"`
 		}{}
 		Parse(args,
 			WithArgCompFuncs(map[string]ArgCompletionFunc{
@@ -443,9 +443,9 @@ func TestSuggestPositionalArgsOnRootWithFlag(t *testing.T) {
 	var buf bytes.Buffer
 	defaultApp.completionCtx.out = &buf
 
-	Run("value", "--a", completionFlag, "zsh")
+	Run("value", "-", completionFlag, "zsh")
 	commandWithFunction := buf.String()
-	assert.Equal(t, commandWithFunction, "--a-flag:description a flag\n")
+	assert.Equal(t, commandWithFunction, "-a:description a flag\n--a-flag:description a flag\n")
 }
 
 func TestSuggestArgsMixed(t *testing.T) {
