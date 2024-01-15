@@ -548,8 +548,21 @@ func (p *App) searchCmd(cmdArgs []string) (invalidCmdName string, found bool) {
 			strings.HasPrefix(cmdArgs[0], "-") ||
 			!p.cmds.isValid(cmdArgs[0]) {
 
+			// INFO: needs tests, root command improved arguments handling,
+			// prevent go flag unexpectedly returning from processing
+			// manual flag parsing cannot encounter first argument non flag!
+			flagIdx := len(cmdArgs)
+			for i, x := range cmdArgs {
+				if strings.HasPrefix(x, "-") {
+					flagIdx = i
+					break
+				}
+			}
+			args := cmdArgs[flagIdx:]
+
+			ctx.ambiguousArgs = clip(cmdArgs[0:flagIdx])
 			ctx.cmd = p.rootCmd
-			ctx.args = &cmdArgs
+			ctx.args = &args
 			return "", true
 		}
 	}
