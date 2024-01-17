@@ -1155,3 +1155,85 @@ func TestCoverage(t *testing.T) {
 		app.setupCompletionCtx([]string{}, "")
 	})
 }
+
+func TestFormatErrorArguments(t *testing.T) {
+	t.Run("one argument", func(t *testing.T) {
+		got := formatErrorArguments([]string{"one"})
+		assert.Contains(t, got, "argument: 'one'")
+	})
+
+	t.Run("more than one argument", func(t *testing.T) {
+		got := formatErrorArguments([]string{"one", "two", "three"})
+		assert.Contains(t, got, "arguments: 'one two three'")
+	})
+}
+
+func TestApply(t *testing.T) {
+	t.Run("D", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'D'
+		mod.apply(&flag)
+		assert.Equal(t, true, flag.deprecated)
+		assert.Equal(t, false, flag.isEnvVar)
+		assert.Equal(t, false, flag.hidden)
+		assert.Equal(t, false, flag.required)
+	})
+
+	t.Run("E", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'E'
+		mod.apply(&flag)
+		assert.Equal(t, false, flag.deprecated)
+		assert.Equal(t, true, flag.isEnvVar)
+		assert.Equal(t, false, flag.hidden)
+		assert.Equal(t, false, flag.required)
+	})
+
+	t.Run("H", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'H'
+		mod.apply(&flag)
+		assert.Equal(t, false, flag.deprecated)
+		assert.Equal(t, false, flag.isEnvVar)
+		assert.Equal(t, true, flag.hidden)
+		assert.Equal(t, false, flag.required)
+	})
+
+	t.Run("R", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'R'
+		mod.apply(&flag)
+		assert.Equal(t, false, flag.deprecated)
+		assert.Equal(t, false, flag.isEnvVar)
+		assert.Equal(t, false, flag.hidden)
+		assert.Equal(t, true, flag.required)
+	})
+
+	t.Run("R & D", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'R'
+		mod.apply(&flag)
+		mod = 'D'
+		mod.apply(&flag)
+		assert.Equal(t, true, flag.deprecated)
+		assert.Equal(t, false, flag.isEnvVar)
+		assert.Equal(t, false, flag.hidden)
+		assert.Equal(t, true, flag.required)
+	})
+
+	t.Run("ALL", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'R'
+		mod.apply(&flag)
+		mod = 'D'
+		mod.apply(&flag)
+		mod = 'E'
+		mod.apply(&flag)
+		mod = 'H'
+		mod.apply(&flag)
+		assert.Equal(t, true, flag.deprecated)
+		assert.Equal(t, true, flag.isEnvVar)
+		assert.Equal(t, true, flag.hidden)
+		assert.Equal(t, true, flag.required)
+	})
+}
