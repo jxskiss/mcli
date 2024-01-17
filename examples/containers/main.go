@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"log/slog"
 	"os"
 	"os/exec"
 
@@ -66,40 +65,40 @@ func cmdRoot(ctx *mcli.Context) {
 	dry := globalFlags.DryRun
 
 	if dry {
-		slog.Info("Dry run")
+		log.Println("Dry run")
 	}
 
 	if !dry {
 		_, err := exec.LookPath(bin)
 		if err != nil {
-			slog.Error("Cannot find executable", "bin", bin)
+			log.Printf("Cannot find executable %s\n", bin)
 			os.Exit(1)
 		}
 	}
-	slog.Info("Using engine", "name", globalFlags.Engine)
+	log.Printf("Using engine %s\n", globalFlags.Engine)
 
 	for _, c := range args.Containers {
-		slog.Info("Stopping container with stop", "id", c)
+		log.Printf("Stopping container with stop %s\n", c)
 
 		if !dry {
 			err := exec.Command(bin, "stop", c).Run()
 			if err != nil {
-				slog.Error("Stopping failed", "error", err)
+				log.Printf("Stopping failed %+v\n", err)
 				os.Exit(1)
 			}
 		}
-		slog.Info("Stopped container", "id", c)
+		log.Printf("Stopped container %s\n", c)
 
 		if args.Rm {
-			slog.Info("Removing container with rm", "id", c)
+			log.Printf("Removing container with rm %s\n", c)
 			if !dry {
 				err := exec.Command(bin, "rm", c).Run()
 				if err != nil {
-					slog.Error("Stopping failed", "error", err)
+					log.Printf("Stopping failed %+v\n", err)
 					os.Exit(1)
 				}
 			}
-			slog.Info("Removed container", "id", c)
+			log.Printf("Removed container %s\n", c)
 		}
 	}
 }
@@ -115,14 +114,14 @@ func CompleteContainers(_ mcli.ArgCompletionContext) []mcli.CompletionItem {
 
 	_, err := exec.LookPath(bin)
 	if err != nil {
-		slog.Error("Cannot find executable", "bin", bin)
+		log.Printf("Cannot find executable %s\n", bin)
 		os.Exit(1)
 	}
 
 	params := []string{"ps", "--format", "{{.ID}};{{.Names}};{{.Image}}"}
 	out, err := exec.Command(bin, params...).Output()
 	if err != nil {
-		slog.Error("Command execution failed", "error", err)
+		log.Printf("Command execution failed %+v\n", err)
 		os.Exit(1)
 	}
 
