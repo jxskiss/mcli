@@ -189,3 +189,23 @@ func Test_flag_isZero_2(t *testing.T) {
 	assert.NotNil(t, err)
 	assert.Contains(t, err.Error(), "flag is required but not set: -a1")
 }
+
+func Test_findFlagIndex(t *testing.T) {
+	tests := map[string]struct {
+		input []string
+		want  int
+	}{
+		"flag not found no values": {input: []string{}, want: 0},
+		"flag not found":           {input: []string{"subcommand", "argument"}, want: 2},
+		"flag found":               {input: []string{"-subcommand", "argument"}, want: 0},
+		"flag found middle":        {input: []string{"v", "-flag", "argument"}, want: 1},
+		"flag found end":           {input: []string{"v", "argument", "-flag"}, want: 2},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := findFlagIndex(tc.input)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}

@@ -111,13 +111,7 @@ func (p commands) sort() {
 }
 
 func (p commands) search(ctx *parsingContext, cmdArgs []string) (hasSub bool) {
-	flagIdx := len(cmdArgs)
-	for i, x := range cmdArgs {
-		if strings.HasPrefix(x, "-") {
-			flagIdx = i
-			break
-		}
-	}
+	flagIdx := findFlagIndex(cmdArgs)
 	tryName := ""
 	ambiguousIdx := -1
 	args := cmdArgs[:]
@@ -174,7 +168,7 @@ func (p commands) listSubCommandsToPrint(name string, showHidden bool) (sub comm
 func (p commands) _listSubCommandsToPrint(name string, showHidden, onlyNextLevel bool) (sub commands) {
 	name = normalizeCmdName(name)
 	wantLevel := len(strings.Fields(name)) + 1
-	var preCmd = &Command{}
+	preCmd := &Command{}
 	for _, cmd := range p {
 		if cmd.Name != name && strings.HasPrefix(cmd.Name, name) {
 			// Don't print hidden commands.
@@ -268,7 +262,6 @@ func ld(s, t string, ignoreCase bool) int {
 				d[i][j] = min + 1
 			}
 		}
-
 	}
 	return d[len(s)][len(t)]
 }
@@ -280,7 +273,7 @@ type categoryCommands struct {
 
 func (p commands) groupByCategory() ([]*categoryCommands, bool) {
 	var result []*categoryCommands
-	var hasCategories = false
+	hasCategories := false
 	for _, c := range p {
 		opts := newCmdOptions(c.cmdOpts...)
 		if opts.category != "" {
@@ -292,7 +285,7 @@ func (p commands) groupByCategory() ([]*categoryCommands, bool) {
 		return nil, false
 	}
 
-	var categoryIdxMap = make(map[string]int)
+	categoryIdxMap := make(map[string]int)
 	var noCategoryCmds []*Command
 	for _, c := range p {
 		if c.level > 1 {

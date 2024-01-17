@@ -551,13 +551,7 @@ func (p *App) searchCmd(cmdArgs []string) (invalidCmdName string, found bool) {
 			// INFO: needs tests, root command improved arguments handling,
 			// prevent go flag unexpectedly returning from processing
 			// manual flag parsing cannot encounter first argument non flag!
-			flagIdx := len(cmdArgs)
-			for i, x := range cmdArgs {
-				if strings.HasPrefix(x, "-") {
-					flagIdx = i
-					break
-				}
-			}
+			flagIdx := findFlagIndex(cmdArgs)
 			args := cmdArgs[flagIdx:]
 
 			ctx.ambiguousArgs = clip(cmdArgs[0:flagIdx])

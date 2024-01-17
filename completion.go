@@ -190,17 +190,6 @@ func (p *App) checkLastArgForCompletion() {
 				} else if compCtx.cmd.isLeaf() {
 					compCtx.wantPositionalArg = true
 					compCtx.prefixWord = compCtx.lastArg
-				} else if compCtx.cmd.isRoot(p) {
-					compCtx.wantPositionalArg = true
-					compCtx.prefixWord = compCtx.lastArg
-				} else {
-					// The user may be requesting a command or a positional arg.
-					compCtx.prefixWord = compCtx.lastArg
-				}
-			} else {
-				if compCtx.cmd.isRoot(p) {
-					compCtx.wantPositionalArg = true
-					compCtx.prefixWord = compCtx.lastArg
 				}
 			}
 		}
@@ -238,8 +227,6 @@ func (p *App) checkLastArgForCompletion() {
 					}
 				}
 			} else if compCtx.cmd.isLeaf() {
-				compCtx.wantPositionalArg = true
-			} else if compCtx.cmd.isRoot(p) {
 				compCtx.wantPositionalArg = true
 			} else {
 				// The user may be requesting a command or a positional arg.

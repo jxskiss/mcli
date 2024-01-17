@@ -537,7 +537,8 @@ func (f *_flag) validate() error {
 }
 
 func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (
-	flags, nonflags, envVars []*_flag, err error) {
+	flags, nonflags, envVars []*_flag, err error,
+) {
 	p := &flagParser{
 		fs:      fs,
 		flagMap: flagMap,
@@ -915,4 +916,15 @@ func spaceJoin(strList ...string) string {
 		}
 	}
 	return result
+}
+
+func findFlagIndex(cmdArgs []string) int {
+	flagIdx := len(cmdArgs)
+	for i, x := range cmdArgs {
+		if strings.HasPrefix(x, "-") {
+			flagIdx = i
+			break
+		}
+	}
+	return flagIdx
 }
