@@ -548,9 +548,6 @@ func (p *App) searchCmd(cmdArgs []string) (invalidCmdName string, found bool) {
 			strings.HasPrefix(cmdArgs[0], "-") ||
 			!p.cmds.isValid(cmdArgs[0]) {
 
-			// INFO: needs tests, root command improved arguments handling,
-			// prevent go flag unexpectedly returning from processing
-			// manual flag parsing cannot encounter first argument non flag!
 			flagIdx := findFlagIndex(cmdArgs)
 			args := cmdArgs[flagIdx:]
 
