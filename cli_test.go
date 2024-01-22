@@ -467,7 +467,6 @@ type AnotherCommonArgs struct {
 
 func TestParsing_TagSyntax(t *testing.T) {
 	var args struct {
-
 		// Modifier
 		M1 string `cli:"#R, --m1, modifier 1"`    // required
 		M2 string `cli:"#H, --m2     modifier 2"` // hidden
@@ -769,6 +768,133 @@ type SomeComplexType struct {
 	A, B int64
 }
 
+func TestParse_RootCmdFlagValue(t *testing.T) {
+	resetDefaultApp()
+	defaultApp.AddCompletion()
+	defaultApp.EnableFlagCompletionForAllCommands = true
+
+	var args struct {
+		A string   `cli:"-a, --a-flag, description a flag"`
+		B string   `cli:"-b, --b-flag, description b flag"`
+		C bool     `cli:"-c, --c-flag, description c flag"`
+		V []string `cli:"value"`
+	}
+
+	_, err := Parse(&args,
+		WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"value", "-b", "alfa", "-a", "abcd", "-c"}),
+		WithArgCompFuncs(map[string]ArgCompletionFunc{
+			"value": commandArguments,
+		}),
+	)
+	assert.Nil(t, err)
+	assert.Equal(t, "abcd", args.A)
+	assert.Equal(t, "alfa", args.B)
+	assert.Equal(t, true, args.C)
+	assert.Equal(t, []string{"value"}, args.V)
+
+	resetDefaultApp()
+	defaultApp.AddCompletion()
+	defaultApp.EnableFlagCompletionForAllCommands = true
+	args.A = ""
+	args.B = ""
+	args.C = false
+	args.V = []string{}
+
+	_, err = Parse(&args,
+		WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"other", "value", "-c", "-b", "alfa", "-a", "abcd"}),
+		WithArgCompFuncs(map[string]ArgCompletionFunc{
+			"value": commandArguments,
+		}),
+	)
+	assert.Nil(t, err)
+	assert.Equal(t, "abcd", args.A)
+	assert.Equal(t, "alfa", args.B)
+	assert.Equal(t, true, args.C)
+	assert.Equal(t, []string{"other", "value"}, args.V)
+
+	resetDefaultApp()
+	defaultApp.AddCompletion()
+	defaultApp.EnableFlagCompletionForAllCommands = true
+	args.A = ""
+	args.B = ""
+	args.C = false
+	args.V = []string{}
+
+	_, err = Parse(&args,
+		WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"any", "other", "value", "-b", "alfa", "-c", "-a", "abcd"}),
+		WithArgCompFuncs(map[string]ArgCompletionFunc{
+			"value": commandArguments,
+		}),
+	)
+	assert.Nil(t, err)
+	assert.Equal(t, "abcd", args.A)
+	assert.Equal(t, "alfa", args.B)
+	assert.Equal(t, true, args.C)
+	assert.Equal(t, []string{"any", "other", "value"}, args.V)
+
+	resetDefaultApp()
+	defaultApp.AddCompletion()
+	defaultApp.EnableFlagCompletionForAllCommands = true
+	args.A = ""
+	args.B = ""
+	args.C = false
+	args.V = []string{}
+
+	_, err = Parse(&args,
+		WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"more", "any", "other", "value", "-b", "alfa", "-a", "abcd", "-c"}),
+		WithArgCompFuncs(map[string]ArgCompletionFunc{
+			"value": commandArguments,
+		}),
+	)
+	assert.Nil(t, err)
+	assert.Equal(t, "abcd", args.A)
+	assert.Equal(t, "alfa", args.B)
+	assert.Equal(t, true, args.C)
+	assert.Equal(t, []string{"more", "any", "other", "value"}, args.V)
+}
+
+func TestParse_RootCmdFlagValueAndGlobalFlags(t *testing.T) {
+	resetDefaultApp()
+	defaultApp.AddCompletion()
+	defaultApp.EnableFlagCompletionForAllCommands = true
+
+	var GlobalFlags struct {
+		Env    string `cli:"-E, --env, Environment to choose (default is dev)" default:"dev"`
+		Debug  bool   `cli:"-d, --debug, Debug logs flag"`
+		Trace  bool   `cli:"-t, --trace, Trace logs flag"`
+		Ignore bool   `cli:"-i, --ignore-process, Ignore locally running process"`
+	}
+	defaultApp.SetGlobalFlags(&GlobalFlags)
+
+	var args struct {
+		A string   `cli:"-a, --a-flag, description a flag"`
+		B string   `cli:"-b, --b-flag, description b flag"`
+		C bool     `cli:"-c, --c-flag, description c flag"`
+		V []string `cli:"value"`
+	}
+
+	_, err := Parse(&args,
+		WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"value", "-b", "alfa", "-i", "-a", "abcd", "-c", "-d"}),
+		WithArgCompFuncs(map[string]ArgCompletionFunc{
+			"value": commandArguments,
+		}),
+	)
+	assert.Nil(t, err)
+	assert.Equal(t, "abcd", args.A)
+	assert.Equal(t, "alfa", args.B)
+	assert.Equal(t, true, args.C)
+	assert.Equal(t, []string{"value"}, args.V)
+	assert.Equal(t, "dev", GlobalFlags.Env)
+	assert.Equal(t, true, GlobalFlags.Debug)
+	assert.Equal(t, false, GlobalFlags.Trace)
+	assert.Equal(t, true, GlobalFlags.Ignore)
+}
+
 func TestParse_UnsupportedType(t *testing.T) {
 	resetDefaultApp()
 	var args1 struct {
@@ -783,7 +909,7 @@ func TestParse_UnsupportedType(t *testing.T) {
 }
 
 func TestShowHidden(t *testing.T) {
-	var addCommands = func() {
+	addCommands := func() {
 		Add("cmd1", dummyCmd, "A cmd1 description")
 		AddHidden("cmd2", dummyCmd, "A hidden cmd2 description")
 		AddGroup("group1", "A group1 description")
@@ -828,7 +954,6 @@ func TestShowHidden(t *testing.T) {
 }
 
 func TestReorderFlags(t *testing.T) {
-
 	type args struct {
 		Name string `cli:"-n, --name, Who do you want to say to" default:"tom"`
 		Text string `cli:"#R, text, The 'message' you want to send"`
@@ -942,7 +1067,6 @@ func TestApp_printSuggestion(t *testing.T) {
 }
 
 func TestAppDescription(t *testing.T) {
-
 	newTestApp := func() *App {
 		app := NewApp()
 		app.Description = `Test app description.
@@ -1029,5 +1153,87 @@ func TestCoverage(t *testing.T) {
 		app.Add("cmd1", dummyCmdWithContext, "cmd1")
 		app.AddHidden("cmd2-hidden", dummyCmdWithContext, "cmd2 hidden")
 		app.setupCompletionCtx([]string{}, "")
+	})
+}
+
+func TestFormatErrorArguments(t *testing.T) {
+	t.Run("one argument", func(t *testing.T) {
+		got := formatErrorArguments([]string{"one"})
+		assert.Contains(t, got, "argument: 'one'")
+	})
+
+	t.Run("more than one argument", func(t *testing.T) {
+		got := formatErrorArguments([]string{"one", "two", "three"})
+		assert.Contains(t, got, "arguments: 'one two three'")
+	})
+}
+
+func TestApply(t *testing.T) {
+	t.Run("D", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'D'
+		mod.apply(&flag)
+		assert.Equal(t, true, flag.deprecated)
+		assert.Equal(t, false, flag.isEnvVar)
+		assert.Equal(t, false, flag.hidden)
+		assert.Equal(t, false, flag.required)
+	})
+
+	t.Run("E", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'E'
+		mod.apply(&flag)
+		assert.Equal(t, false, flag.deprecated)
+		assert.Equal(t, true, flag.isEnvVar)
+		assert.Equal(t, false, flag.hidden)
+		assert.Equal(t, false, flag.required)
+	})
+
+	t.Run("H", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'H'
+		mod.apply(&flag)
+		assert.Equal(t, false, flag.deprecated)
+		assert.Equal(t, false, flag.isEnvVar)
+		assert.Equal(t, true, flag.hidden)
+		assert.Equal(t, false, flag.required)
+	})
+
+	t.Run("R", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'R'
+		mod.apply(&flag)
+		assert.Equal(t, false, flag.deprecated)
+		assert.Equal(t, false, flag.isEnvVar)
+		assert.Equal(t, false, flag.hidden)
+		assert.Equal(t, true, flag.required)
+	})
+
+	t.Run("R & D", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'R'
+		mod.apply(&flag)
+		mod = 'D'
+		mod.apply(&flag)
+		assert.Equal(t, true, flag.deprecated)
+		assert.Equal(t, false, flag.isEnvVar)
+		assert.Equal(t, false, flag.hidden)
+		assert.Equal(t, true, flag.required)
+	})
+
+	t.Run("ALL", func(t *testing.T) {
+		flag := _flag{}
+		var mod Modifier = 'R'
+		mod.apply(&flag)
+		mod = 'D'
+		mod.apply(&flag)
+		mod = 'E'
+		mod.apply(&flag)
+		mod = 'H'
+		mod.apply(&flag)
+		assert.Equal(t, true, flag.deprecated)
+		assert.Equal(t, true, flag.isEnvVar)
+		assert.Equal(t, true, flag.hidden)
+		assert.Equal(t, true, flag.required)
 	})
 }

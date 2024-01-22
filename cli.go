@@ -548,8 +548,12 @@ func (p *App) searchCmd(cmdArgs []string) (invalidCmdName string, found bool) {
 			strings.HasPrefix(cmdArgs[0], "-") ||
 			!p.cmds.isValid(cmdArgs[0]) {
 
+			flagIdx := findFlagIndex(cmdArgs)
+			args := cmdArgs[flagIdx:]
+
+			ctx.ambiguousArgs = clip(cmdArgs[0:flagIdx])
 			ctx.cmd = p.rootCmd
-			ctx.args = &cmdArgs
+			ctx.args = &args
 			return "", true
 		}
 	}
