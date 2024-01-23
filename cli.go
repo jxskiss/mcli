@@ -464,7 +464,7 @@ func (p *App) helpCmd() {
 
 	// i.e. "program help"
 	if len(ctx.ambiguousArgs) == 0 {
-		p.runWithArgs(nil, true)
+		p.runWithArgs([]string{"-h"}, true)
 		return
 	}
 

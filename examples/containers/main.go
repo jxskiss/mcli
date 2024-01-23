@@ -48,6 +48,7 @@ func main() {
 	app.SetGlobalFlags(&globalFlags)
 	app.AddRoot(cmdRoot)
 	app.AddCompletion()
+	app.AddHelp()
 	app.Options.EnableFlagCompletionForAllCommands = true
 	app.Run()
 }
