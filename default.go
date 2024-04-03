@@ -123,6 +123,15 @@ func Parse(args any, opts ...ParseOpt) (fs *flag.FlagSet, err error) {
 	return runningApp.parseArgs(args, opts...)
 }
 
+// MustParse is a helper that wraps Parse and panics if Parse returns an error.
+func MustParse(args any, opts ...ParseOpt) *flag.FlagSet {
+	fs, err := Parse(args, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fs
+}
+
 // PrintHelp prints usage doc of the current command to stderr.
 func PrintHelp() {
 

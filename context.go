@@ -44,6 +44,15 @@ func (ctx *Context) Parse(args any, opts ...ParseOpt) (*flag.FlagSet, error) {
 	return ctx.app.parseArgs(args, opts...)
 }
 
+// MustParse is a helper that wraps Parse and panics if Parse returns an error.
+func (ctx *Context) MustParse(args any, opts ...ParseOpt) *flag.FlagSet {
+	fs, err := ctx.Parse(args, opts...)
+	if err != nil {
+		panic(err)
+	}
+	return fs
+}
+
 // ArgsError returns the error of parsing arguments.
 // If no error occurs, it returns nil.
 func (ctx *Context) ArgsError() error {

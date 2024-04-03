@@ -23,7 +23,7 @@ func resetDefaultApp() {
 }
 
 func dummyCmd() {
-	Parse(nil)
+	MustParse(nil)
 	PrintHelp()
 }
 
@@ -59,7 +59,7 @@ func TestParsing_WithoutCallingRun(t *testing.T) {
 		B bool  `cli:"-b, description b flag" default:"true"`
 		C int32 `cli:"-c-flag, description c flag"`
 	}
-	Parse(&args, WithArgs([]string{"-a", "-c-flag", "12345"}))
+	MustParse(&args, WithArgs([]string{"-a", "-c-flag", "12345"}))
 
 	// assert we do modify the global state
 	assert.Equal(t, 0, len(defaultApp.cmds))
