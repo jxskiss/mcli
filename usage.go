@@ -243,9 +243,16 @@ func (p *usagePrinter) printGlobalFlags() {
 
 func (p *usagePrinter) printEnvVariables() {
 	out := p.out
+	padding := "    "
 	if len(p.envVarsHelp) > 0 {
 		fmt.Fprint(out, "Environment Variables:\n")
-		printWithAlignment(out, p.envVarsHelp, 0)
+		for _, line := range p.envVarsHelp {
+			x, y := line[0], line[1]
+			fmt.Fprintf(out, "%s\n", x)
+			if y != "" {
+				fmt.Fprintf(out, "%s%s\n", padding, strings.ReplaceAll(y, "\n", "\n"+padding))
+			}
+		}
 		fmt.Fprint(out, "\n")
 	}
 }
@@ -393,17 +400,17 @@ func printWithAlignment(out io.Writer, lines [][2]string, maxPrefixLen int) {
 	if maxPrefixLen <= 0 {
 		maxPrefixLen = calcMaxPrefixLen([][][2]string{lines})
 	}
-	padding := "\n" + strings.Repeat(" ", maxPrefixLen+4)
+	newlineWithPadding := "\n" + strings.Repeat(" ", maxPrefixLen+4)
 	for _, line := range lines {
 		x, y := line[0], line[1]
 		fmt.Fprint(out, x)
 		if y != "" {
-			if len(x) <= __MaxPrefixLen {
+			if len(x) <= maxPrefixLen {
 				fmt.Fprint(out, strings.Repeat(" ", maxPrefixLen+4-len(x)))
-				fmt.Fprint(out, strings.ReplaceAll(y, "\n", padding))
+				fmt.Fprint(out, strings.ReplaceAll(y, "\n", newlineWithPadding))
 			} else {
-				fmt.Fprint(out, padding)
-				fmt.Fprint(out, strings.ReplaceAll(y, "\n", padding))
+				fmt.Fprint(out, newlineWithPadding)
+				fmt.Fprint(out, strings.ReplaceAll(y, "\n", newlineWithPadding))
 			}
 		}
 		fmt.Fprint(out, "\n")

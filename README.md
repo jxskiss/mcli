@@ -86,8 +86,8 @@ Arguments:
   text message (REQUIRED)    The message you want to send
 
 Environment Variables:
-  MY_API_ACCESS_KEY string (REQUIRED)
-          The access key to your service provider
+  - MY_API_ACCESS_KEY string (REQUIRED)
+    The access key to your service provider
 
 $ MY_API_ACCESS_KEY=xxxx go run say.go hello
 Say to tom: hello

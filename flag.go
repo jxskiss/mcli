@@ -428,7 +428,7 @@ func (f *_flag) getUsage(hasShortFlag bool) (prefix, usage string) {
 
 func (f *_flag) getEnvVarUsage() (prefix, usage string) {
 	envStr := strings.Join(f.envNames, ", ")
-	prefix += "  " + envStr
+	prefix += "  - " + envStr
 	name, usage := unquoteUsage(f)
 	if name != "" {
 		prefix += " " + name
