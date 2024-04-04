@@ -400,18 +400,19 @@ Usage:
   gh browse [flags] [location]
 
 Flags:
-  -b, --branch string             Select another branch by passing in the branch name
-  -c, --commit                    Open the last commit
-  -n, --no-browser                Print destination URL instead of opening the browser
-  -p, --projects                  Open repository projects
-  -R, --repo [HOST/]OWNER/REPO    Select another repository using the [HOST/]OWNER/REPO format
-  -s, --settings                  Open repository settings
-  -w, --wiki                      Open repository wiki
+  -b, --branch <string>    Select another branch by passing in the branch name
+  -c, --commit             Open the last commit
+  -n, --no-browser         Print destination URL instead of opening the browser
+  -p, --projects           Open repository projects
+  -R, --repo <[HOST/]OWNER/REPO>
+                           Select another repository using the [HOST/]OWNER/REPO format
+  -s, --settings           Open repository settings
+  -w, --wiki               Open repository wiki
 
 Arguments:
-  location string    A browser location can be specified using arguments in the following format:
-                     - by number for issue or pull request, e.g. "123"; or
-                     - by path for opening folders and files, e.g. "cmd/gh/main.go"
+  location <string>    A browser location can be specified using arguments in the following format:
+                       - by number for issue or pull request, e.g. "123"; or
+                       - by path for opening folders and files, e.g. "cmd/gh/main.go"
 
 Examples:
   $ gh browse
@@ -505,16 +506,17 @@ Usage:
   gh issue create [flags]
 
 Flags:
-  -a, --assignee login            Assign people by their login. Use "@me" to self-assign.
-  -b, --body string               Supply a body. Will prompt for one otherwise.
-  -F, --body-file file            Read body text from file (use "-" to read from standard input)
-  -l, --label name                Add labels by name
-  -m, --milestone name            Add the issue to a milestone by name
-  -p, --project name              Add the issue to projects by name
-      --recover string            Recover input from a failed run of create
-  -R, --repo [HOST/]OWNER/REPO    Select another repository using the [HOST/]OWNER/REPO format
-  -t, --title string              Supply a title. Will prompt for one otherwise.
-  -w, --web                       Open the browser to create an issue
+  -a, --assignee <login>    Assign people by their login. Use "@me" to self-assign.
+  -b, --body <string>       Supply a body. Will prompt for one otherwise.
+  -F, --body-file <file>    Read body text from file (use "-" to read from standard input)
+  -l, --label <name>        Add labels by name
+  -m, --milestone <name>    Add the issue to a milestone by name
+  -p, --project <name>      Add the issue to projects by name
+      --recover <string>    Recover input from a failed run of create
+  -R, --repo <[HOST/]OWNER/REPO>
+                            Select another repository using the [HOST/]OWNER/REPO format
+  -t, --title <string>      Supply a title. Will prompt for one otherwise.
+  -w, --web                 Open the browser to create an issue
 
 Examples:
   $ gh issue create --title "I found a bug" --body "Nothing works"

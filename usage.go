@@ -30,10 +30,10 @@ type usagePrinter struct {
 	hasShortFlag bool
 
 	subCmds        commands
-	globalFlagHelp [][2]string
-	cmdFlagHelp    [][2]string
-	nonFlagHelp    [][2]string
-	envVarsHelp    [][2]string
+	globalFlagHelp []usageItem
+	cmdFlagHelp    []usageItem
+	nonFlagHelp    []usageItem
+	envVarsHelp    []usageItem
 }
 
 func (p *usagePrinter) Do() {
@@ -183,30 +183,32 @@ func (p *usagePrinter) splitAndFormatFlags() {
 	showHidden := p.ctx.showHidden
 	hasShortFlag := p.hasShortFlag
 
-	var globalFlagHelp [][2]string
-	var cmdFlagHelp [][2]string
-	var nonFlagHelp [][2]string
-	var envVarsHelp [][2]string
+	var (
+		globalFlagHelp []usageItem
+		cmdFlagHelp    []usageItem
+		nonFlagHelp    []usageItem
+		envVarsHelp    []usageItem
+	)
 	if p.flagCount > 0 {
 		for _, f := range flags {
 			if f.hidden && !showHidden {
 				continue
 			}
-			name, usage := f.getUsage(hasShortFlag)
+			usage := f.getUsage(hasShortFlag)
 			if f.isGlobal {
-				globalFlagHelp = append(globalFlagHelp, [2]string{name, usage})
+				globalFlagHelp = append(globalFlagHelp, usage)
 			} else {
-				cmdFlagHelp = append(cmdFlagHelp, [2]string{name, usage})
+				cmdFlagHelp = append(cmdFlagHelp, usage)
 			}
 		}
 	}
 	for _, f := range p.ctx.nonflags {
-		name, usage := f.getUsage(false)
-		nonFlagHelp = append(nonFlagHelp, [2]string{name, usage})
+		usage := f.getUsage(false)
+		nonFlagHelp = append(nonFlagHelp, usage)
 	}
 	for _, f := range p.ctx.envVars {
-		name, usage := f.getUsage(false)
-		envVarsHelp = append(envVarsHelp, [2]string{name, usage})
+		usage := f.getUsage(false)
+		envVarsHelp = append(envVarsHelp, usage)
 	}
 	p.globalFlagHelp = globalFlagHelp
 	p.cmdFlagHelp = cmdFlagHelp
@@ -247,7 +249,7 @@ func (p *usagePrinter) printEnvVariables() {
 	if len(p.envVarsHelp) > 0 {
 		fmt.Fprint(out, "Environment Variables:\n")
 		for _, line := range p.envVarsHelp {
-			x, y := line[0], line[1]
+			x, y := line.prefix, line.description
 			fmt.Fprintf(out, "%s\n", x)
 			if y != "" {
 				fmt.Fprintf(out, "%s%s\n", padding, strings.ReplaceAll(y, "\n", "\n"+padding))
@@ -299,7 +301,7 @@ func (p *usagePrinter) __printSubCommands(out io.Writer, cmds commands, parentCm
 		return
 	}
 
-	var cmdLines [][2]string
+	var cmdLines []usageItem
 	prefix := []string{""}
 	preName := ""
 	for _, cmd := range cmds {
@@ -327,7 +329,10 @@ func (p *usagePrinter) __printSubCommands(out io.Writer, cmds commands, parentCm
 		if cmd.Hidden {
 			name += " (HIDDEN)"
 		}
-		cmdLines = append(cmdLines, [2]string{name, description})
+		cmdLines = append(cmdLines, usageItem{
+			prefix:      name,
+			description: description,
+		})
 		preName = cmdName
 	}
 	fmt.Fprint(out, "Commands:\n")
@@ -338,7 +343,7 @@ func (p *usagePrinter) __printSubCommands(out io.Writer, cmds commands, parentCm
 func (p *usagePrinter) __printGroupedSubCommands(out io.Writer, cmdGroups []*categoryCommands, showHidden bool) {
 	type groupCmdLines struct {
 		category string
-		cmdLines [][2]string
+		cmdLines []usageItem
 	}
 
 	sort.Slice(cmdGroups, func(i, j int) bool {
@@ -351,9 +356,9 @@ func (p *usagePrinter) __printGroupedSubCommands(out io.Writer, cmdGroups []*cat
 	})
 
 	var groupLines []*groupCmdLines
-	var cmdLines [][][2]string
+	var cmdLines [][]usageItem
 	for _, grp := range cmdGroups {
-		var grpLines [][2]string
+		var grpLines []usageItem
 		for _, cmd := range grp.commands {
 			cmdName := cmd.Name
 			if cmdName == "" || (cmd.Hidden && !showHidden) || cmd.level > 1 {
@@ -364,7 +369,10 @@ func (p *usagePrinter) __printGroupedSubCommands(out io.Writer, cmdGroups []*cat
 			if cmd.Hidden {
 				name += " (HIDDEN)"
 			}
-			grpLines = append(grpLines, [2]string{name, description})
+			grpLines = append(grpLines, usageItem{
+				prefix:      name,
+				description: description,
+			})
 		}
 		if len(grpLines) == 0 {
 			continue
@@ -396,13 +404,14 @@ const (
 	__MinPrefixLen = 6
 )
 
-func printWithAlignment(out io.Writer, lines [][2]string, maxPrefixLen int) {
+func printWithAlignment(out io.Writer, lines []usageItem, maxPrefixLen int) {
 	if maxPrefixLen <= 0 {
-		maxPrefixLen = calcMaxPrefixLen([][][2]string{lines})
+		maxPrefixLen = calcMaxPrefixLen([][]usageItem{lines})
 	}
-	newlineWithPadding := "\n" + strings.Repeat(" ", maxPrefixLen+4)
+	padding := strings.Repeat(" ", maxPrefixLen+4)
+	newlineWithPadding := "\n" + padding
 	for _, line := range lines {
-		x, y := line[0], line[1]
+		x, y := line.prefix, line.description
 		fmt.Fprint(out, x)
 		if y != "" {
 			if len(x) <= maxPrefixLen {
@@ -414,14 +423,17 @@ func printWithAlignment(out io.Writer, lines [][2]string, maxPrefixLen int) {
 			}
 		}
 		fmt.Fprint(out, "\n")
+		for _, a := range line.appendixes {
+			fmt.Fprintf(out, "%s%s\n", padding, a)
+		}
 	}
 }
 
-func calcMaxPrefixLen(lineGroups [][][2]string) int {
+func calcMaxPrefixLen(lineGroups [][]usageItem) int {
 	maxPrefixLen := 0
 	for _, lines := range lineGroups {
 		for _, line := range lines {
-			if n := len(line[0]); n > maxPrefixLen && n <= __MaxPrefixLen {
+			if n := len(line.prefix); n > maxPrefixLen && n <= __MaxPrefixLen {
 				maxPrefixLen = n
 			}
 		}
