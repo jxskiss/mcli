@@ -26,8 +26,8 @@ func TestWithName(t *testing.T) {
 	got := buf.String()
 	assert.Contains(t, got, "my awesome command [flags]\n")
 	assert.Contains(t, got, "Flags:\n")
-	assert.Contains(t, got, "  -a value")
-	assert.Contains(t, got, "  -b value")
+	assert.Contains(t, got, "  -a <value>")
+	assert.Contains(t, got, "  -b <value>")
 }
 
 func TestDisableGlobalFlags(t *testing.T) {

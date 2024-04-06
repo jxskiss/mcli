@@ -37,32 +37,32 @@ func Test_flag_DefaultValue(t *testing.T) {
 	got := buf.String()
 	assert.Contains(t, got, "Flags:\n")
 	assert.Contains(t, got, "  -a")
-	assert.Contains(t, got, "(default true)")
-	assert.Contains(t, got, "  -b string")
-	assert.Contains(t, got, `(default "astr")`)
-	assert.Contains(t, got, "  -d duration")
-	assert.Contains(t, got, "(default 1.5s)")
+	assert.Contains(t, got, "[default: true]")
+	assert.Contains(t, got, "  -b <string>")
+	assert.Contains(t, got, `[default: "astr"]`)
+	assert.Contains(t, got, "  -d <duration>")
+	assert.Contains(t, got, "[default: 1.5s]")
 	assert.Contains(t, got, "Arguments:\n")
-	assert.Contains(t, got, "  arg1 string")
-	assert.Contains(t, got, `(default "arg1str")`)
-	assert.Contains(t, got, "  arg2 string")
-	assert.Contains(t, got, `(default "arg2str")`)
+	assert.Contains(t, got, "  arg1 <string>")
+	assert.Contains(t, got, `[default: "arg1str"]`)
+	assert.Contains(t, got, "  arg2 <string>")
+	assert.Contains(t, got, `[default: "arg2str"]`)
 }
 
 func Test_flag_CompositeType(t *testing.T) {
 	table := [][]any{
 		{&struct {
 			S1 []uint8 `cli:"s1"`
-		}{}, "s1 []uint"},
+		}{}, "s1 <[]uint>"},
 		{&struct {
 			S2 []time.Duration `cli:"s2"`
-		}{}, "s2 []duration"},
+		}{}, "s2 <[]duration>"},
 		{&struct {
 			M1 map[string]float64 `cli:"m1"`
-		}{}, "m1 map[string]float"},
+		}{}, "m1 <map[string]float>"},
 		{&struct {
 			M2 map[string]time.Duration `cli:"m2"`
-		}{}, "m2 map[string]duration"},
+		}{}, "m2 <map[string]duration>"},
 	}
 
 	for _, row := range table {

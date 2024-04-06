@@ -310,6 +310,11 @@ func (f *_flag) isString() bool {
 	return f.rv.Kind() == reflect.String
 }
 
+func (f *_flag) isStringPtr() bool {
+	return f.rv.Kind() == reflect.Pointer &&
+		f.rv.Type().Elem().Kind() == reflect.String
+}
+
 func (f *_flag) isZero() bool {
 	typ := f.rv.Type()
 	if isFlagValueImpl(f.rv) {
@@ -377,19 +382,21 @@ func usageName(typ reflect.Type) string {
 func (f *_flag) formatDefaultValueForHelp() string {
 	str := ""
 	if f.hasDefault {
-		if f.isString() {
-			str = fmt.Sprintf("(default %q)", f.defValue)
+		if f.isString() || f.isStringPtr() {
+			str = fmt.Sprintf("[default: %q]", f.defValue)
 		} else {
-			str = fmt.Sprintf("(default %v)", f.defValue)
+			str = fmt.Sprintf("[default: %v]", f.defValue)
 		}
 	}
 	return str
 }
 
-func (f *_flag) getUsage(hasShortFlag bool) (prefix, usage string) {
+func (f *_flag) getUsage(hasShortFlag bool) usageItem {
 	if f.isEnvVar {
 		return f.getEnvVarUsage()
 	}
+	var prefix, description string
+	var appendixes []string
 	if f.nonflag {
 		prefix += "  " + f.name
 	} else if f.short != "" && f.name != "" {
@@ -399,7 +406,7 @@ func (f *_flag) getUsage(hasShortFlag bool) (prefix, usage string) {
 	} else {
 		prefix += fmt.Sprintf("      --%s", f.name)
 	}
-	name, usage := unquoteUsage(f)
+	name, description := unquoteUsage(f)
 	if name != "" {
 		prefix += " " + name
 	}
@@ -414,51 +421,69 @@ func (f *_flag) getUsage(hasShortFlag bool) (prefix, usage string) {
 		modifiers = append(modifiers, "HIDDEN")
 	}
 	if len(modifiers) > 0 {
-		prefix += fmt.Sprintf(" (%s)", strings.Join(modifiers, ", "))
-	}
-	if dftStr := f.formatDefaultValueForHelp(); dftStr != "" {
-		usage = spaceJoin(usage, dftStr)
+		prefix += fmt.Sprintf(" [%s]", strings.Join(modifiers, ", "))
 	}
 	if len(f.envNames) > 0 {
-		envStr := fmt.Sprintf(`(env "%s")`, strings.Join(f.envNames, `", "`))
-		usage = spaceJoin(usage, envStr)
+		envStr := fmt.Sprintf(`[env: "%s"]`, strings.Join(f.envNames, `", "`))
+		appendixes = append(appendixes, envStr)
 	}
-	return
+	if dftStr := f.formatDefaultValueForHelp(); dftStr != "" {
+		appendixes = append(appendixes, dftStr)
+	}
+	return usageItem{
+		prefix:      prefix,
+		description: description,
+		appendixes:  appendixes,
+	}
 }
 
-func (f *_flag) getEnvVarUsage() (prefix, usage string) {
+func (f *_flag) getEnvVarUsage() usageItem {
+	var prefix, description string
+	var appendixes []string
 	envStr := strings.Join(f.envNames, ", ")
 	prefix += "  - " + envStr
-	name, usage := unquoteUsage(f)
+	name, description := unquoteUsage(f)
 	if name != "" {
 		prefix += " " + name
 	}
 	if f.required {
-		prefix += " (REQUIRED)"
+		prefix += " [REQUIRED]"
 	}
 	if dftStr := f.formatDefaultValueForHelp(); dftStr != "" {
-		usage = spaceJoin(usage, dftStr)
+		appendixes = append(appendixes, dftStr)
 	}
-	return
+	return usageItem{
+		prefix:      prefix,
+		description: description,
+		appendixes:  appendixes,
+	}
 }
 
 func unquoteUsage(f *_flag) (name, usage string) {
+	_markName := func(s string) string {
+		if s != "" && !strings.HasPrefix(s, "<") {
+			s = "<" + s + ">"
+		}
+		return s
+	}
 	usage = f.description
 	runes := []rune(f.description)
 	const backQuote = '`'
+searchBackQuote:
 	for i := 0; i < len(runes); i++ {
 		if runes[i] == backQuote {
 			for j := i + 1; j < len(runes); j++ {
 				if runes[j] == backQuote {
 					name = string(runes[i+1 : j])
 					usage = string(runes[:i]) + name + string(runes[j+1:])
-					return name, usage
+					break searchBackQuote
 				}
 			}
 			break // Only one back quote; use type name.
 		}
 	}
 	if name != "" {
+		name = _markName(name)
 		return
 	}
 
@@ -489,6 +514,7 @@ nextChar:
 	if name == "" {
 		name = f.usageName()
 	}
+	name = _markName(name)
 	return
 }
 
@@ -927,4 +953,10 @@ func findFlagIndex(cmdArgs []string) int {
 		}
 	}
 	return flagIdx
+}
+
+type usageItem struct {
+	prefix      string
+	description string
+	appendixes  []string
 }
