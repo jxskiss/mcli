@@ -343,11 +343,11 @@ Flags:
   -c1 <string>
                     [env: C1_STR]
   -c2 <string>
-                    [env: C2_STR]
                     [default: "c2default"]
+                    [env: C2_STR]
   -c3 <string>
-                    [env: C3_STR]
                     [default: "c3default"]
+                    [env: C3_STR]
   -c4 <c4>          a c4 value
   -c5 <string>      c5 description
   -d1 <duration>

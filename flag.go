@@ -422,6 +422,9 @@ func (f *_flag) getUsage(hasShortFlag bool) usageItem {
 	if len(modifiers) > 0 {
 		prefix += fmt.Sprintf(" [%s]", strings.Join(modifiers, ", "))
 	}
+	if dftStr := f.formatDefaultValueForHelp(); dftStr != "" {
+		appendixes = append(appendixes, dftStr)
+	}
 	if len(f.envNames) > 0 {
 		envStr := fmt.Sprintf(`[env: %s]`, strings.Join(f.envNames, ", "))
 		appendixes = append(appendixes, envStr)
@@ -429,9 +432,6 @@ func (f *_flag) getUsage(hasShortFlag bool) usageItem {
 	if len(f.enums) > 0 {
 		enumStr := fmt.Sprintf(`[valid: %s]`, strings.Join(f.enums, ", "))
 		appendixes = append(appendixes, enumStr)
-	}
-	if dftStr := f.formatDefaultValueForHelp(); dftStr != "" {
-		appendixes = append(appendixes, dftStr)
 	}
 	return usageItem{
 		prefix:      prefix,
