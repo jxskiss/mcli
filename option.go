@@ -22,6 +22,7 @@ type parseOptions struct {
 
 	argCompFuncs map[string]ArgCompletionFunc
 	defaults     map[string]any
+	enums        map[string][]string
 
 	customUsage func() string
 	helpFooter  func() string
@@ -86,6 +87,18 @@ func ReplaceUsage(f func() string) ParseOpt {
 func WithDefaults(defaults map[string]any) ParseOpt {
 	return ParseOpt{f: func(options *parseOptions) {
 		options.defaults = defaults
+	}}
+}
+
+// WithEnums specifies valid enum values for flags and arguments.
+// The map key can be either the short name (e.g., "n") or the long name
+// (e.g., "name"). Long name takes precedence if both are present.
+// When a flag or argument with enum validation is set to a value not in the enum list,
+// an error will be reported.
+// Valid enum values will be shown in the help output.
+func WithEnums(enums map[string][]string) ParseOpt {
+	return ParseOpt{f: func(options *parseOptions) {
+		options.enums = enums
 	}}
 }
 

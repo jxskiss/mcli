@@ -297,6 +297,21 @@ func (ctx *parsingContext) checkRequired() (err error) {
 	return
 }
 
+func (ctx *parsingContext) checkEnums() (err error) {
+	flags := append(clip(ctx.flags), ctx.nonflags...)
+	for _, f := range flags {
+		if !f.isZero() && len(f.enums) > 0 {
+			val := f.String()
+			valid := find(f.enums, val) >= 0
+			if !valid {
+				ctx.failf(&err, "value for %s is invalid, must be one of: %s", f.helpName(), strings.Join(f.enums, ", "))
+				return
+			}
+		}
+	}
+	return
+}
+
 func (ctx *parsingContext) failf(errp *error, format string, a ...any) {
 	err := fmt.Errorf(format, a...)
 	if *errp == nil {
@@ -661,6 +676,9 @@ func (p *App) parseArgsForRunningCommand() (fs *flag.FlagSet, err error) {
 		return fs, err
 	}
 	if err = ctx.checkRequired(); err != nil {
+		return fs, err
+	}
+	if err = ctx.checkEnums(); err != nil {
 		return fs, err
 	}
 	tidyFlags(fs, ctx.flags, nonflagArgs)

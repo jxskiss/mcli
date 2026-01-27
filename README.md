@@ -205,6 +205,7 @@ ParseOpt:
 - `DisableGlobalFlags` tells `Parse` to don't parse and print global flags in help.
 - `ReplaceUsage` tells `Parse` to use a custom usage function instead of the default.
 - `WithDefaults` specifies default values for flags and arguments, overriding the default values in struct tags.
+- `WithEnums` validates enum values for flags and arguments.
 - `WithExamples` specifies examples for a command. Examples will be shown after flags in the help.
 - `WithFooter` adds a footer message after the default help,
   this option overrides the App's setting `Options.HelpFooter` for this parsing call.

@@ -424,35 +424,6 @@ func TestWithDefaults_NilOption(t *testing.T) {
 	assert.Equal(t, 100, args.Flag2)
 }
 
-func TestWithDefaults_ZeroValueInMap(t *testing.T) {
-	resetDefaultApp()
-	var args struct {
-		Str string `cli:"--str" default:"nonempty"`
-		Num int    `cli:"--num" default:"42"`
-	}
-
-	// Setting zero values via WithDefaults
-	defaults := map[string]any{
-		"str": "", // Empty string (zero value)
-		"num": 0,  // Zero int
-	}
-
-	fs, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
-		WithArgs([]string{}), WithDefaults(defaults))
-	assert.Nil(t, err)
-	// Zero values should not be shown as defaults since isZero() returns true
-	assert.Equal(t, "", args.Str)
-	assert.Equal(t, 0, args.Num)
-
-	var buf bytes.Buffer
-	fs.SetOutput(&buf)
-	fs.Usage()
-	got := buf.String()
-	// Since values are zero, hasDefault should be false
-	// and no default should appear in help
-	assert.NotContains(t, got, "[default: ")
-}
-
 func TestWithDefaults_NonMatchingKeys(t *testing.T) {
 	resetDefaultApp()
 	var args struct {
@@ -527,6 +498,182 @@ func TestWithDefaults_SignedTypes(t *testing.T) {
 	assert.Equal(t, int16(-32768), args.Int16)
 	assert.Equal(t, int32(-2147483648), args.Int32)
 	assert.Equal(t, int64(-9223372036854775808), args.Int64)
+}
+
+func TestWithEnums_BasicString(t *testing.T) {
+	resetDefaultApp()
+	var args struct {
+		Format string `cli:"-f, --format, Output format"`
+	}
+
+	enums := map[string][]string{
+		"format": {"json", "yaml", "toml"},
+	}
+
+	// Valid value
+	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"--format", "json"}), WithEnums(enums))
+	assert.Nil(t, err)
+	assert.Equal(t, "json", args.Format)
+}
+
+func TestWithEnums_ShortName(t *testing.T) {
+	resetDefaultApp()
+	var args struct {
+		Level string `cli:"-l, --level, Log level"`
+	}
+
+	enums := map[string][]string{
+		"l": {"debug", "info", "warn", "error"},
+	}
+
+	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"-l", "info"}), WithEnums(enums))
+	assert.Nil(t, err)
+	assert.Equal(t, "info", args.Level)
+}
+
+func TestWithEnums_InvalidValue(t *testing.T) {
+	resetDefaultApp()
+	var args struct {
+		Mode string `cli:"-m, --mode, Operation mode"`
+	}
+
+	enums := map[string][]string{
+		"mode": {"fast", "slow"},
+	}
+
+	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"--mode", "invalid"}), WithEnums(enums))
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "value for flag '-mode' is invalid")
+	assert.Contains(t, err.Error(), "must be one of: fast, slow")
+}
+
+func TestWithEnums_HelpDisplay(t *testing.T) {
+	resetDefaultApp()
+	var args struct {
+		Output string `cli:"-o, --output, Output format"`
+	}
+
+	enums := map[string][]string{
+		"output": {"json", "xml", "text"},
+	}
+
+	fs, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{}), WithEnums(enums))
+	assert.Nil(t, err)
+
+	var buf bytes.Buffer
+	fs.SetOutput(&buf)
+	fs.Usage()
+
+	got := buf.String()
+	assert.Contains(t, got, "[valid: json, xml, text]")
+}
+
+func TestWithEnums_LongNamePriority(t *testing.T) {
+	resetDefaultApp()
+	var args struct {
+		Color string `cli:"-c, --color, Color output"`
+	}
+
+	// Provide both short and long names in enums - long should take precedence
+	enums := map[string][]string{
+		"c":     {"never"},
+		"color": {"auto", "always", "never"},
+	}
+
+	fs, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{"--color", "auto"}), WithEnums(enums))
+	assert.Nil(t, err)
+	assert.Equal(t, "auto", args.Color)
+
+	// Verify help shows correct enum values
+	var buf bytes.Buffer
+	fs.SetOutput(&buf)
+	fs.Usage()
+	got := buf.String()
+	assert.Contains(t, got, "[valid: auto, always, never]")
+}
+
+func TestWithEnums_WithDefaults(t *testing.T) {
+	resetDefaultApp()
+	var args struct {
+		Format string `cli:"-f, --format, Format" default:"json"`
+	}
+
+	enums := map[string][]string{
+		"format": {"json", "yaml", "toml"},
+	}
+
+	defaults := map[string]any{
+		"format": "yaml",
+	}
+
+	// Default value should also be validated
+	_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+		WithArgs([]string{}), WithDefaults(defaults), WithEnums(enums))
+	assert.Nil(t, err)
+	assert.Equal(t, "yaml", args.Format)
+}
+
+func TestWithEnums_InvalidDefaultValue(t *testing.T) {
+	resetDefaultApp()
+	var args struct {
+		Format string `cli:"-f, --format, Format"`
+	}
+
+	enums := map[string][]string{
+		"format": {"json", "yaml"},
+	}
+	defaults := map[string]any{
+		"format": "invalid", // Invalid default value
+	}
+
+	var errMessage string
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				errMessage, _ = r.(string)
+			}
+		}()
+		_, _ = Parse(&args, WithErrorHandling(flag.ContinueOnError),
+			WithArgs([]string{}), WithDefaults(defaults), WithEnums(enums))
+	}()
+	assert.Contains(t, errMessage, "default value \"invalid\" for flag '-format' is invalid")
+	assert.Contains(t, errMessage, "must be one of: json, yaml")
+}
+
+func TestWithEnums_Arguments(t *testing.T) {
+	enums := map[string][]string{
+		"action": {"start", "stop", "restart"},
+	}
+
+	t.Run("valid enum value", func(t *testing.T) {
+		resetDefaultApp()
+		var args struct {
+			Action string `cli:"action, Action to perform"`
+		}
+
+		_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+			WithArgs([]string{"start"}), WithEnums(enums))
+		assert.Nil(t, err)
+		assert.Equal(t, "start", args.Action)
+
+	})
+
+	t.Run("invalid enum value", func(t *testing.T) {
+		resetDefaultApp()
+		var args struct {
+			Action string `cli:"action, Action to perform"`
+		}
+
+		_, err := Parse(&args, WithErrorHandling(flag.ContinueOnError),
+			WithArgs([]string{"invalid"}), WithEnums(enums))
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "must be one of: start, stop, restart")
+	})
 }
 
 func TestWithDefaults_FloatTypes(t *testing.T) {

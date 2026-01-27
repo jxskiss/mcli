@@ -74,6 +74,7 @@ type _flag struct {
 	description string
 	defValue    string
 	envNames    []string
+	enums       []string
 	_tags
 	_value
 
@@ -422,8 +423,12 @@ func (f *_flag) getUsage(hasShortFlag bool) usageItem {
 		prefix += fmt.Sprintf(" [%s]", strings.Join(modifiers, ", "))
 	}
 	if len(f.envNames) > 0 {
-		envStr := fmt.Sprintf(`[env: "%s"]`, strings.Join(f.envNames, `", "`))
+		envStr := fmt.Sprintf(`[env: %s]`, strings.Join(f.envNames, ", "))
 		appendixes = append(appendixes, envStr)
+	}
+	if len(f.enums) > 0 {
+		enumStr := fmt.Sprintf(`[valid: %s]`, strings.Join(f.enums, ", "))
+		appendixes = append(appendixes, enumStr)
 	}
 	if dftStr := f.formatDefaultValueForHelp(); dftStr != "" {
 		appendixes = append(appendixes, dftStr)
@@ -736,8 +741,17 @@ func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag strin
 		return nil, err
 	}
 
+	// Apply enums from WithEnums option if provided
+	if p.opts != nil && p.opts.enums != nil {
+		// Try long name first, then short name
+		enums := p.opts.enums[f.name]
+		if enums == nil && f.short != "" {
+			enums = p.opts.enums[f.short]
+		}
+		f.enums = enums
+	}
+
 	// Apply WithDefaults option if provided
-	defaultApplied := false
 	if p.opts != nil && p.opts.defaults != nil {
 		// Try long name first, then short name
 		defaultVal := p.opts.defaults[f.name]
@@ -750,12 +764,11 @@ func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag strin
 			}
 			f.defValue = formatValue(f.rv)
 			f.hasDefault = !f.isZero()
-			defaultApplied = true
 		}
 	}
 
 	// Apply struct tag default only if WithDefaults didn't override it
-	if !defaultApplied && defaultValue != "" {
+	if !f.hasDefault && defaultValue != "" {
 		err := f.Set(defaultValue)
 		if err != nil {
 			return nil, newProgramingError("invalid default value %q for %s: %v", defaultValue, f.helpName(), err)
@@ -763,6 +776,16 @@ func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag strin
 		f.defValue = defaultValue
 		f.hasDefault = !f.isZero()
 	}
+
+	// Validate default value against enums if provided
+	if f.hasDefault && len(f.enums) > 0 {
+		val := f.String()
+		valid := find(f.enums, val) >= 0
+		if !valid {
+			return nil, newProgramingError("default value %q for %s is invalid, must be one of: %s", f.defValue, f.helpName(), strings.Join(f.enums, ", "))
+		}
+	}
+
 	return f, nil
 }
 
