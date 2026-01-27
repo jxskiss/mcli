@@ -19,17 +19,17 @@ import (
 //
 // Fow now the following modifiers are available:
 //
-//	D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help.
-//	R - marks a flag or argument as required, "REQUIRED" will be showed in help.
+//	D - marks a flag or argument as deprecated, "DEPRECATED" will be shown in help.
+//	R - marks a flag or argument as required, "REQUIRED" will be shown in help.
 //	H - marks a flag as hidden, see below for more about hidden flags.
 //	E - marks an argument read from environment variables, but not command line,
-//	    environment variables will be showed in a separate section in help.
+//	    environment variables will be shown in a separate section in help.
 //
-// Hidden flags won't be showed in help, except that when a special flag
+// Hidden flags don't show in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
 //
 // Modifier `H` shall not be used for an argument, else it panics.
-// An argument must be showed in help to tell user how to use the program
+// An argument must be shown in help to tell user how to use the program
 // correctly.
 //
 // Modifier `E` is useful when you want to read an environment variable,
@@ -136,20 +136,20 @@ func formatValue(rv reflect.Value) string {
 		return string(b)
 	}
 	if rv.Kind() == reflect.Pointer {
-		return formatValueOfBasicTypePtr(rv)
+		return formatValueOfAnyTypePtr(rv)
 	}
-	return formatValueOfBasicType(rv)
+	return formatValueOfAnyType(rv)
 }
 
-func formatValueOfBasicTypePtr(rv reflect.Value) string {
+func formatValueOfAnyTypePtr(rv reflect.Value) string {
 	if rv.Elem().IsValid() {
-		return formatValueOfBasicType(rv.Elem())
+		return formatValueOfAnyType(rv.Elem())
 	}
 	zero := reflect.New(rv.Type().Elem()).Elem()
-	return formatValueOfBasicType(zero)
+	return formatValueOfAnyType(zero)
 }
 
-func formatValueOfBasicType(rv reflect.Value) string {
+func formatValueOfAnyType(rv reflect.Value) string {
 	switch rv.Kind() {
 	case reflect.Bool:
 		return strconv.FormatBool(rv.Bool())
@@ -168,11 +168,9 @@ func formatValueOfBasicType(rv reflect.Value) string {
 		if rv.Len() == 0 {
 			return ""
 		}
-		b, _ := json.Marshal(rv.Interface())
-		return string(b)
-	default:
-		panic(fmt.Sprintf("mcli: unsupported value type: %v", rv.Type()))
 	}
+	b, _ := json.Marshal(rv.Interface())
+	return string(b)
 }
 
 func (f *_flag) Set(s string) error {
@@ -562,12 +560,13 @@ func (f *_flag) validate() error {
 	return nil
 }
 
-func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag) (
+func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[string]*_flag, opts *parseOptions) (
 	flags, nonflags, envVars []*_flag, err error,
 ) {
 	p := &flagParser{
 		fs:      fs,
 		flagMap: flagMap,
+		opts:    opts,
 	}
 	rt := rv.Type()
 
@@ -601,6 +600,7 @@ func parseFlags(isGlobal bool, fs *flag.FlagSet, rv reflect.Value, flagMap map[s
 type flagParser struct {
 	fs      *flag.FlagSet
 	flagMap map[string]*_flag
+	opts    *parseOptions
 
 	flags    []*_flag
 	nonflags []*_flag
@@ -670,7 +670,7 @@ func (p *flagParser) parseField(
 
 	// Got a struct field, parse it recursively.
 	if fv.Kind() == reflect.Struct && !isFlagValueImpl(fv) && !isTextValueImpl(fv) {
-		subFlags, subNonflags, subEnvVars, subErr := parseFlags(isGlobalFlag, p.fs, fv, p.flagMap)
+		subFlags, subNonflags, subEnvVars, subErr := parseFlags(isGlobalFlag, p.fs, fv, p.flagMap, p.opts)
 		if subErr != nil {
 			return subErr
 		}
@@ -735,7 +735,27 @@ func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag strin
 	if err := f.validate(); err != nil {
 		return nil, err
 	}
-	if defaultValue != "" {
+
+	// Apply WithDefaults option if provided
+	defaultApplied := false
+	if p.opts != nil && p.opts.defaults != nil {
+		// Try long name first, then short name
+		defaultVal := p.opts.defaults[f.name]
+		if defaultVal == nil && f.short != "" {
+			defaultVal = p.opts.defaults[f.short]
+		}
+		if defaultVal != nil {
+			if err := applyDefaultValue(f.rv, defaultVal); err != nil {
+				return nil, newProgramingError("invalid default value from WithDefaults for %s: %v", f.helpName(), err)
+			}
+			f.defValue = formatValue(f.rv)
+			f.hasDefault = !f.isZero()
+			defaultApplied = true
+		}
+	}
+
+	// Apply struct tag default only if WithDefaults didn't override it
+	if !defaultApplied && defaultValue != "" {
 		err := f.Set(defaultValue)
 		if err != nil {
 			return nil, newProgramingError("invalid default value %q for %s: %v", defaultValue, f.helpName(), err)
@@ -744,6 +764,26 @@ func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag strin
 		f.hasDefault = !f.isZero()
 	}
 	return f, nil
+}
+
+// applyDefaultValue applies a default value from WithDefaults to the flag's reflect value.
+func applyDefaultValue(rv reflect.Value, defaultValue any) error {
+	defVal := reflect.ValueOf(defaultValue)
+	if !defVal.IsValid() {
+		return fmt.Errorf("invalid value")
+	}
+	if defVal.Type().AssignableTo(rv.Type()) {
+		rv.Set(defVal)
+		return nil
+	}
+	if rv.Kind() == reflect.Ptr && defVal.Type().AssignableTo(rv.Type().Elem()) {
+		if rv.IsNil() {
+			rv.Set(reflect.New(rv.Type().Elem()))
+		}
+		rv.Elem().Set(defVal)
+		return nil
+	}
+	return fmt.Errorf("cannot assign default value of type %T to %T", defVal.Type(), rv.Type())
 }
 
 func parseCliTag(f *_flag, cliTag string) {

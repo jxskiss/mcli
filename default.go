@@ -49,7 +49,7 @@ func AddAlias(aliasName, target string, opts ...CmdOpt) {
 // AddHidden adds a hidden command.
 // f must be a function of signature `func()` or `func(*Context)`, else it panics.
 //
-// A hidden command won't be showed in help, except that when a special flag
+// A hidden command doesn't show in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
 //
 // See Add for valid types of cmd.
@@ -61,7 +61,7 @@ func AddHidden(name string, cmd any, description string, opts ...CmdOpt) {
 // A group is a common prefix for some commands.
 // It's not required to add group before adding sub commands, but user
 // can use this function to add a description to a group, which will be
-// showed in help.
+// shown in help.
 func AddGroup(name string, description string, opts ...CmdOpt) {
 	defaultApp.AddGroup(name, description, opts...)
 }

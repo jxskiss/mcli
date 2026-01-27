@@ -170,7 +170,7 @@ func (ctx *parsingContext) getInvalidCmdName() string {
 func (ctx *parsingContext) parseTags(rv reflect.Value) (err error) {
 	fs := ctx.getFlagSet()
 	flagMap := make(map[string]*_flag)
-	flags, nonflags, envVars, err := parseFlags(false, fs, rv, flagMap)
+	flags, nonflags, envVars, err := parseFlags(false, fs, rv, flagMap, ctx.opts)
 	if err != nil {
 		if _, ok := err.(*programingError); ok {
 			panic(fmt.Sprintf("mcli: %v", err))
@@ -405,7 +405,7 @@ func (p *App) AddAlias(aliasName, target string, opts ...CmdOpt) {
 
 // AddHidden adds a hidden command.
 //
-// A hidden command won't be showed in help, except that when a special flag
+// A hidden command doesn't show in help, except that when a special flag
 // "--mcli-show-hidden" is provided.
 //
 // See App.Add for valid types of cmd.

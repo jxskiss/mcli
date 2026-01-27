@@ -38,7 +38,7 @@ which is licensed under the Apache License 2.0.
 * Read environment variables for flags and arguments.
 * Set default value for flags and arguments.
 * Work with time.Duration, slice, map out of box.
-* Mark commands, flags as hidden, hidden commands and flags won't be showed in help,
+* Mark commands, flags as hidden, hidden commands and flags don't show in help,
   except that when a special flag `--mcli-show-hidden` is provided.
 * Mark flags, arguments as required, report error when a required flag is not given.
 * Mark flags as deprecated.
@@ -107,9 +107,9 @@ func main() {
     // A sub-command can also be added without registering the group.
     mcli.Add("group3 sub1 subsub1", runGroup3Sub1Subsub1, "Blah blah Blah")
 
-    // This is a hidden command, it won't be showed in help,
+    // This is a hidden command, it doesn't show in help,
     // except that when flag "--mcli-show-hidden" is given.
-    mcli.AddHidden("secret-cmd", secretCmd, "An secret command won't be showed in help")
+    mcli.AddHidden("secret-cmd", secretCmd, "A secret command doesn't show in help")
 
     // Enable shell auto-completion, see `program completion -h` for help.
     mcli.AddCompletion()
@@ -173,7 +173,7 @@ Use the default App:
 - `AddHidden` adds a hidden command.
 - `AddGroup` adds a group explicitly. A group is a common prefix for some commands.
   It's not required to add group before adding sub commands, but user can use this function
-  to add a description to a group, which will be showed in help.
+  to add a description to a group, which will be shown in help.
 - `AddHelp` enables the "help" command.
 - `AddCompletion` enables the "completion" command to generate autocomplete scripts.
 - `Parse` parses the command line for flags and arguments.
@@ -193,7 +193,7 @@ App:
 CmdOpt:
 
 - `WithCategory` groups commands into different categories in help.
-- `WithLongDesc` specifies a long description of a command, which will be showed in the command's help.
+- `WithLongDesc` specifies a long description of a command, which will be shown in the command's help.
 - `EnableFlagCompletion` enables flag completion for a command.
 
 ParseOpt:
@@ -204,7 +204,8 @@ ParseOpt:
 - `WithName` specifies the command name to use when printing usage doc.
 - `DisableGlobalFlags` tells `Parse` to don't parse and print global flags in help.
 - `ReplaceUsage` tells `Parse` to use a custom usage function instead of the default.
-- `WithExamples` specifies examples for a command. Examples will be showed after flags in the help.
+- `WithDefaults` specifies default values for flags and arguments, overriding the default values in struct tags.
+- `WithExamples` specifies examples for a command. Examples will be shown after flags in the help.
 - `WithFooter` adds a footer message after the default help,
   this option overrides the App's setting `Options.HelpFooter` for this parsing call.
 - `WithArgCompFuncs` specifies functions to suggest flag values and positional arguments programmatically.
@@ -260,17 +261,17 @@ the first segment, starting with a `#` character.
 
 Fow now the following modifiers are available:
 
-* D - marks a flag or argument as deprecated, "DEPRECATED" will be showed in help.
-* R - marks a flag or argument as required, "REQUIRED" will be showed in help.
+* D - marks a flag or argument as deprecated, "DEPRECATED" will be shown in help.
+* R - marks a flag or argument as required, "REQUIRED" will be shown in help.
 * H - marks a flag as hidden, see below for more about hidden flags.
 * E - marks an argument read from environment variables, but not command line,
-      environment variables will be showed in a separate section in help.
+      environment variables will be shown in a separate section in help.
 
-Hidden flags won't be showed in help, except that when a special flag
+Hidden flags don't show in help, except that when a special flag
 "--mcli-show-hidden" is provided.
 
 Modifier `H` shall not be used for an argument, else it panics.
-An argument must be showed in help to tell user how to use the program
+An argument must be shown in help to tell user how to use the program
 correctly.
 
 Modifier `E` is useful when you want to read an environment variable,

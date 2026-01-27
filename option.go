@@ -21,6 +21,7 @@ type parseOptions struct {
 	examples      string
 
 	argCompFuncs map[string]ArgCompletionFunc
+	defaults     map[string]any
 
 	customUsage func() string
 	helpFooter  func() string
@@ -78,8 +79,18 @@ func ReplaceUsage(f func() string) ParseOpt {
 	}}
 }
 
+// WithDefaults specifies default values for flags and arguments.
+// The map key can be either the short name (e.g., "n") or the long name
+// (e.g., "name"). Long name takes precedence if both are present.
+// Defaults specified here override the default values in struct tags.
+func WithDefaults(defaults map[string]any) ParseOpt {
+	return ParseOpt{f: func(options *parseOptions) {
+		options.defaults = defaults
+	}}
+}
+
 // WithExamples specifies examples for a command.
-// Examples will be showed after flags in the command's help.
+// Examples will be shown after flags in the command's help.
 func WithExamples(examples string) ParseOpt {
 	return ParseOpt{f: func(options *parseOptions) {
 		options.examples = strings.TrimSpace(heredoc.Doc(examples))
@@ -127,7 +138,7 @@ func WithCategory(category string) CmdOpt {
 }
 
 // WithLongDesc specifies a long description of a command,
-// which will be showed in the command's help.
+// which will be shown in the command's help.
 func WithLongDesc(long string) CmdOpt {
 	return CmdOpt{f: func(options *cmdOptions) {
 		options.longDesc = strings.TrimSpace(heredoc.Doc(long))
