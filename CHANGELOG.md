@@ -5,6 +5,21 @@ Notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.10.0] - 2026-01-28
+
+- New: add new ParseOpt option `WithDefaults` to provide default values programmatically.
+- New: add new ParseOpt option `WithEnums` to validate enum options.
+- Change: improve help output formatting.
+
+## [v0.9.3] - 2024-01-23
+
+- New: support flag and arg completion for root command (thanks @akemrir)
+- Fix: root command help
+
+## [v0.9.2] - 2023-10-18
+
+- New: support reading argument from only environment variables
+
 ## [v0.9.0] - 2023-10-10
 
 - New: support pointer flags. #22
