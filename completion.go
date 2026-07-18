@@ -191,6 +191,9 @@ func (p *App) checkLastArgForCompletion() {
 					compCtx.wantPositionalArg = true
 					compCtx.prefixWord = compCtx.lastArg
 				}
+			} else if compCtx.cmd.isLeaf() {
+				compCtx.wantPositionalArg = true
+				compCtx.prefixWord = compCtx.lastArg
 			}
 		}
 	} else {
@@ -482,12 +485,26 @@ func (p *App) continueFlagValueCompletion() {
 	compFunc := pCtx.opts.argCompFuncs["-"+f.name]
 	if compFunc == nil {
 		compFunc = pCtx.opts.argCompFuncs["-"+f.short]
-		if compFunc == nil {
-			return
-		}
 	}
-	acc := p.newArgCompletionContext()
-	compItems := compFunc(acc)
+	
+	var compItems []CompletionItem
+	if compFunc != nil {
+		acc := p.newArgCompletionContext()
+		compItems = compFunc(acc)
+	} else if len(f.enums) > 0 {
+		prefix := compCtx.prefixWord
+		for _, val := range f.enums {
+			if strings.HasPrefix(val, prefix) {
+				compItems = append(compItems, CompletionItem{
+					Value:       val,
+					Description: "",
+				})
+			}
+		}
+	} else {
+		return
+	}
+	
 	p.printCompletionItems(compItems)
 }
 
@@ -514,11 +531,23 @@ func (p *App) continuePositionalArgCompletion() {
 	}
 
 	compFunc := pCtx.opts.argCompFuncs[nf.name]
-	if compFunc == nil {
+	var compItems []CompletionItem
+	if compFunc != nil {
+		acc := p.newArgCompletionContext()
+		compItems = compFunc(acc)
+	} else if len(nf.enums) > 0 {
+		prefix := p.completionCtx.prefixWord
+		for _, val := range nf.enums {
+			if strings.HasPrefix(val, prefix) {
+				compItems = append(compItems, CompletionItem{
+					Value:       val,
+					Description: "",
+				})
+			}
+		}
+	} else {
 		return
 	}
-	acc := p.newArgCompletionContext()
-	compItems := compFunc(acc)
 	p.printCompletionItems(compItems)
 }
 

@@ -314,3 +314,5 @@ can be accessed in the functions.
 ## Changelog
 
 See [CHANGELOG](./CHANGELOG.md) for detailed change history.
+
+* **Recent Updates**: Fixed a bug where autocomplete failed for the first positional argument.
