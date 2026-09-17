@@ -486,25 +486,17 @@ func (p *App) continueFlagValueCompletion() {
 	if compFunc == nil {
 		compFunc = pCtx.opts.argCompFuncs["-"+f.short]
 	}
-	
-	var compItems []CompletionItem
-	if compFunc != nil {
-		acc := p.newArgCompletionContext()
-		compItems = compFunc(acc)
-	} else if len(f.enums) > 0 {
-		prefix := compCtx.prefixWord
-		for _, val := range f.enums {
-			if strings.HasPrefix(val, prefix) {
-				compItems = append(compItems, CompletionItem{
-					Value:       val,
-					Description: "",
-				})
-			}
+	if compFunc == nil {
+		if len(f.enums) > 0 {
+			compFunc = newEnumCompFunc(f.enums)
+		} else {
+			return
 		}
-	} else {
-		return
 	}
-	
+
+	acc := p.newArgCompletionContext()
+	compItems := compFunc(acc)
+
 	p.printCompletionItems(compItems)
 }
 
@@ -531,23 +523,16 @@ func (p *App) continuePositionalArgCompletion() {
 	}
 
 	compFunc := pCtx.opts.argCompFuncs[nf.name]
-	var compItems []CompletionItem
-	if compFunc != nil {
-		acc := p.newArgCompletionContext()
-		compItems = compFunc(acc)
-	} else if len(nf.enums) > 0 {
-		prefix := p.completionCtx.prefixWord
-		for _, val := range nf.enums {
-			if strings.HasPrefix(val, prefix) {
-				compItems = append(compItems, CompletionItem{
-					Value:       val,
-					Description: "",
-				})
-			}
+	if compFunc == nil {
+		if len(nf.enums) > 0 {
+			compFunc = newEnumCompFunc(nf.enums)
+		} else {
+			return
 		}
-	} else {
-		return
 	}
+
+	acc := p.newArgCompletionContext()
+	compItems := compFunc(acc)
 	p.printCompletionItems(compItems)
 }
 
@@ -634,6 +619,22 @@ func (p *App) completionCmd(shellType string) func() {
 		builder := &strings.Builder{}
 		tpl.Execute(builder, data)
 		fmt.Println(builder.String())
+	}
+}
+
+func newEnumCompFunc(enums []string) ArgCompletionFunc {
+	return func(ctx ArgCompletionContext) []CompletionItem {
+		prefix := ctx.ArgPrefix()
+		var compItems []CompletionItem
+		for _, val := range enums {
+			if strings.HasPrefix(val, prefix) {
+				compItems = append(compItems, CompletionItem{
+					Value:       val,
+					Description: "",
+				})
+			}
+		}
+		return compItems
 	}
 }
 
