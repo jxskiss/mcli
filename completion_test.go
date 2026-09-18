@@ -658,3 +658,30 @@ func TestHasCompletionFlag(t *testing.T) {
 		assert.Equal(t, shell, "unsupported")
 	})
 }
+
+func TestNewEnumCompFunc(t *testing.T) {
+	fn := newEnumCompFunc([]string{"json", "yaml", "xml", "text", "tmp"})
+
+	resetDefaultApp()
+	defaultApp.completionCtx.prefixWord = "y"
+	ctx := defaultApp.newArgCompletionContext()
+
+	items := fn(ctx)
+	assert.Equal(t, len(items), 1)
+	assert.Equal(t, items[0].Value, "yaml")
+
+	defaultApp.completionCtx.prefixWord = "x"
+	items = fn(ctx)
+	assert.Equal(t, len(items), 1)
+	assert.Equal(t, items[0].Value, "xml")
+
+	defaultApp.completionCtx.prefixWord = "t"
+	items = fn(ctx)
+	assert.Equal(t, len(items), 2)
+	assert.Equal(t, items[0].Value, "text")
+	assert.Equal(t, items[1].Value, "tmp")
+
+	defaultApp.completionCtx.prefixWord = "a"
+	items = fn(ctx)
+	assert.Equal(t, len(items), 0)
+}

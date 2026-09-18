@@ -191,6 +191,9 @@ func (p *App) checkLastArgForCompletion() {
 					compCtx.wantPositionalArg = true
 					compCtx.prefixWord = compCtx.lastArg
 				}
+			} else if compCtx.cmd.isLeaf() {
+				compCtx.wantPositionalArg = true
+				compCtx.prefixWord = compCtx.lastArg
 			}
 		}
 	} else {
@@ -482,12 +485,18 @@ func (p *App) continueFlagValueCompletion() {
 	compFunc := pCtx.opts.argCompFuncs["-"+f.name]
 	if compFunc == nil {
 		compFunc = pCtx.opts.argCompFuncs["-"+f.short]
-		if compFunc == nil {
+	}
+	if compFunc == nil {
+		if len(f.enums) > 0 {
+			compFunc = newEnumCompFunc(f.enums)
+		} else {
 			return
 		}
 	}
+
 	acc := p.newArgCompletionContext()
 	compItems := compFunc(acc)
+
 	p.printCompletionItems(compItems)
 }
 
@@ -515,8 +524,13 @@ func (p *App) continuePositionalArgCompletion() {
 
 	compFunc := pCtx.opts.argCompFuncs[nf.name]
 	if compFunc == nil {
-		return
+		if len(nf.enums) > 0 {
+			compFunc = newEnumCompFunc(nf.enums)
+		} else {
+			return
+		}
 	}
+
 	acc := p.newArgCompletionContext()
 	compItems := compFunc(acc)
 	p.printCompletionItems(compItems)
@@ -605,6 +619,22 @@ func (p *App) completionCmd(shellType string) func() {
 		builder := &strings.Builder{}
 		tpl.Execute(builder, data)
 		fmt.Println(builder.String())
+	}
+}
+
+func newEnumCompFunc(enums []string) ArgCompletionFunc {
+	return func(ctx ArgCompletionContext) []CompletionItem {
+		prefix := ctx.ArgPrefix()
+		var compItems []CompletionItem
+		for _, val := range enums {
+			if strings.HasPrefix(val, prefix) {
+				compItems = append(compItems, CompletionItem{
+					Value:       val,
+					Description: "",
+				})
+			}
+		}
+		return compItems
 	}
 }
 

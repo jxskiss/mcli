@@ -45,7 +45,7 @@ which is licensed under the Apache License 2.0.
 * Automatic suggestions like git.
 * Automatic help generation for commands, flags and arguments.
 * Automatic help flag recognition of `-h`, `--help`, etc.
-* Automatic shell completion, it supports `bash`, `zsh`, `fish`, `powershell` for now.
+* Automatic shell completion with built-in enum and custom completion functions, supporting `bash`, `zsh`, `fish`, and `powershell`.
 * Compatible with the standard library's flag.FlagSet.
 * Optional posix-style single token multiple options command line parsing.
 * Alias command, so you can reorganize commands without breaking them.

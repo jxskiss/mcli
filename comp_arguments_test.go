@@ -224,4 +224,37 @@ func TestArgCompletionContext(t *testing.T) {
 			assert.Equal(t, "dummy-value-1\n", got1)
 		})
 
+	t.Run("coverage / first positional argument is incomplete", func(t *testing.T) {
+		reset()
+		Run("group1", "cmdv", "dum", completionFlag, "zsh")
+		got1 := buf.String()
+		assert.Contains(t, got1, "dummy-value-1")
+	})
+
+	t.Run("coverage / root command first positional argument is incomplete", func(t *testing.T) {
+		reset()
+		// Setup a root command specifically for this test
+		app := NewApp()
+		app.AddRoot(func(ctx *Context) {
+			var rootArgs struct {
+				Target string `cli:"target"`
+			}
+			ctx.Parse(&rootArgs, WithArgCompFuncs(map[string]ArgCompletionFunc{
+				"target": func(compCtx ArgCompletionContext) []CompletionItem {
+					return []CompletionItem{
+						{"dummy-root-1", ""},
+					}
+				},
+			}))
+		}, EnableFlagCompletion())
+		
+		var rootBuf bytes.Buffer
+		app.completionCtx.out = &rootBuf
+		app.completionCtx.postFunc = func() {}
+		app.Run("dum", completionFlag, "zsh")
+		
+		gotRoot := rootBuf.String()
+		assert.Contains(t, gotRoot, "dummy-root-1")
+	})
+
 }
