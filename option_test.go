@@ -190,10 +190,10 @@ func TestWithDefaults_BasicTypes(t *testing.T) {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	got := buf.String()
-	assert.Contains(t, got, "[default: true]")
-	assert.Contains(t, got, "[default: 42]")
-	assert.Contains(t, got, `[default: "custom"]`)
-	assert.Contains(t, got, "[default: 3.14]")
+	assert.Contains(t, got, "(default: true)")
+	assert.Contains(t, got, "(default: 42)")
+	assert.Contains(t, got, `(default: "custom")`)
+	assert.Contains(t, got, "(default: 3.14)")
 }
 
 func TestWithDefaults_ShortName(t *testing.T) {
@@ -219,8 +219,8 @@ func TestWithDefaults_ShortName(t *testing.T) {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	got := buf.String()
-	assert.Contains(t, got, "[default: 100]")
-	assert.Contains(t, got, "[default: 200]")
+	assert.Contains(t, got, "(default: 100)")
+	assert.Contains(t, got, "(default: 200)")
 }
 
 func TestWithDefaults_LongNamePriority(t *testing.T) {
@@ -264,8 +264,8 @@ func TestWithDefaults_OverrideStructTag(t *testing.T) {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	got := buf.String()
-	assert.Contains(t, got, `[default: "option_default"]`)
-	assert.Contains(t, got, "[default: 200]")
+	assert.Contains(t, got, `(default: "option_default")`)
+	assert.Contains(t, got, "(default: 200)")
 }
 
 func TestWithDefaults_FallbackToStructTag(t *testing.T) {
@@ -292,9 +292,9 @@ func TestWithDefaults_FallbackToStructTag(t *testing.T) {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	got := buf.String()
-	assert.Contains(t, got, `[default: "option_default"]`)
-	assert.Contains(t, got, "[default: 100]")
-	assert.Contains(t, got, "[default: true]")
+	assert.Contains(t, got, `(default: "option_default")`)
+	assert.Contains(t, got, "(default: 100)")
+	assert.Contains(t, got, "(default: true)")
 }
 
 func TestWithDefaults_CmdlineOverride(t *testing.T) {
@@ -570,7 +570,7 @@ func TestWithEnums_HelpDisplay(t *testing.T) {
 	fs.Usage()
 
 	got := buf.String()
-	assert.Contains(t, got, "[valid: json, xml, text]")
+	assert.Contains(t, got, "(choices: json, xml, text)")
 }
 
 func TestWithEnums_LongNamePriority(t *testing.T) {
@@ -595,7 +595,7 @@ func TestWithEnums_LongNamePriority(t *testing.T) {
 	fs.SetOutput(&buf)
 	fs.Usage()
 	got := buf.String()
-	assert.Contains(t, got, "[valid: auto, always, never]")
+	assert.Contains(t, got, "(choices: auto, always, never)")
 }
 
 func TestWithEnums_WithDefaults(t *testing.T) {

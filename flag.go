@@ -390,9 +390,9 @@ func (f *_flag) formatDefaultValueForHelp() string {
 	str := ""
 	if f.hasDefault {
 		if f.isString() || f.isStringPtr() {
-			str = fmt.Sprintf("[default: %q]", f.defValue)
+			str = fmt.Sprintf("(default: %q)", f.defValue)
 		} else {
-			str = fmt.Sprintf("[default: %v]", f.defValue)
+			str = fmt.Sprintf("(default: %v)", f.defValue)
 		}
 	}
 	return str
@@ -434,11 +434,11 @@ func (f *_flag) getUsage(hasShortFlag bool) usageItem {
 		appendixes = append(appendixes, dftStr)
 	}
 	if len(f.envNames) > 0 {
-		envStr := fmt.Sprintf(`[env: %s]`, strings.Join(f.envNames, ", "))
+		envStr := fmt.Sprintf(`(env: %s)`, strings.Join(f.envNames, ", "))
 		appendixes = append(appendixes, envStr)
 	}
 	if len(f.enums) > 0 {
-		enumStr := fmt.Sprintf(`[valid: %s]`, strings.Join(f.enums, ", "))
+		enumStr := fmt.Sprintf(`(choices: %s)`, strings.Join(f.enums, ", "))
 		appendixes = append(appendixes, enumStr)
 	}
 	return usageItem{
