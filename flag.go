@@ -85,6 +85,9 @@ type _flag struct {
 	hidden     bool
 	required   bool
 	nonflag    bool
+
+	// isProvided reports whether a value was supplied by CLI or env, excluding defaults.
+	isProvided bool
 }
 
 type _tags struct {
@@ -175,13 +178,14 @@ func formatValueOfAnyType(rv reflect.Value) string {
 }
 
 func (f *_flag) Set(s string) error {
-	return applyValue(f.rv, s)
+	if err := applyValue(f.rv, s); err != nil {
+		return err
+	}
+	f.isProvided = true
+	return nil
 }
 
 func applyValue(rv reflect.Value, s string) error {
-	if s == "" {
-		return nil
-	}
 	if rv.Kind() == reflect.Ptr && rv.IsNil() {
 		rv.Set(reflect.New(rv.Type().Elem()))
 	}
@@ -330,6 +334,10 @@ func (f *_flag) isZero() bool {
 	}
 	// Else it must be a slice or a map.
 	return f.rv.Len() == 0
+}
+
+func (f *_flag) hasValue() bool {
+	return f.isProvided || f.hasDefault || !f.isZero()
 }
 
 func (f *_flag) helpName() string {
@@ -763,18 +771,18 @@ func (p *flagParser) parseFlag(isGlobal bool, cliTag, defaultValue, envTag strin
 				return nil, newProgramingError("invalid default value from WithDefaults for %s: %v", f.helpName(), err)
 			}
 			f.defValue = formatValue(f.rv)
-			f.hasDefault = !f.isZero()
+			f.hasDefault = true
 		}
 	}
 
 	// Apply struct tag default only if WithDefaults didn't override it
 	if !f.hasDefault && defaultValue != "" {
-		err := f.Set(defaultValue)
+		err := applyValue(f.rv, defaultValue)
 		if err != nil {
 			return nil, newProgramingError("invalid default value %q for %s: %v", defaultValue, f.helpName(), err)
 		}
 		f.defValue = defaultValue
-		f.hasDefault = !f.isZero()
+		f.hasDefault = true
 	}
 
 	// Validate default value against enums if provided

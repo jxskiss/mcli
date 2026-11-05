@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
@@ -1243,4 +1244,134 @@ func TestApply(t *testing.T) {
 		assert.Equal(t, true, flag.hidden)
 		assert.Equal(t, true, flag.required)
 	})
+}
+
+func TestParse_EmptyStringOverridesDefault(t *testing.T) {
+	var args struct {
+		Name string `cli:"--name" default:"alice"`
+	}
+	_, err := NewApp().parseArgs(&args, WithArgs([]string{"--name="}), WithErrorHandling(flag.ContinueOnError))
+	assert.NoError(t, err)
+	assert.Equal(t, "", args.Name)
+}
+
+func TestParse_RequiredZeroValues(t *testing.T) {
+	for _, input := range [][]string{
+		{"--count=0", "--enabled=false", "--name=", "0"},
+		{"-c=0", "--enabled=false", "--name=", "0"},
+	} {
+		var args struct {
+			Count   int    `cli:"#R, -c, --count"`
+			Enabled bool   `cli:"#R, --enabled"`
+			Name    string `cli:"#R, --name"`
+			Index   int    `cli:"#R, index"`
+		}
+		_, err := NewApp().parseArgs(&args, WithArgs(input), WithErrorHandling(flag.ContinueOnError))
+		assert.NoError(t, err)
+	}
+}
+
+func TestParse_EnvPriority(t *testing.T) {
+	for _, input := range [][]string{{"--count=3", "7"}, {"-c=3", "7"}} {
+		t.Setenv("MCLI_TEST_COUNT", "invalid")
+		t.Setenv("MCLI_TEST_INDEX", "invalid")
+		var args struct {
+			Count int `cli:"-c, --count" env:"MCLI_TEST_COUNT"`
+			Index int `cli:"index" env:"MCLI_TEST_INDEX"`
+		}
+		_, err := NewApp().parseArgs(&args, WithArgs(input), WithErrorHandling(flag.ContinueOnError))
+		assert.NoError(t, err)
+		assert.Equal(t, 3, args.Count)
+		assert.Equal(t, 7, args.Index)
+	}
+}
+
+func TestParse_RequiredEnvZeroValues(t *testing.T) {
+	t.Setenv("MCLI_TEST_COUNT", "0")
+	t.Setenv("MCLI_TEST_ENABLED", "false")
+	t.Setenv("MCLI_TEST_NAME", "")
+	var args struct {
+		Count   int    `cli:"#R, --count" env:"MCLI_TEST_COUNT"`
+		Enabled bool   `cli:"#ER, Enabled" env:"MCLI_TEST_ENABLED"`
+		Name    string `cli:"#ER, Name" env:"MCLI_TEST_NAME"`
+	}
+	_, err := NewApp().parseArgs(&args, WithArgs([]string{}), WithErrorHandling(flag.ContinueOnError))
+	assert.NoError(t, err)
+}
+
+func TestParse_EnvErrorHandling(t *testing.T) {
+	t.Setenv("MCLI_TEST_COUNT", "invalid")
+	for _, handling := range []flag.ErrorHandling{flag.ContinueOnError, flag.PanicOnError} {
+		t.Run(fmt.Sprint(handling), func(t *testing.T) {
+			app := NewApp()
+			var output bytes.Buffer
+			app.getFlagSet().SetOutput(&output)
+			var args struct {
+				Count int `cli:"--count" env:"MCLI_TEST_COUNT"`
+			}
+			parse := func() {
+				_, err := app.parseArgs(&args, WithArgs([]string{}), WithErrorHandling(handling))
+				assert.Error(t, err)
+			}
+			if handling == flag.PanicOnError {
+				assert.Panics(t, parse)
+			} else {
+				parse()
+			}
+			assert.Contains(t, output.String(), "MCLI_TEST_COUNT")
+		})
+	}
+}
+
+func TestNewCommand_EnvErrorExits(t *testing.T) {
+	if os.Getenv("MCLI_TEST_ENV_ERROR_PROCESS") == "1" {
+		os.Setenv("MCLI_TEST_COUNT", "invalid")
+		app := NewApp()
+		app.Add("test", NewCommand(func(ctx *Context, args *struct {
+			Count int `cli:"--count" env:"MCLI_TEST_COUNT"`
+		}) {
+			fmt.Println("business handler executed")
+		}), "test")
+		app.Run("test")
+		return
+	}
+	executable, err := os.Executable()
+	if !assert.NoError(t, err) {
+		return
+	}
+	cmd := exec.Command(executable, "-test.run=^TestNewCommand_EnvErrorExits$")
+	cmd.Env = append(os.Environ(), "MCLI_TEST_ENV_ERROR_PROCESS=1")
+	output, err := cmd.CombinedOutput()
+	if assert.IsType(t, &exec.ExitError{}, err) {
+		assert.Equal(t, 2, err.(*exec.ExitError).ExitCode())
+	}
+	assert.Contains(t, string(output), "MCLI_TEST_COUNT")
+	assert.NotContains(t, string(output), "business handler executed")
+}
+
+func TestParse_RequiredMissingValues(t *testing.T) {
+	for _, input := range [][]string{
+		{"--enabled=false", "--name=", "0"},
+		{"--count=0", "--name=", "0"},
+		{"--count=0", "--enabled=false", "0"},
+		{"--count=0", "--enabled=false", "--name="},
+	} {
+		var args struct {
+			Count   int    `cli:"#R, --count"`
+			Enabled bool   `cli:"#R, --enabled"`
+			Name    string `cli:"#R, --name"`
+			Index   int    `cli:"#R, index"`
+		}
+		_, err := NewApp().parseArgs(&args, WithArgs(input), WithErrorHandling(flag.ContinueOnError))
+		assert.Error(t, err)
+	}
+}
+
+func TestParse_RequiredZeroDefaults(t *testing.T) {
+	var args struct {
+		Count   int  `cli:"#R, --count" default:"0"`
+		Enabled bool `cli:"#R, --enabled" default:"false"`
+	}
+	_, err := NewApp().parseArgs(&args, WithArgs([]string{}), WithErrorHandling(flag.ContinueOnError))
+	assert.NoError(t, err)
 }

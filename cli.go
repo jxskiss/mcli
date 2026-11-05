@@ -257,9 +257,12 @@ func (ctx *parsingContext) readEnvValues() (err error) {
 }
 
 func readEnv(fs *flag.FlagSet, f *_flag) (found bool, err error) {
+	if f.isProvided {
+		return false, nil
+	}
 	for _, name := range f.envNames {
-		value := os.Getenv(name)
-		if value == "" {
+		value, exists := os.LookupEnv(name)
+		if !exists {
 			continue
 		}
 		found = true
@@ -270,6 +273,8 @@ func readEnv(fs *flag.FlagSet, f *_flag) (found bool, err error) {
 		}
 		if err != nil {
 			err = fmt.Errorf("invalid value %q for %s from env %s: %v", value, f.helpName(), name, err)
+		} else {
+			f.isProvided = true
 		}
 		break
 	}
@@ -278,19 +283,19 @@ func readEnv(fs *flag.FlagSet, f *_flag) (found bool, err error) {
 
 func (ctx *parsingContext) checkRequired() (err error) {
 	for _, f := range ctx.flags {
-		if f.required && f.isZero() {
+		if f.required && !f.hasValue() {
 			ctx.failf(&err, "flag is required but not set: -%s", f.name)
 			return
 		}
 	}
 	for _, f := range ctx.nonflags {
-		if f.required && f.isZero() {
+		if f.required && !f.hasValue() {
 			ctx.failf(&err, "argument is required but not given: %v", f.name)
 			return
 		}
 	}
 	for _, f := range ctx.envVars {
-		if f.required && f.isZero() {
+		if f.required && !f.hasValue() {
 			ctx.failf(&err, "environment variable is required but not set: %v", strings.Join(f.envNames, ", "))
 		}
 	}
@@ -300,7 +305,7 @@ func (ctx *parsingContext) checkRequired() (err error) {
 func (ctx *parsingContext) checkEnums() (err error) {
 	flags := append(clip(ctx.flags), ctx.nonflags...)
 	for _, f := range flags {
-		if !f.isZero() && len(f.enums) > 0 {
+		if f.hasValue() && len(f.enums) > 0 {
 			val := f.String()
 			valid := find(f.enums, val) >= 0
 			if !valid {
@@ -650,11 +655,6 @@ func (p *App) parseArgsForRunningCommand() (fs *flag.FlagSet, err error) {
 		cmdArgs = ctx.reorderFlags(cmdArgs)
 	}
 
-	// Read env values before parsing command line flags and arguments.
-	if err = ctx.readEnvValues(); err != nil {
-		return fs, err
-	}
-
 	// If the command does not receive arguments, but there are still
 	// arguments before flags, it is absolutely an invalid command.
 	if !checkNonflagsLength(ctx.nonflags, ctx.ambiguousArgs) {
@@ -671,17 +671,28 @@ func (p *App) parseArgsForRunningCommand() (fs *flag.FlagSet, err error) {
 	if err = fs.Parse(cmdArgs); err != nil {
 		return fs, err
 	}
+	// Boolean flags use flag's native values, so Set does not track them.
+	fs.Visit(func(ff *flag.Flag) {
+		if f := ctx.flagMap[ff.Name]; f != nil {
+			f.isProvided = true
+		}
+	})
 	nonflagArgs, err := ctx.parseNonflags()
 	if err != nil {
 		return fs, err
 	}
+	// Only consult env for values not supplied on the command line.
+	if err = ctx.readEnvValues(); err != nil {
+		ctx.failError(err)
+		return fs, err
+	}
+	tidyFlags(fs, ctx.flags, nonflagArgs)
 	if err = ctx.checkRequired(); err != nil {
 		return fs, err
 	}
 	if err = ctx.checkEnums(); err != nil {
 		return fs, err
 	}
-	tidyFlags(fs, ctx.flags, nonflagArgs)
 	return fs, err
 }
 
