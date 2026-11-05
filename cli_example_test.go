@@ -410,9 +410,9 @@ Flags:
   -w, --wiki               Open repository wiki
 
 Arguments:
-  location <string>    A browser location can be specified using arguments in the following format:
-                       - by number for issue or pull request, e.g. "123"; or
-                       - by path for opening folders and files, e.g. "cmd/gh/main.go"
+  location <string>        A browser location can be specified using arguments in the following format:
+                           - by number for issue or pull request, e.g. "123"; or
+                           - by path for opening folders and files, e.g. "cmd/gh/main.go"
 
 Examples:
   $ gh browse
