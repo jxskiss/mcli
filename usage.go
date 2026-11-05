@@ -26,8 +26,9 @@ type usagePrinter struct {
 	ctx *parsingContext
 	out io.Writer
 
-	flagCount    int
-	hasShortFlag bool
+	flagCount     int
+	hasShortFlag  bool
+	flagPrefixLen int
 
 	subCmds        commands
 	globalFlagHelp []usageItem
@@ -214,13 +215,14 @@ func (p *usagePrinter) splitAndFormatFlags() {
 	p.cmdFlagHelp = cmdFlagHelp
 	p.nonFlagHelp = nonFlagHelp
 	p.envVarsHelp = envVarsHelp
+	p.flagPrefixLen = calcMaxPrefixLen([][]usageItem{cmdFlagHelp, nonFlagHelp, globalFlagHelp})
 }
 
 func (p *usagePrinter) printCmdFlags() {
 	out := p.out
 	if len(p.cmdFlagHelp) > 0 {
 		fmt.Fprint(out, "Flags:\n")
-		printWithAlignment(out, p.cmdFlagHelp, 0)
+		printWithAlignment(out, p.cmdFlagHelp, p.flagPrefixLen)
 		fmt.Fprint(out, "\n")
 	}
 }
@@ -229,7 +231,7 @@ func (p *usagePrinter) printArguments() {
 	out := p.out
 	if len(p.nonFlagHelp) > 0 {
 		fmt.Fprint(out, "Arguments:\n")
-		printWithAlignment(out, p.nonFlagHelp, 0)
+		printWithAlignment(out, p.nonFlagHelp, p.flagPrefixLen)
 		fmt.Fprint(out, "\n")
 	}
 }
@@ -238,7 +240,7 @@ func (p *usagePrinter) printGlobalFlags() {
 	out := p.out
 	if len(p.globalFlagHelp) > 0 {
 		fmt.Fprint(out, "Global Flags:\n")
-		printWithAlignment(out, p.globalFlagHelp, 0)
+		printWithAlignment(out, p.globalFlagHelp, p.flagPrefixLen)
 		fmt.Fprint(out, "\n")
 	}
 }
@@ -423,8 +425,8 @@ func printWithAlignment(out io.Writer, lines []usageItem, maxPrefixLen int) {
 			}
 		}
 		fmt.Fprint(out, "\n")
-		for _, a := range line.appendixes {
-			fmt.Fprintf(out, "%s%s\n", padding, a)
+		if len(line.appendixes) > 0 {
+			fmt.Fprintf(out, "%s%s\n", padding, strings.Join(line.appendixes, " "))
 		}
 	}
 }
