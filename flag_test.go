@@ -186,8 +186,8 @@ func Test_flag_isZero_2(t *testing.T) {
 	fs, err = app.parseArgs(&args1, WithErrorHandling(flag.ContinueOnError),
 		WithArgs([]string{"-a1", ""}))
 	_ = fs
-	assert.NotNil(t, err)
-	assert.Contains(t, err.Error(), "flag is required but not set: -a1")
+	assert.NoError(t, err)
+	assert.Empty(t, args1.A1)
 }
 
 func Test_findFlagIndex(t *testing.T) {

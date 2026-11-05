@@ -3,6 +3,7 @@ package mcli
 import (
 	"bytes"
 	"flag"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -693,4 +694,56 @@ func TestWithDefaults_FloatTypes(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, float32(3.14), args.Float32)
 	assert.Equal(t, float64(2.71828), args.Float64)
+}
+
+func TestWithEnums_ExplicitZeroValues(t *testing.T) {
+	for _, input := range [][]string{
+		{"--count=0"}, {"-c=0"}, {"--enabled=false"}, {"--name="}, {"0"},
+	} {
+		t.Run(strings.Join(input, " "), func(t *testing.T) {
+			var args struct {
+				Count   int    `cli:"-c, --count"`
+				Enabled bool   `cli:"--enabled"`
+				Name    string `cli:"--name"`
+				Index   int    `cli:"index"`
+			}
+			_, err := NewApp().parseArgs(&args, WithArgs(input), WithErrorHandling(flag.ContinueOnError),
+				WithEnums(map[string][]string{"count": {"1", "2"}, "enabled": {"true"}, "name": {"alice"}, "index": {"1"}}))
+			assert.Error(t, err)
+		})
+	}
+}
+
+func TestWithEnums_UnsetZeroValues(t *testing.T) {
+	var args struct {
+		Count int `cli:"--count"`
+	}
+	_, err := NewApp().parseArgs(&args, WithArgs([]string{}), WithErrorHandling(flag.ContinueOnError),
+		WithEnums(map[string][]string{"count": {"1", "2"}}))
+	assert.NoError(t, err)
+}
+
+func TestWithEnums_ZeroValuesAllowed(t *testing.T) {
+	t.Setenv("MCLI_TEST_BOOL", "invalid")
+	var args struct {
+		Count   int   `cli:"--count"`
+		Enabled *bool `cli:"--enabled" env:"MCLI_TEST_BOOL"`
+	}
+	_, err := NewApp().parseArgs(&args, WithArgs([]string{"--count=0", "--enabled=false"}),
+		WithErrorHandling(flag.ContinueOnError), WithEnums(map[string][]string{"count": {"0", "1"}, "enabled": {"false"}}))
+	assert.NoError(t, err)
+	assert.Equal(t, 0, args.Count)
+	if assert.NotNil(t, args.Enabled) {
+		assert.False(t, *args.Enabled)
+	}
+}
+
+func TestWithEnums_ZeroDefault(t *testing.T) {
+	var args struct {
+		Count int `cli:"--count"`
+	}
+	assert.Panics(t, func() {
+		NewApp().parseArgs(&args, WithArgs([]string{}), WithErrorHandling(flag.ContinueOnError),
+			WithDefaults(map[string]any{"count": 0}), WithEnums(map[string][]string{"count": {"1", "2"}}))
+	})
 }
