@@ -340,17 +340,17 @@ Flags:
   -a1               a1 description
   -a2               a2 description
   -b1 <int>         b1 description
-                    [default: 1024]
+                    (default: 1024)
   -c1 <string>
-                    [env: C1_STR]
+                    (env: C1_STR)
   -c2 <string>
-                    [default: "c2default"] [env: C2_STR]
+                    (default: "c2default") (env: C2_STR)
   -c3 <string>
-                    [default: "c3default"] [env: C3_STR]
+                    (default: "c3default") (env: C3_STR)
   -c4 <c4>          a c4 value
   -c5 <string>      c5 description
   -d1 <duration>
-                    [default: 1.5s]
+                    (default: 1.5s)
 
 `
 		assert.Contains(t, got, want)
@@ -445,13 +445,13 @@ func TestParse_EnvValues(t *testing.T) {
 
 	got := buf.String()
 	for _, x := range []string{
-		" [default: true]",
-		` [env: A2_BOOL, A2_BOOL_1]`,
-		` [env: A3_BOOL, A3_BOOL_1]`,
-		` [default: "b2default"]`,
-		` [env: B2_STRING]`,
-		` [default: "b3default"]`,
-		` [env: B3_STRING, B3_STRING_1]`,
+		" (default: true)",
+		` (env: A2_BOOL, A2_BOOL_1)`,
+		` (env: A3_BOOL, A3_BOOL_1)`,
+		` (default: "b2default")`,
+		` (env: B2_STRING)`,
+		` (default: "b3default")`,
+		` (env: B3_STRING, B3_STRING_1)`,
 	} {
 		_ = x
 		assert.Contains(t, got, x)

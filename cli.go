@@ -39,6 +39,10 @@ type Options struct {
 	// If Parse is called with option `WithFooter`, the option function's
 	// output overrides this setting.
 	HelpFooter string
+
+	// HelpWidth sets the help wrap width in terminal columns. Zero detects the
+	// output terminal width, falling back to 80. A negative value disables wrapping.
+	HelpWidth int
 }
 
 // NewApp creates a new cli application instance.

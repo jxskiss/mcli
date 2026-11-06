@@ -4,7 +4,10 @@ go 1.18
 
 require (
 	github.com/MakeNowJust/heredoc/v2 v2.0.1
+	github.com/rivo/uniseg v0.4.7
 	github.com/stretchr/testify v1.8.4
+	golang.org/x/sys v0.19.0
+	golang.org/x/term v0.19.0
 )
 
 require (

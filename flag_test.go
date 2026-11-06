@@ -37,16 +37,16 @@ func Test_flag_DefaultValue(t *testing.T) {
 	got := buf.String()
 	assert.Contains(t, got, "Flags:\n")
 	assert.Contains(t, got, "  -a")
-	assert.Contains(t, got, "[default: true]")
+	assert.Contains(t, got, "(default: true)")
 	assert.Contains(t, got, "  -b <string>")
-	assert.Contains(t, got, `[default: "astr"]`)
+	assert.Contains(t, got, `(default: "astr")`)
 	assert.Contains(t, got, "  -d <duration>")
-	assert.Contains(t, got, "[default: 1.5s]")
+	assert.Contains(t, got, "(default: 1.5s)")
 	assert.Contains(t, got, "Arguments:\n")
 	assert.Contains(t, got, "  arg1 <string>")
-	assert.Contains(t, got, `[default: "arg1str"]`)
+	assert.Contains(t, got, `(default: "arg1str")`)
 	assert.Contains(t, got, "  arg2 <string>")
-	assert.Contains(t, got, `[default: "arg2str"]`)
+	assert.Contains(t, got, `(default: "arg2str")`)
 }
 
 func Test_flag_CompositeType(t *testing.T) {
