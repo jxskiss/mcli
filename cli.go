@@ -41,7 +41,9 @@ type Options struct {
 	HelpFooter string
 
 	// HelpWidth sets the help wrap width in terminal columns. Zero detects the
-	// output terminal width, falling back to 80. A negative value disables wrapping.
+	// output terminal width, falling back to 80 if detection fails, and disables
+	// wrapping for non-terminal output. Detected and positive widths below 30
+	// use 30 columns. A negative value disables wrapping.
 	HelpWidth int
 }
 

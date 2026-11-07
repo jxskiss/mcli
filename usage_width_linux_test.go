@@ -16,12 +16,19 @@ func TestHelpWidthOutputTerminal(t *testing.T) {
 		t.Skipf("pseudo-terminal unavailable: %v", err)
 	}
 	defer terminal.Close()
-	if err := unix.IoctlSetWinsize(int(terminal.Fd()), unix.TIOCSWINSZ, &unix.Winsize{Row: 24, Col: 52}); err != nil {
-		t.Fatal(err)
-	}
 	app := NewApp()
 	app.getFlagSet().SetOutput(terminal)
-	assert.Equal(t, 52, newUsagePrinter(app).width)
+	for _, tt := range []struct {
+		columns uint16
+		want    int
+	}{{0, 80}, {10, 30}, {20, 30}, {29, 30}, {30, 30}, {40, 40}, {52, 52}} {
+		if err := unix.IoctlSetWinsize(int(terminal.Fd()), unix.TIOCSWINSZ, &unix.Winsize{Row: 24, Col: tt.columns}); err != nil {
+			t.Fatal(err)
+		}
+		assert.Equal(t, tt.want, newUsagePrinter(app).width)
+	}
+	app.HelpWidth = 20
+	assert.Equal(t, 30, newUsagePrinter(app).width)
 	app.HelpWidth = 100
 	assert.Equal(t, 100, newUsagePrinter(app).width)
 }

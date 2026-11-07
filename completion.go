@@ -420,7 +420,7 @@ func (p *App) continueFlagCompletion() {
 		if compCtx.shell == "powershell" {
 			return ""
 		}
-		usage := f.getUsage(false).description
+		usage := f.getUsage(prefixDefault).description
 		usage = strings.TrimSpace(usage)
 		nIdx := strings.IndexByte(usage, '\n')
 		if nIdx > 0 {

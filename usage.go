@@ -186,7 +186,13 @@ func (p *usagePrinter) countFlags() {
 func (p *usagePrinter) splitAndFormatFlags() {
 	flags := p.ctx.flags
 	showHidden := p.ctx.showHidden
-	hasShortFlag := p.hasShortFlag
+	style := prefixDefault
+	if p.hasShortFlag {
+		style = prefixAligned
+	}
+	if p.width > 0 && p.width <= 40 {
+		style = prefixCompact
+	}
 
 	var (
 		globalFlagHelp []usageItem
@@ -199,7 +205,7 @@ func (p *usagePrinter) splitAndFormatFlags() {
 			if f.hidden && !showHidden {
 				continue
 			}
-			usage := f.getUsage(hasShortFlag)
+			usage := f.getUsage(style)
 			if f.isGlobal {
 				globalFlagHelp = append(globalFlagHelp, usage)
 			} else {
@@ -208,18 +214,18 @@ func (p *usagePrinter) splitAndFormatFlags() {
 		}
 	}
 	for _, f := range p.ctx.nonflags {
-		usage := f.getUsage(false)
+		usage := f.getUsage(prefixDefault)
 		nonFlagHelp = append(nonFlagHelp, usage)
 	}
 	for _, f := range p.ctx.envVars {
-		usage := f.getUsage(false)
+		usage := f.getUsage(prefixDefault)
 		envVarsHelp = append(envVarsHelp, usage)
 	}
 	p.globalFlagHelp = globalFlagHelp
 	p.cmdFlagHelp = cmdFlagHelp
 	p.nonFlagHelp = nonFlagHelp
 	p.envVarsHelp = envVarsHelp
-	p.flagPrefixLen = calcMaxPrefixLen([][]usageItem{cmdFlagHelp, nonFlagHelp, globalFlagHelp})
+	p.flagPrefixLen = calcMaxPrefixLen([][]usageItem{cmdFlagHelp, nonFlagHelp, globalFlagHelp}, p.width)
 }
 
 func (p *usagePrinter) printCmdFlags() {
@@ -393,7 +399,7 @@ func (p *usagePrinter) __printGroupedSubCommands(out io.Writer, cmdGroups []*cat
 		cmdLines = append(cmdLines, grpLines)
 	}
 
-	maxPrefixLen := calcMaxPrefixLen(cmdLines)
+	maxPrefixLen := calcMaxPrefixLen(cmdLines, p.width)
 	for _, grp := range groupLines {
 		fmt.Fprint(out, addTrailingColon(grp.category)+"\n")
 		printWithAlignment(out, grp.cmdLines, maxPrefixLen, p.width)
@@ -415,7 +421,7 @@ const (
 
 func printWithAlignment(out io.Writer, lines []usageItem, maxPrefixLen, width int) {
 	if maxPrefixLen <= 0 {
-		maxPrefixLen = calcMaxPrefixLen([][]usageItem{lines})
+		maxPrefixLen = calcMaxPrefixLen([][]usageItem{lines}, width)
 	}
 	offset := maxPrefixLen + 4
 	// Leave enough room for descriptions on narrow terminals.
@@ -448,7 +454,12 @@ func printWithAlignment(out io.Writer, lines []usageItem, maxPrefixLen, width in
 	}
 }
 
-func calcMaxPrefixLen(lineGroups [][]usageItem) int {
+func calcMaxPrefixLen(lineGroups [][]usageItem, width int) int {
+	// Include the four-column gap in the one-third name-column budget.
+	limit := __MaxPrefixLen
+	if width > 0 && width/3-4 < limit {
+		limit = width/3 - 4
+	}
 	maxPrefixLen := 0
 	for _, lines := range lineGroups {
 		for _, line := range lines {
@@ -456,6 +467,9 @@ func calcMaxPrefixLen(lineGroups [][]usageItem) int {
 				maxPrefixLen = n
 			}
 		}
+	}
+	if maxPrefixLen > limit {
+		maxPrefixLen = limit
 	}
 	if maxPrefixLen < __MinPrefixLen {
 		maxPrefixLen = __MinPrefixLen
@@ -465,15 +479,23 @@ func calcMaxPrefixLen(lineGroups [][]usageItem) int {
 
 // resolveHelpWidth queries the actual help output, which may differ from stdout.
 func resolveHelpWidth(out io.Writer, configured int) int {
-	if configured != 0 {
+	if configured < 0 {
 		return configured
 	}
-	if file, ok := out.(interface{ Fd() uintptr }); ok {
+	if configured == 0 {
+		file, ok := out.(interface{ Fd() uintptr })
+		if !ok || !term.IsTerminal(int(file.Fd())) {
+			return -1
+		}
+		configured = 80
 		if width, _, err := term.GetSize(int(file.Fd())); err == nil && width > 0 {
-			return width
+			configured = width
 		}
 	}
-	return 80
+	if configured < 30 {
+		return 30
+	}
+	return configured
 }
 
 // wrapHelpText preserves explicit lines and indentation, and never splits words
