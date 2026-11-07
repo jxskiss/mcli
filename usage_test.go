@@ -13,6 +13,7 @@ import (
 
 func TestQuoteUsageName(t *testing.T) {
 	app := NewApp()
+	app.HelpWidth = 80
 	var args struct {
 		Arg1 string        `cli:"-a, this is escaped quoted words \\'not name\\' and this is the 'name' and more quoted words \\'actually no need to quote this\\'"`
 		Arg2 string        "cli:\"-b, using backtick to quote name `value` some more description\""
@@ -97,6 +98,7 @@ func TestUsageSharedAlignment(t *testing.T) {
 
 func TestUsageCompactMetadata(t *testing.T) {
 	app := NewApp()
+	app.HelpWidth = 80
 	var args struct {
 		Format string `cli:"-f, --format, Output format" default:"json" env:"TOOL_FORMAT"`
 		Output string `cli:"--output" default:"stdout" env:"TOOL_OUTPUT"`
@@ -106,13 +108,13 @@ func TestUsageCompactMetadata(t *testing.T) {
 	_, err := app.parseArgs(&args, WithArgs([]string{"--help"}), WithErrorHandling(flag.ContinueOnError),
 		WithEnums(map[string][]string{"format": {"json", "yaml"}}))
 	assert.ErrorIs(t, err, flag.ErrHelp)
-	assert.Contains(t, out.String(), `(default: "json") (env: TOOL_FORMAT)`+"\n                           "+`(choices: json, yaml)`)
+	assert.Contains(t, out.String(), `(default: "json") (env: TOOL_FORMAT)`+"\n                          "+`(choices: json, yaml)`)
 	assert.Contains(t, out.String(), `(default: "stdout") (env: TOOL_OUTPUT)`)
 }
 
 func TestHelpWidthFallback(t *testing.T) {
 	var out bytes.Buffer
-	assert.Equal(t, 80, resolveHelpWidth(&out, 0))
+	assert.Equal(t, -1, resolveHelpWidth(&out, 0))
 	assert.Equal(t, 42, resolveHelpWidth(&out, 42))
 	assert.Equal(t, -1, resolveHelpWidth(&out, -1))
 	file, err := os.CreateTemp(t.TempDir(), "help")
@@ -120,7 +122,7 @@ func TestHelpWidthFallback(t *testing.T) {
 		return
 	}
 	defer file.Close()
-	assert.Equal(t, 80, resolveHelpWidth(file, 0))
+	assert.Equal(t, -1, resolveHelpWidth(file, 0))
 }
 
 func TestWrapHelpText(t *testing.T) {
@@ -141,7 +143,7 @@ func TestWrapHelpText(t *testing.T) {
 }
 
 func TestUsageConfiguredWidth(t *testing.T) {
-	for _, width := range []int{24, 40, 80, -1} {
+	for _, width := range []int{30, 40, 80, -1} {
 		app := NewApp()
 		app.HelpWidth = width
 		var args struct {
@@ -190,7 +192,7 @@ func TestHelpPreservesExamplesAndFooter(t *testing.T) {
 	assert.Contains(t, out.String(), footer)
 }
 
-func TestHelpNarrowEnvironmentDescription(t *testing.T) {
+func TestHelpMinimumWidthEnvironmentDescription(t *testing.T) {
 	app := NewApp()
 	app.HelpWidth = 4
 	var args struct {
@@ -200,7 +202,7 @@ func TestHelpNarrowEnvironmentDescription(t *testing.T) {
 	app.getFlagSet().SetOutput(&out)
 	_, err := app.parseArgs(&args, WithArgs([]string{"-h"}), WithErrorHandling(flag.ContinueOnError))
 	assert.ErrorIs(t, err, flag.ErrHelp)
-	assert.Contains(t, out.String(), "\none\ntwo\nthree\n")
+	assert.Contains(t, out.String(), "\n    one two three\n")
 }
 
 func TestHelpUnicodeAlignment(t *testing.T) {
@@ -276,11 +278,79 @@ func TestHelpTextWidth(t *testing.T) {
 
 func TestHelpTabIndentedApplicationDescription(t *testing.T) {
 	app := NewApp()
-	app.Description = "Heading\n\talpha beta gamma"
+	app.Description = "Heading\n\talpha beta gamma delta epsilon"
 	app.HelpWidth = 16
 	var out bytes.Buffer
 	app.getFlagSet().SetOutput(&out)
 	_, err := app.parseArgs(&struct{}{}, WithArgs([]string{"-h"}), WithErrorHandling(flag.ContinueOnError))
 	assert.ErrorIs(t, err, flag.ErrHelp)
-	assert.Contains(t, out.String(), "Heading\n\talpha\n\tbeta\n\tgamma\n")
+	assert.Contains(t, out.String(), "Heading\n\talpha beta gamma delta\n\tepsilon\n")
+}
+
+func TestHelpMinimumWidth(t *testing.T) {
+	var out bytes.Buffer
+	for _, tt := range []struct{ requested, want int }{{1, 30}, {20, 30}, {29, 30}, {30, 30}, {40, 40}, {80, 80}, {0, -1}, {-1, -1}} {
+		assert.Equal(t, tt.want, resolveHelpWidth(&out, tt.requested))
+	}
+}
+
+func TestUsageDynamicColumnBudget(t *testing.T) {
+	for _, tt := range []struct{ width, column int }{{120, 34}, {80, 26}, {60, 20}, {40, 4}, {30, 4}} {
+		app := NewApp()
+		app.HelpWidth = tt.width
+		app.SetGlobalFlags(&struct {
+			Global bool `cli:"--glob, Description global"`
+		}{})
+		var args struct {
+			Target   string `cli:"target, Description target"`
+			Alpha    string `cli:"-a, --alpha, Description alpha"`
+			Medium   bool   `cli:"--abcdefgh, Description medium"`
+			Wide     bool   `cli:"--wideparamnameflag, Description wide"`
+			VeryWide bool   `cli:"--abcdefghijklmn, Description verywide"`
+			Maximum  bool   `cli:"--abcdefghijklmnopqrstuv, Description maximum"`
+		}
+		var out bytes.Buffer
+		app.getFlagSet().SetOutput(&out)
+		_, err := app.parseArgs(&args, WithArgs([]string{"-h"}), WithErrorHandling(flag.ContinueOnError))
+		assert.ErrorIs(t, err, flag.ErrHelp)
+		for _, line := range strings.Split(out.String(), "\n") {
+			if index := strings.Index(line, "Description"); index >= 0 {
+				assert.Equal(t, tt.column, index, line)
+			}
+		}
+		if tt.width <= 40 {
+			assert.Contains(t, out.String(), "\n  --abcdefgh\n    Description medium\n")
+			assert.NotContains(t, out.String(), "\n      --")
+		}
+	}
+}
+
+func TestHelpNonTerminalOutput(t *testing.T) {
+	reader, writer, err := os.Pipe()
+	if !assert.NoError(t, err) {
+		return
+	}
+	defer reader.Close()
+	defer writer.Close()
+	assert.Equal(t, -1, resolveHelpWidth(writer, 0))
+	assert.Equal(t, 42, resolveHelpWidth(writer, 42))
+
+	text := strings.Repeat("word ", 24) + "end"
+	for _, width := range []int{0, -1, 40} {
+		app := NewApp()
+		app.HelpWidth = width
+		app.Description = text
+		var args struct {
+			Name string `cli:"--name"`
+		}
+		var out bytes.Buffer
+		app.getFlagSet().SetOutput(&out)
+		_, err := app.parseArgs(&args, WithArgs([]string{"-h"}), WithErrorHandling(flag.ContinueOnError))
+		assert.ErrorIs(t, err, flag.ErrHelp)
+		if width <= 0 {
+			assert.Contains(t, out.String(), text)
+		} else {
+			assert.NotContains(t, out.String(), text)
+		}
+	}
 }

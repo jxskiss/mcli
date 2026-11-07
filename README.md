@@ -189,15 +189,6 @@ Create a new App instance:
 App:
 
 - `App.Options` specifies optional options for an application.
-- `App.Options.HelpWidth` controls help wrapping in terminal columns. The default
-  (`0`) detects the help output terminal width, falling back to 80 columns for
-  redirected output or when detection fails. Positive values set a fixed width;
-  negative values disable wrapping.
-  Descriptions wrap at word boundaries; flag metadata wraps only between complete
-  annotations, using `(default: value)`, `(env: NAME)`, and `(choices: a, b)`.
-  Display widths account for grapheme clusters; tabs use eight-column tab stops.
-  An individual annotation may exceed the available width. Long words
-  (including URLs), parameter names, examples, footers, and custom usage are kept intact.
 
 CmdOpt:
 

@@ -398,7 +398,15 @@ func (f *_flag) formatDefaultValueForHelp() string {
 	return str
 }
 
-func (f *_flag) getUsage(hasShortFlag bool) usageItem {
+type usagePrefixStyle uint8
+
+const (
+	prefixDefault usagePrefixStyle = iota
+	prefixAligned
+	prefixCompact
+)
+
+func (f *_flag) getUsage(style usagePrefixStyle) usageItem {
 	if f.isEnvVar {
 		return f.getEnvVarUsage()
 	}
@@ -408,8 +416,10 @@ func (f *_flag) getUsage(hasShortFlag bool) usageItem {
 		prefix += "  " + f.name
 	} else if f.short != "" && f.name != "" {
 		prefix += fmt.Sprintf("  -%s, --%s", f.short, f.name)
-	} else if len(f.name) == 1 || !hasShortFlag {
+	} else if len(f.name) == 1 || style == prefixDefault {
 		prefix += fmt.Sprintf("  -%s", f.name)
+	} else if style == prefixCompact {
+		prefix += fmt.Sprintf("  --%s", f.name)
 	} else {
 		prefix += fmt.Sprintf("      --%s", f.name)
 	}
